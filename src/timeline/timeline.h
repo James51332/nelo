@@ -11,14 +11,16 @@ namespace nelo
 {
 
 // Timeline represents a value that changes over time. It supports keyframes, relative animations,
-// and blending with easing. At any time t, the timeline can be sampled to produce the current
-// value. Timelines can be composed or sequenced to form complex animations.
+// and blending with easing. Timelines can also be procedural, meaning they are defined a by a
+// lambda. At any time t, the timeline can be sampled to produce the current value. Timelines can be
+// composed or sequenced to form complex animations.
 template <typename T>
 class timeline
 {
 public:
   using value_type = T;
   using easing_func = std::function<double(double)>;
+  using lambda = std::function<T(double)>;
 
   // Keyframes are like anchor points set for a given time.
   struct keyframe
@@ -36,8 +38,9 @@ public:
   };
 
 public:
-  // Every timeline is defined relative to anchor.
+  // Every timeline is defined relative to anchor or lambda.
   timeline(T anchor);
+  timeline(lambda&& generator);
 
   // Evaluate the timeline at any given time.
   T evaluate(double time) const;
@@ -69,6 +72,10 @@ private:
 
   // The anchor is the initial value of a timeline. Returned for time at or before zero.
   T anchor;
+
+  // Store data about procedural timelines.
+  const bool is_procedural = false;
+  lambda generator;
 
   // Timelines need to have a length to be sequenced. The default length is one, or the the time
   // that the last animation ends. This is updated whenever a keyframe or animation is added, unless
@@ -102,34 +109,46 @@ timeline<T>::timeline(T anchor)
 }
 
 template <typename T>
+timeline<T>::timeline(timeline<T>::lambda&& generator)
+  : is_procedural(true), generator(generator), id(detail::timeline_id::current++)
+{
+}
+
+template <typename T>
 T timeline<T>::evaluate(double time) const
 {
-  // First, return the anchor if we are at zero or negative time.
-  if (time <= 0.0)
-    return anchor;
+  // Track our state as we apply.
+  T state;
 
-  // Track our state in the following variable.
-  T state = anchor;
-
-  // Next, handle the keyframes. For now, we can just loop to find the correct one.
-  double lastTime = 0.0; // The time of the last keyframe (initial anchor).
-  for (auto& keyframe : keyframes)
+  // If we are procedural, use the lambda. Otherwise, use keyframes.
+  if (is_procedural)
+    state = generator(time);
+  else
   {
-    // We've found the keyframe to blend with!
-    if (keyframe.at >= time)
+    // Negative times always return the anchor for non-procedural.
+    if (time <= 0.0)
+      return anchor;
+
+    // Next, handle the keyframes. For now, we can just loop to find the correct one.
+    double lastTime = 0.0; // The time of the last keyframe (initial anchor).
+    for (auto& keyframe : keyframes)
     {
-      // If we are lerpable, we use the easing function. Otherwise, we stick with last state.
-      if constexpr (lerpable<T>)
+      // We've found the keyframe to blend with!
+      if (keyframe.at >= time)
       {
-        double progress = (time - lastTime) / (keyframe.at - lastTime);
-        state = timeline_traits<T>::lerp(state, keyframe.value, keyframe.easing(progress));
+        // If we are lerpable, we use the easing function. Otherwise, we stick with last state.
+        if constexpr (lerpable<T>)
+        {
+          double progress = (time - lastTime) / (keyframe.at - lastTime);
+          state = timeline_traits<T>::lerp(state, keyframe.value, keyframe.easing(progress));
+        }
       }
-    }
-    else
-    {
-      // If we haven't found next yet, we could be blending with this one.
-      lastTime = keyframe.at;
-      state = keyframe.value;
+      else
+      {
+        // If we haven't found next yet, we could be blending with this one.
+        lastTime = keyframe.at;
+        state = keyframe.value;
+      }
     }
   }
 
@@ -166,6 +185,10 @@ T timeline<T>::evaluate(double time) const
 template <typename T>
 void timeline<T>::add_keyframe(double at, T value, easing_func easing)
 {
+  // We can't add keyframes to lambda timelines.
+  if (is_procedural)
+    throw new std::runtime_error("Unable to add keyframes to lambda timeline!");
+
   keyframe state{at, value, easing};
 
   // If we don't have any keyframes, add and return.
@@ -202,9 +225,9 @@ void timeline<T>::add_timeline(double start, std::shared_ptr<timeline<T>> value)
   requires addable<T>
 {
   // Make sure that we can safely add this animation by checking if we are in its dependencies.
-  if (value.dependencies.contains(id))
+  if (value->dependencies.contains(id))
     throw new std::runtime_error("Unable to add animation that depends on self!");
-  dependencies.insert(value.dependencies.begin(), value.dependencies.end());
+  dependencies.insert(value->dependencies.begin(), value->dependencies.end());
 
   // Add our animation to the list of those to apply.
   animations.emplace_back(start, value, false);
@@ -219,12 +242,9 @@ void timeline<T>::multiply_timeline(double start, std::shared_ptr<timeline<T>> v
   requires multipliable<T>
 {
   // Make sure that we can safely add this animation by checking if we are in its dependencies
-  if (value.dependencies.contains(id))
+  if (value->dependencies.contains(id))
     throw new std::runtime_error("Unable to add animation that depends on self!");
-
-  // Absorb the dependencies into our set.
-  for (auto dep : value.dependencies)
-    dependencies.insert(dep);
+  dependencies.insert(value->dependencies.begin(), value->dependencies.end());
 
   // Add our animation to the list of those to apply.
   animations.emplace_back(start, value, true);
@@ -265,7 +285,7 @@ double timeline<T>::default_length() const
   // Now, handle the animations.
   for (auto& anim : animations)
   {
-    double end = anim.start + anim.timeline.length();
+    double end = anim.start + anim.timeline->length();
     if (end > len)
       len = end;
   }
