@@ -1,0 +1,12 @@
+# Build Files
+build/
+bin/
+*.o
+*.obj
+
+# Project Files
+.vscode
+.clangd
+
+# MacOS Files
+.DS_Store
