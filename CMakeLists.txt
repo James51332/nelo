@@ -1,6 +1,14 @@
 # Set our cmake version
 cmake_minimum_required(VERSION 3.20)
 
+# Load SDL project into build
+set(SDL_STATIC ON)
+set(SDL_TESTS OFF)
+set(SDL_TEST_LIBRARY OFF)
+set(SDL_DISABLE_INSTALL ON)
+set(SDL_SHARED OFF)
+add_subdirectory(thirdparty/sdl)
+
 # Basic info about the project
 project(nelo)
 
@@ -13,3 +21,13 @@ file(GLOB_RECURSE SRC_FILES CMAKE_CONFIGURE_DEPENDS "src/*.cpp" "src/*.h src/**.
 
 # Define the executable for the program
 add_executable(nelo ${SRC_FILES})
+
+# Define the include directory to begin within the source directory
+target_include_directories(nelo
+                             PRIVATE
+                               src)
+
+# Add our dependencies
+target_link_libraries(nelo
+                        PUBLIC
+                          SDL3::SDL3-static)

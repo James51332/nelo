@@ -1,12 +1,15 @@
 # Build Files
 build/
 bin/
+out/
 *.o
 *.obj
+.cache/
 
 # Project Files
 .vscode
 .clangd
+compile_commands.json
 
 # MacOS Files
 .DS_Store
