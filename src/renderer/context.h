@@ -20,6 +20,9 @@ public:
   // Polls events if running in windowed mode.
   void update();
 
+  // Presents the back buffer to window.
+  void present();
+
   // Some simple getters regarding this context.
   bool headless() const { return is_headless; }
   bool active() const { return is_active; }
@@ -31,6 +34,7 @@ private:
 private:
   // We use this even when we are headless.
   SDL_Window* window;
+  SDL_GLContext render_context;
 
   // Some basic state about this context.
   bool is_headless;

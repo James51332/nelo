@@ -1,5 +1,7 @@
 #include "context.h"
 
+#include <glad/glad.h>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 
@@ -11,7 +13,7 @@ context::context(bool headless)
 {
   // Ensure that we only create only context per app.
   if (created_singleton)
-    throw new std::runtime_error("Unable to create multiple contexts per nelo instance!");
+    throw std::runtime_error("Unable to create multiple contexts per nelo instance!");
   created_singleton = true;
 
   // Initialize SDL library with our proper settings.
@@ -31,18 +33,56 @@ context::context(bool headless)
   if (!window)
   {
     std::string msg = SDL_GetError();
-    throw new std::runtime_error("Unable to create an window required for context: " + msg);
+    throw std::runtime_error("Unable to create an window required for context: " + msg);
   }
+
+  // Set our flags for the OpenGL context. We always use version 4.1 to support macOS.
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+  // Now, let's go ahead and create our OpenGL context.
+  render_context = SDL_GL_CreateContext(window);
+  if (!render_context)
+  {
+    std::string msg = SDL_GetError();
+    throw std::runtime_error("Unable to create OpenGL context: " + msg);
+  }
+
+  // Make the context current (it's the only context within the app).
+  bool result = SDL_GL_MakeCurrent(window, render_context);
+  if (!result)
+  {
+    std::string msg = SDL_GetError();
+    throw std::runtime_error("Unabled to make OpenGL context current: " + msg);
+  }
+
+  // After, we'll load the OpenGL functiois pointer via glad.
+  int version = gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
+  if (version == 0)
+    throw std::runtime_error("Unable to load OpenGL function pointers in context!");
+
+  // Query the version of OpenGL that our context supports
+  int versionMajor, versionMinor;
+  glGetIntegerv(GL_MAJOR_VERSION, &versionMajor);
+  glGetIntegerv(GL_MINOR_VERSION, &versionMinor);
+
+  // Print a message out to confirm out success.
+  std::cout << "Created nelo render context with OpenGL " << versionMajor << "." << versionMinor
+            << std::endl;
 }
 
 context::~context()
 {
+  // We'll first destroy our OpenGL context.
+  SDL_GL_DestroyContext(render_context);
+
   // Shutdown our window and shutdown SDL.
   SDL_DestroyWindow(window);
   SDL_Quit();
 
-  // Marked the context singleton as being destroyed.
-  created_singleton = false;
+  // Don't mark the context singleton as being destroyed. Once per lifecycle.
+  // created_singleton = false;
 }
 
 void context::update()
@@ -60,6 +100,11 @@ void context::update()
       is_active = false;
     }
   }
+}
+
+void context::present()
+{
+  SDL_GL_SwapWindow(window);
 }
 
 } // namespace nelo

@@ -188,7 +188,7 @@ void timeline<T>::add_keyframe(double at, T value, easing_func easing)
 {
   // We can't add keyframes to lambda timelines.
   if (is_procedural)
-    throw new std::runtime_error("Unable to add keyframes to lambda timeline!");
+    throw std::runtime_error("Unable to add keyframes to lambda timeline!");
 
   keyframe state{at, value, easing};
 
@@ -227,7 +227,7 @@ void timeline<T>::add_timeline(double start, std::shared_ptr<timeline<T>> value)
 {
   // Make sure that we can safely add this animation by checking if we are in its dependencies.
   if (value->dependencies.contains(id))
-    throw new std::runtime_error("Unable to add animation that depends on self!");
+    throw std::runtime_error("Unable to add animation that depends on self!");
   dependencies.insert(value->dependencies.begin(), value->dependencies.end());
 
   // Add our animation to the list of those to apply.
@@ -244,7 +244,7 @@ void timeline<T>::multiply_timeline(double start, std::shared_ptr<timeline<T>> v
 {
   // Make sure that we can safely add this animation by checking if we are in its dependencies
   if (value->dependencies.contains(id))
-    throw new std::runtime_error("Unable to add animation that depends on self!");
+    throw std::runtime_error("Unable to add animation that depends on self!");
   dependencies.insert(value->dependencies.begin(), value->dependencies.end());
 
   // Add our animation to the list of those to apply.

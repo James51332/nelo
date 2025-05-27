@@ -9,6 +9,9 @@ set(SDL_DISABLE_INSTALL ON)
 set(SDL_SHARED OFF)
 add_subdirectory(thirdparty/sdl)
 
+# We also use glad to load our opengl
+add_subdirectory(thirdparty/glad)
+
 # Basic info about the project
 project(nelo)
 
@@ -30,4 +33,5 @@ target_include_directories(nelo
 # Add our dependencies
 target_link_libraries(nelo
                         PUBLIC
-                          SDL3::SDL3-static)
+                          SDL3::SDL3-static
+                          glad)
