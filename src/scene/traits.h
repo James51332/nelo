@@ -38,4 +38,13 @@ concept multipliable = requires(T a, T b) {
   { timeline_traits<T>::multiply(a, b) } -> std::same_as<T>;
 };
 
+// We can also go ahead an define the specialization for the most common data types here.
+template <>
+struct timeline_traits<double>
+{
+  static double lerp(double a, double b, double t) { return a + (b - a) * t; }
+  static double add(double a, double b) { return a + b; }
+  static double multiply(double a, double b) { return a * b; }
+};
+
 } // namespace nelo
