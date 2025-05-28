@@ -13,7 +13,7 @@ nelo treats every animation as a pure function of time. No object state, no impe
 
 # example
 
-nelo is in infancy, and the timeline API is still being fleshed out. In the future, nelo will primarily use a nelo API. However, this will be powered by a robust C++ API. Here is how timelines work so far.
+nelo is in infancy, and the timeline API is still being fleshed out. In the future, nelo will primarily use a lua API. However, this will be powered by a robust C++ API. Here is how timelines work so far.
 
 ```cpp
 // Create a constant timeline. We can add keyframes.
