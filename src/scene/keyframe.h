@@ -1,13 +1,9 @@
 #pragma once
 
-#include <functional>
+#include "easing.h"
 
 namespace nelo
 {
-
-// Easing functions are used to blend between keyframes. We'll expand upon them later, but this is
-// fine because our API will look like this in the future.
-using easing_func = std::function<double(double)>;
 
 // Keyframes are critical states in a timeline. We define exactly what the state should be at a
 // certain time, and the timeline blends between them in intermediate times. If it is not possible
