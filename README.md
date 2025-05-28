@@ -32,6 +32,8 @@ y.add_timeline(4.0, x);
 std::cout << "Sampled timeline x at t = 2.0s: " << x.sample(2.0) << std::endl;
 ```
 
+Timelines are entirely templated, and here we see that the compiler deduces that these are `timeline<double>`, ANYTHING can be a timeline! Colors, transforms, text, and shapes are all able to be dynamically layered and composed.
+
 # doing
 
 These tasks are my top priorities to get a basic prototype for nelo up and running.
