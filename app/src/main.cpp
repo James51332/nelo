@@ -1,9 +1,7 @@
-#include "renderer/context.h"
-
 #include <glad/glad.h>
 #include <iostream>
-
-#include "scene/timeline.h"
+#include <nelo/renderer/context.h>
+#include <nelo/scene/timeline.h>
 
 int main()
 {
