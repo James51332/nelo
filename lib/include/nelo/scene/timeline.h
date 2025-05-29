@@ -255,6 +255,9 @@ timeline<T>& timeline<T>::add_timeline(double start, timeline<T> value)
   // Make sure that we can safely add this animation by checking if we are in its dependencies.
   if (value.dependencies.contains(id))
     throw std::runtime_error("Unable to add animation that depends on self!");
+
+  // Add the dependency (and its dependencies)
+  dependencies.insert(value.id);
   dependencies.insert(value.dependencies.begin(), value.dependencies.end());
 
   // Add our animation to the list of those to apply.
@@ -275,6 +278,9 @@ timeline<T>& timeline<T>::multiply_timeline(double start, timeline<T> value)
   // Make sure that we can safely add this animation by checking if we are in its dependencies
   if (value.dependencies.contains(id))
     throw std::runtime_error("Unable to add animation that depends on self!");
+
+  // Add the dependency (and its dependencies)
+  dependencies.insert(value.id);
   dependencies.insert(value.dependencies.begin(), value.dependencies.end());
 
   // Add our animation to the list of those to apply.

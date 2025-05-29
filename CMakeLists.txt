@@ -14,3 +14,4 @@ enable_testing()
 # Include our other cmake files.
 add_subdirectory(lib)
 add_subdirectory(app)
+add_subdirectory(tests)
