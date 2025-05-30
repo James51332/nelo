@@ -1,12 +1,20 @@
 #include <glad/glad.h>
-#include <iostream>
+#include <memory>
 #include <nelo/renderer/context.h>
+#include <nelo/renderer/renderer.h>
 #include <nelo/scene/timeline.h>
 
 int main()
 {
   // Create our nelo render context in a windowed mode.
   std::unique_ptr<nelo::context> context = std::make_unique<nelo::context>(false);
+
+  // We also go ahead an create a renderer, which for now, can also be a unique ptr.
+  std::unique_ptr<nelo::renderer> renderer = std::make_unique<nelo::renderer>();
+
+  // We can also create a timeline, and use it to drive our animation.
+  nelo::transform t = {.position = glm::vec3(0.1f)};
+  nelo::circle c = {.fill_color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), .radius = 1.0f};
 
   // Update the window until we are closed, rendering via raw OpenGL for now.
   while (context->active())
@@ -15,8 +23,10 @@ int main()
     context->update();
 
     // Render and present to the window.
-    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    renderer->begin(glm::vec4(0.15f, 0.2f, 0.25f, 1.0f), 0.0f);
+    renderer->submit(t, c);
+    renderer->end();
+
     context->present();
   }
 }

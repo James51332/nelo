@@ -1,6 +1,12 @@
 #pragma once
 
+#include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <memory>
+
+#include "renderer/color.h"
+#include "renderer/shapes.h"
+#include "renderer/transform.h"
 
 namespace nelo
 {
@@ -12,18 +18,48 @@ namespace nelo
 class renderer
 {
 public:
+  // The renderer is the owner of the context for the current design.
   renderer();
   ~renderer();
 
-  // This is our public facing renderer API.
-  void circle(const glm::mat4& transform = glm::mat4(1.0f), double radius = 0.5f,
-              const glm::vec4& color = glm::vec4(1.0f));
+  // This renderer is batched, so we declare when to begin and end a batch.
+  void begin(const color& clear_color, double t);
+  void end();
 
-  // TODO We will replace this with a sprite API soon.
-  void rect(const glm::vec2& position = glm::vec2(0.0f), float width = 1.0f, float height = 1.0f,
-            const glm::vec4& color = glm::vec4(1.0f), const glm::mat4& transform = glm::mat4(1.0f));
+  // This is our public facing renderer API. We'll restructure as we design ECS.
+  void submit(const transform& trans, const circle& obj);
 
 private:
+  // If we are full too early, then we need to flush instead of forcing the user to draw more stuff.
+  void flush();
+
+private:
+  // Value to check whether the renderer is currently active. We cannot render unless we begin a
+  // batch, even though we are internally drawing immediately for the time being.
+  bool is_recording = false;
+  double cur_time = 0.0f;
+
+  // Simple struct that we can send to GPU to draw circles.
+  struct sprite_vertex
+  {
+    glm::vec3 position;
+    glm::vec4 color;
+    glm::vec2 uv;
+  };
+
+  // To batch circles, we'll store a list of vertices and indices, then copy them into the buffer
+  // before drawing.
+  const int max_circles = 10000;
+  const int max_vertices = max_circles * 4;
+  const int max_indices = max_circles * 6;
+  int num_circles = 0;
+  sprite_vertex* vertex_array = nullptr;
+
+  // For now, we can just store the raw GL types to get a prototype up and running ASAP.
+  GLuint circle_program;
+  GLuint circle_vao;
+  GLuint circle_vbo;
+  GLuint circle_ibo;
 };
 
 } // namespace nelo

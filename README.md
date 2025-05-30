@@ -38,6 +38,8 @@ Timelines are entirely templated, and here we see that the compiler deduces that
 
 These tasks are my top priorities to get a basic prototype for nelo up and running.
 1. setup testing via CTest.
+ a. setup basic testing system
+ b. use Github CI to run the tests automatically.
 2. define loop/sequence API for timelines.
 3. basic timeline based ECS.
 4. shapes renderer via OpenGL.

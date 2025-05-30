@@ -1,5 +1,5 @@
 # Set our cmake version
-cmake_minimum_required(VERSION 3.24)
+
 
 # Declare our project
 project(nelo-api)
@@ -39,7 +39,7 @@ add_library(nelo-api STATIC ${SRC_FILES} ${HEADER_FILES})
 
 # Define the include directory to begin within the source directory
 target_include_directories(nelo-api
-  PRIVATE
+  PUBLIC
     include/nelo)
 
 # For apps the implement nelo, we add the include directory as a system dependency

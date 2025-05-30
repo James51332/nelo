@@ -1,6 +1,8 @@
 #pragma once
 
 #include <concepts>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace nelo
 {
@@ -45,6 +47,41 @@ struct timeline_traits<double>
   static double lerp(double a, double b, double t) { return a + (b - a) * t; }
   static double add(double a, double b) { return a + b; }
   static double multiply(double a, double b) { return a * b; }
+};
+
+template <>
+struct timeline_traits<glm::vec2>
+{
+  static glm::vec2 lerp(glm::vec2 a, glm::vec2 b, double t) { return glm::mix(a, b, t); }
+  static glm::vec2 add(glm::vec2 a, glm::vec2 b) { return a + b; }
+  static glm::vec2 multiply(glm::vec2 a, glm::vec2 b) { return a * b; }
+};
+
+template <>
+struct timeline_traits<glm::vec3>
+{
+  static glm::vec3 lerp(glm::vec3 a, glm::vec3 b, double t) { return glm::mix(a, b, t); }
+  static glm::vec3 add(glm::vec3 a, glm::vec3 b) { return a + b; }
+  static glm::vec3 multiply(glm::vec3 a, glm::vec3 b) { return a * b; }
+};
+
+template <>
+struct timeline_traits<glm::vec4>
+{
+  static glm::vec4 lerp(glm::vec4 a, glm::vec4 b, double t) { return glm::mix(a, b, t); }
+  static glm::vec4 add(glm::vec4 a, glm::vec4 b) { return a + b; }
+  static glm::vec4 multiply(glm::vec4 a, glm::vec4 b) { return a * b; }
+};
+
+template <>
+struct timeline_traits<glm::quat>
+{
+  static glm::quat lerp(glm::quat a, glm::quat b, double t)
+  {
+    return glm::slerp(a, b, static_cast<float>(t));
+  }
+  static glm::quat add(glm::quat a, glm::quat b) = delete;
+  static glm::quat multiply(glm::quat a, glm::quat b) { return a * b; }
 };
 
 } // namespace nelo
