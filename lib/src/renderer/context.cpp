@@ -8,7 +8,7 @@
 namespace nelo
 {
 
-context::context(bool headless)
+context::context(float w, float h, bool headless)
   : is_headless(headless), is_active(true)
 {
   // Ensure that we only create only context per app.
@@ -27,7 +27,9 @@ context::context(bool headless)
     flags |= SDL_WINDOW_HIDDEN;
 
   // Finally, we can go ahead and create our window.
-  window = SDL_CreateWindow("nelo", 800, 600, flags);
+  width = w;
+  height = h;
+  window = SDL_CreateWindow("nelo", width, height, flags);
 
   // If we fail, we can go ahead an throw an error.
   if (!window)

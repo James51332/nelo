@@ -2,7 +2,6 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
-#include <memory>
 
 #include "renderer/color.h"
 #include "renderer/shapes.h"
@@ -19,7 +18,7 @@ class renderer
 {
 public:
   // The renderer is the owner of the context for the current design.
-  renderer();
+  renderer(float scene_height = 5.0);
   ~renderer();
 
   // This renderer is batched, so we declare when to begin and end a batch.
@@ -37,7 +36,10 @@ private:
   // Value to check whether the renderer is currently active. We cannot render unless we begin a
   // batch, even though we are internally drawing immediately for the time being.
   bool is_recording = false;
-  double cur_time = 0.0f;
+  double cur_time = 0.0;
+
+  // The actual window height of the renderer.
+  float scene_height = 0.0f;
 
   // Simple struct that we can send to GPU to draw circles.
   struct sprite_vertex

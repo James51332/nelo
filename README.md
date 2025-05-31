@@ -2,7 +2,7 @@
 
 A stateless, timeline-driven animation engine for explorable visual animations.
 
-# philosophy
+## philosophy
 
 nelo treats every animation as a pure function of time. No object state, no imperative updates. Just describe what the scene should look like at any time `t`.
 
@@ -11,7 +11,7 @@ nelo treats every animation as a pure function of time. No object state, no impe
 * Composable: animations don’t interfere
 * Ideal for teaching, math, CS, and design
 
-# example
+## example
 
 nelo is in infancy, and the timeline API is still being fleshed out. In the future, nelo will primarily use a lua API. However, this will be powered by a robust C++ API. Here is how timelines work so far.
 
@@ -34,7 +34,20 @@ std::cout << "Sampled timeline x at t = 2.0s: " << x.sample(2.0) << std::endl;
 
 Timelines are entirely templated, and here we see that the compiler deduces that these are `timeline<double>`, ANYTHING can be a timeline! Colors, transforms, text, and shapes are all able to be dynamically layered and composed.
 
-# doing
+## building
+
+nelo uses CMake as a build system, and comes packaged as a static C++ library, a main executable, and a program containing unit tests. To build clone the library and its dependencies, and build with a toolchain of your choosing.
+
+```
+git clone --recursive https://github.com/james51332/nelo
+cd nelo
+mkdir build
+cd build
+cmake ..
+cmake --build . --target nelo
+```
+
+## doing
 
 These tasks are my top priorities to get a basic prototype for nelo up and running.
 1. setup testing via CTest.

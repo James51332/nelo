@@ -5,6 +5,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "renderer/context.h"
+
 namespace nelo
 {
 
@@ -18,11 +20,18 @@ layout (location = 2) in vec2 uv;
 layout (location = 0) out vec4 tmp_col;
 layout (location = 1) out vec2 tmp_uv;
 
+uniform vec2 viewport_size;
+uniform float scene_height;
+
 void main()
 {
   tmp_col = color;
   tmp_uv = uv;
-  gl_Position = vec4(pos, 1.0);
+  
+  // Scale the width by the aspect ratio.
+  vec3 screen_pos = pos;
+  screen_pos.x *= viewport_size.y / viewport_size.x;
+  gl_Position = vec4(screen_pos.xy / scene_height, screen_pos.z, 1.0);
 })";
 
 const char* circle_fragment = R"(
@@ -42,7 +51,8 @@ void main()
   frag_color = vec4(tmp_col.xyz, tmp_col.w * alpha);
 })";
 
-renderer::renderer()
+renderer::renderer(float scene_height)
+  : scene_height(scene_height)
 {
   // The render context sets up our OpenGL, so we don't need to handle anything on that front. We
   // need to create our data structures. For now, the data structures to setup are the program, vbo,
@@ -228,12 +238,18 @@ void renderer::flush()
   if (num_circles == 0)
     return;
 
+  // A super easy way to get started with having a nice viewport is to just fetch and upload some
+  // uniforms each frame.
+  glUseProgram(circle_program);
+  glUniform2f(glGetUniformLocation(circle_program, "viewport_size"), context::width,
+              context::height);
+  glUniform1f(glGetUniformLocation(circle_program, "scene_height"), scene_height);
+
   // Update our vertex buffer with the new data.
   glBindBuffer(GL_ARRAY_BUFFER, circle_vbo);
   glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(sprite_vertex) * num_circles * 4, vertex_array);
 
-  // Bind our program and vao, and submit the draw call.
-  glUseProgram(circle_program);
+  // Submit the draw call!
   glDrawElements(GL_TRIANGLES, num_circles * 6, GL_UNSIGNED_INT, 0);
 
   // Reset the number of circles.

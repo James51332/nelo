@@ -14,7 +14,7 @@ namespace nelo
 class context
 {
 public:
-  context(bool headless = false);
+  context(float width, float height, bool headless = false);
   ~context();
 
   // Polls events if running in windowed mode.
@@ -30,6 +30,10 @@ public:
 private:
   // Static field to enforce singleton.
   inline static bool created_singleton = false;
+
+  // Since the context is a singleton, we can allow the renderer to access some static state.
+  friend class renderer;
+  inline static float width, height;
 
 private:
   // We use this even when we are headless.
