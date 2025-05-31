@@ -36,11 +36,10 @@ out vec4 frag_color;
 void main()
 {
   // To determine if we are in the circle, we can use the uv coordinates. We'll map from -1 to 1.
-  vec2 uv_wide = 2.0 * tmp_uv - 1.0;
-  float dist = length(uv_wide);
+  float dist = length(tmp_uv);
   float delta = fwidth(dist);
-  float alpha = smoothstep(1.0 - delta, 1.0 + delta, dist);
-  frag_color = vec4(1.0); //vec4(tmp_col.xyz, tmp_col.w * alpha);
+  float alpha = smoothstep(1.0 + delta, 1.0 - delta, dist);
+  frag_color = vec4(tmp_col.xyz, tmp_col.w * alpha);
 })";
 
 renderer::renderer()
@@ -52,31 +51,34 @@ renderer::renderer()
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  // Create the shader program.
+  // Create the shaders we need for our program.
   GLuint vs = glCreateShader(GL_VERTEX_SHADER);
   glShaderSource(vs, 1, &circle_vertex, nullptr);
   glCompileShader(vs);
 
-  GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fs, 1, &circle_fragment, nullptr);
-  glCompileShader(fs);
-
+  // Check the vertex shader.
   char infoLog[512];
   int success;
   glGetShaderiv(vs, GL_COMPILE_STATUS, &success);
   if (!success)
   {
     glGetShaderInfoLog(vs, 512, NULL, infoLog);
-    std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    std::cout << infoLog << std::endl;
   }
+
+  // Now build and check the fragments shader.
+  GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fs, 1, &circle_fragment, nullptr);
+  glCompileShader(fs);
 
   glGetShaderiv(fs, GL_COMPILE_STATUS, &success);
   if (!success)
   {
     glGetShaderInfoLog(fs, 512, NULL, infoLog);
-    std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    std::cout << infoLog << std::endl;
   }
 
+  // Build and link a program and make sure that we succeed.
   circle_program = glCreateProgram();
   glAttachShader(circle_program, vs);
   glAttachShader(circle_program, fs);
@@ -120,8 +122,8 @@ renderer::renderer()
     index_array[first_index + 5] = first_index + 3;
   }
 
+  // Generate the ibo (it will be attached to the vao).
   glGenBuffers(1, &circle_ibo);
-  glBindVertexArray(circle_vao);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, circle_ibo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(std::uint32_t) * max_indices, index_array,
                GL_STATIC_DRAW);
@@ -180,10 +182,10 @@ void renderer::submit(const transform& transform, const circle& circle)
   // Store the vertices of a standard triangle that we are transforming. We add a little extra space
   // to give soft edges to the circle.
   constexpr static sprite_vertex vertices[] = {
-      {{1.1f, 1.1f, 0.0f},   {1.0f, 1.0f, 1.0f, 1.0f}, {1.1f, 1.1f}},
-      {{1.1f, -1.1f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f}, {1.1f, 0.0f}},
-      {{-1.1f, -1.1f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-      {{-1.1f, 1.1f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 1.1f}}
+      {{1.1f, 1.1f, 0.0f},   {1.0f, 1.0f, 1.0f, 1.0f}, {1.1f, 1.1f}  },
+      {{1.1f, -1.1f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f}, {1.1f, -1.1f} },
+      {{-1.1f, -1.1f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {-1.1f, -1.1f}},
+      {{-1.1f, 1.1f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f}, {-1.1f, 1.1f} }
   };
 
   // Ensure that we don't run out of space to draw. If we do, secretly flush the batch.
@@ -209,9 +211,7 @@ void renderer::submit(const transform& transform, const circle& circle)
     int vert = first_vertex + i;
 
     // Make the changes we need.
-    glm::vec4 pos =
-        glm::vec4(vertices[vert].position,
-                  2.0f); // mat * glm::vec4(scale * radius * vertices[vert].position, 1.0);
+    glm::vec4 pos = mat * glm::vec4(scale * radius * vertices[vert].position, 1.0);
     vertex_array[vert].position = glm::vec3(pos / pos.w);
     vertex_array[vert].color = col;
     vertex_array[vert].uv = vertices[vert].uv;
@@ -229,13 +229,11 @@ void renderer::flush()
     return;
 
   // Update our vertex buffer with the new data.
-  glBindVertexArray(circle_vao);
   glBindBuffer(GL_ARRAY_BUFFER, circle_vbo);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(sprite_vertex) * num_circles, vertex_array);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(sprite_vertex) * num_circles * 4, vertex_array);
 
   // Bind our program and vao, and submit the draw call.
   glUseProgram(circle_program);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, circle_ibo);
   glDrawElements(GL_TRIANGLES, num_circles * 6, GL_UNSIGNED_INT, 0);
 
   // Reset the number of circles.

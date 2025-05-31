@@ -13,8 +13,8 @@ int main()
   std::unique_ptr<nelo::renderer> renderer = std::make_unique<nelo::renderer>();
 
   // We can also create a timeline, and use it to drive our animation.
-  nelo::transform t = {.position = glm::vec3(0.1f)};
-  nelo::circle c = {.fill_color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), .radius = 1.0f};
+  nelo::transform t;
+  nelo::circle c = {.fill_color = glm::vec4(1.0f, 1.0f, 0.85f, 1.0f), .radius = 0.5f};
 
   // Update the window until we are closed, rendering via raw OpenGL for now.
   while (context->active())
