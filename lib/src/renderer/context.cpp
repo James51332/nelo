@@ -20,7 +20,7 @@ context::context(float w, float h, bool headless)
   SDL_Init(SDL_INIT_VIDEO);
 
   // Create our SDL_window with our desired flags.
-  SDL_WindowFlags flags = SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL;
+  SDL_WindowFlags flags = SDL_WINDOW_OPENGL;
 
   // If we are headless, don't show the window.
   if (is_headless)

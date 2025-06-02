@@ -36,9 +36,10 @@ Timelines are entirely templated, and here we see that the compiler deduces that
 
 ## building
 
-nelo uses CMake as a build system, and comes packaged as a static C++ library, a main executable, and a program containing unit tests. To build clone the library and its dependencies, and build with a toolchain of your choosing.
+nelo uses CMake as a build system, and comes packaged as a static C++ library, a main executable, and a program containing unit tests. To build clone the library and its dependencies, and build with a toolchain of your choosing. **Note: ffmpeg is a required depedencies that is not shipped with nelo.** It can be installed via homebrew if needed.
 
 ```
+brew install ffmpeg
 git clone --recursive https://github.com/james51332/nelo
 cd nelo
 mkdir build
