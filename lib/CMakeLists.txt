@@ -36,14 +36,18 @@ find_library(SWSCALE_LIBRARY swscale REQUIRED)
 set(SRC_FILES 
   src/renderer/context.cpp
   src/renderer/renderer.cpp
-  src/video/encoder.cpp)
+  src/video/encoder.cpp
+  src/scene/scene.cpp)
 
 # Header files
 set(HEADER_FILES
   include/nelo/scene/timeline.h
   include/nelo/scene/keyframe.h
   include/nelo/scene/traits.h
-  include/nelo/scene/easing.h)
+  include/nelo/scene/easing.h
+  include/nelo/scene/entity.h
+  include/nelo/scene/collection.h
+  include/nelo/scene/scene.h)
 
 # Define the executable for the program
 add_library(nelo-api STATIC ${SRC_FILES} ${HEADER_FILES})
