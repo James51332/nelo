@@ -21,11 +21,8 @@ int main()
   // We can also create a timeline, and use it to drive our animation.
   nelo::transform t = {.position = [](double t) -> glm::vec3
                        { return {3.0 * cos(3.0 * t), 3.0 * sin(3.0 * t), 0.0}; }};
-  nelo::circle c = {.fill_color = glm::vec4(1.0f, 1.0f, 0.85f, 1.0f), .radius = 1.0};
-
-  nelo::curve curve = {.path = [](double t) -> glm::vec3 { return nelo::paths::square(t / 5.0); },
-                       .color = glm::vec4(1.0f),
-                       .end = 5.0};
+  nelo::circle c;
+  nelo::curve curve = {.spline = nelo::paths::square};
 
   // Update the window until we are closed, rendering via raw OpenGL for now.
   double time = 0.0;
@@ -47,9 +44,9 @@ int main()
     circle_renderer.submit(t, c);
     circle_renderer.end();
 
-    // curve_renderer.begin(time);
-    // curve_renderer.submit(t, curve);
-    // curve_renderer.end();
+    curve_renderer.begin(time);
+    curve_renderer.submit(t, curve);
+    curve_renderer.end();
 
     // Present the back buffer and submit to encoder.
     context.present();

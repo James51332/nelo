@@ -235,6 +235,7 @@ void circle_renderer::flush()
   glUniform1f(glGetUniformLocation(circle_program, "scene_height"), scene_height);
 
   // Update our vertex buffer with the new data.
+  glBindVertexArray(circle_vao);
   glBindBuffer(GL_ARRAY_BUFFER, circle_vbo);
   glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(sprite_vertex) * num_circles * 4, vertex_array);
 

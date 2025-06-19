@@ -1,8 +1,10 @@
 #pragma once
 
+#include <functional>
 #include <glm/glm.hpp>
 
 #include "scene/timeline.h"
+#include "scene/traits.h"
 
 namespace nelo
 {
@@ -22,21 +24,22 @@ using path = path_property<glm::vec3>;
 namespace paths
 {
 
-// Linearly interpolates between two positions.
-inline glm::vec3 lerp(const glm::vec3& begin, const glm::vec3& end, double t)
+// Linearly interpolates between two positions. This one cannot be used as a path directly.
+inline static glm::vec3 lerp(const glm::vec3& begin, const glm::vec3& end, double t)
 {
-  return begin + (end - begin) * static_cast<float>(t);
+  return timeline_traits<glm::vec3>::lerp(begin, end, t);
 }
 
-// Traces unit circle in counter clockwise direction.
-inline glm::vec3 circle(double t)
+// Traces unit circle in counter clockwise direction. This technically can be used as a path
+// directly.
+inline static std::function<glm::vec3(double)> circle = [](double t)
 {
   t *= 2.0 * M_PI;
   return glm::vec3(cos(t), sin(t), 0.0f);
-}
+};
 
 // Generates the point at time t around a unit square beginning on the x-axis.
-inline glm::vec3 square(double t)
+inline static std::function<glm::vec3(double)> square = [](double t)
 {
   // We cache these points.
   constexpr static glm::vec3 right = glm::vec3(1.0, 0.0, 0.0);
@@ -95,4 +98,5 @@ struct timeline_traits<path_property<T>>
     return res;
   }
 };
+
 } // namespace nelo

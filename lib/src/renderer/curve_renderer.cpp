@@ -15,7 +15,6 @@ layout (location = 2) in double stroke;
 layout (location = 3) in double alpha;
 
 layout (location = 0) out vec4 tmp_col;
-layout (location = 1) out vec2 tmp_uv;
 
 uniform vec2 viewport_size;
 uniform float scene_height;
@@ -23,7 +22,6 @@ uniform float scene_height;
 void main()
 {
   tmp_col = color;
-  tmp_uv = uv;
   
   // Scale the width by the aspect ratio.
   vec3 screen_pos = pos;
@@ -35,7 +33,6 @@ const char* curve_fragment_shader = R"(
 #version 410 core
 
 layout (location = 0) in vec4 tmp_col;
-layout (location = 1) in vec2 tmp_uv;
 
 out vec4 frag_color;
 
@@ -139,6 +136,9 @@ void curve_renderer::begin(double t)
 
   is_recording = true;
   cur_time = t;
+
+  current_vertex = 0;
+  current_index = 0;
 }
 
 void curve_renderer::end()
@@ -162,6 +162,55 @@ void curve_renderer::submit(const transform& trans, const curve& curve)
   // Next, we submit the set of points to the renderer to encode into the vertex and index buffers
   // respectively. How do we do this? Here's the basic idea. For each vertex two vertices, we'll
   // create a trapezoid between.
+  std::uint32_t start_vertex = current_vertex;
+  std::uint32_t start_index = current_index;
+
+  for (int i = 0; i < points.size() - 1; i++)
+  {
+    curve_vertex a = points[i];
+    curve_vertex b = points[i + 1];
+
+    glm::vec3 dir = glm::normalize(b.position - a.position);
+
+    // Only considering normal for this one.
+    glm::vec2 normal = glm::vec2(-dir.y, dir.x);
+
+    glm::vec3 a1 = a.position + glm::vec3(normal, 0.0f) * static_cast<float>(a.stroke);
+    glm::vec3 a2 = a.position - glm::vec3(normal, 0.0f) * static_cast<float>(a.stroke);
+    glm::vec3 b1 = b.position + glm::vec3(normal, 0.0f) * static_cast<float>(b.stroke);
+    glm::vec3 b2 = b.position - glm::vec3(normal, 0.0f) * static_cast<float>(b.stroke);
+
+    // Add vertices
+    vertices[current_vertex + 0] = {a1, a.color, a.stroke, a.alpha};
+    vertices[current_vertex + 1] = {b1, b.color, b.stroke, b.alpha};
+    vertices[current_vertex + 2] = {b2, b.color, b.stroke, b.alpha};
+    vertices[current_vertex + 3] = {a2, a.color, b.stroke, a.alpha};
+
+    // Add indices (2 triangles)
+    indices[current_index] = current_vertex + 0;
+    indices[current_index] = current_vertex + 1;
+    indices[current_index] = current_vertex + 2;
+    indices[current_index] = current_vertex + 0;
+    indices[current_index] = current_vertex + 2;
+    indices[current_index] = current_vertex + 3;
+
+    current_vertex += 4;
+    current_index += 6;
+  }
+
+  // Now we can copy our geometry to the buffers and render it.
+  glBindVertexArray(curve_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, curve_vbo);
+  glBufferSubData(GL_ARRAY_BUFFER, start_vertex * sizeof(curve_vertex),
+                  (current_vertex - start_vertex) * sizeof(curve_vertex), vertices + start_vertex);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, curve_ibo);
+  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, start_index * sizeof(std::uint32_t),
+                  (current_index - start_index) * sizeof(std::uint32_t), indices + start_index);
+
+  // Bind our vao and program and render that curve.
+  glUseProgram(curve_program);
+  glDrawElements(GL_TRIANGLES, current_index - start_index, GL_UNSIGNED_INT, nullptr);
 }
 
 std::vector<curve_renderer::curve_vertex> curve_renderer::subdivide(const curve& curve, double t)
@@ -179,13 +228,13 @@ std::vector<curve_renderer::curve_vertex> curve_renderer::subdivide(const curve&
   if (end < start || end == 0.0)
   {
     start = 0.0;
-    end = curve.path.length();
+    end = curve.spline.length();
   }
 
   // Create a shorthand lambda for evaluating the curve at a given alpha.
   std::function<curve_vertex(double)> sample = [&curve, t](double alpha) -> curve_vertex
   {
-    return curve_vertex{.position = curve.path.sample(t).sample(alpha),
+    return curve_vertex{.position = curve.spline.sample(t).sample(alpha),
                         .color = curve.color.sample(t).sample(alpha),
                         .stroke = curve.stroke.sample(t).sample(alpha),
                         .alpha = alpha};

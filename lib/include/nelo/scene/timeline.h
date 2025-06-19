@@ -77,7 +77,7 @@ private:
   // Timelines need to have a length to be sequenced. The default length is one, or the the time
   // that the last animation ends. This is updated whenever a keyframe or animation is added, unless
   // it has been set by the user (tracked in user_length).
-  double cached_length = 3.0; // Default timeline is three seconds.
+  double cached_length = 1.0; // Default timeline is one second. This is the length of paths.
   bool user_length = false;
 
   // These are the meat and cheese of our timeline. This is the system for defining timelines. Note
@@ -315,9 +315,9 @@ void timeline<T>::set_length(double length)
 template <typename T>
 double timeline<T>::default_length() const
 {
-  // If we have no keyframes or animations, default length is three seconds.
+  // If we have no keyframes or animations, default length is one second.
   if (keyframes.empty() && animations.empty())
-    return 3.0;
+    return 1.0;
 
   // Otherwise, start with the last keyframe as the length.
   double len = 0.0;

@@ -11,11 +11,10 @@ struct curve
 {
   // This very meta. Technically, curve is also stored as a timeline. We have a timeline of a
   // timeline of a timeline.
-  timeline<path> path;
+  timeline<path> spline;
 
-  // Color of the path. This is linearly interpolated between subdivided points when rendering. So
-  // if the
-  timeline<path_property<color>> color;
+  // Color of the path. This is linearly interpolated between subdivided points when rendering.
+  timeline<path_property<color>> color = glm::vec4(1.0f);
 
   // Thickness of the line.
   timeline<path_property<double>> stroke = 0.5;
@@ -30,7 +29,7 @@ struct curve
   timeline<bool> use_transform = false;
 
   // Subdivisions is the number of times that the line can be subdivided recursively, not total.
-  timeline<int> min_subdivisions = 8;
+  timeline<int> min_subdivisions = 6;
   timeline<int> max_subdivisions = 16;
 
   // How far a point needs to be from the line connecting the points surrouding it in order for the

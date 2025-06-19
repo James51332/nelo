@@ -8,8 +8,8 @@ namespace nelo
 
 struct circle
 {
-  timeline<color> fill_color;
-  timeline<double> radius;
+  timeline<double> radius = 1.0;
+  timeline<color> fill_color = glm::vec4(1.0f);
 };
 
 } // namespace nelo
