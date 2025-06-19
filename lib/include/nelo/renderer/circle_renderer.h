@@ -3,7 +3,6 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
-#include "renderer/color.h"
 #include "renderer/shapes.h"
 #include "renderer/transform.h"
 
@@ -14,15 +13,15 @@ namespace nelo
 // very basic stuff, so we only have the one class. Each render pipeline may have a seperate
 // renderer (e.g shapes, text, paths, 3D). This can interop with the ECS once we have it. This
 // renderer might turn into the shapes renderer.
-class renderer
+class circle_renderer
 {
 public:
   // The renderer is the owner of the context for the current design.
-  renderer(float scene_height = 5.0);
-  ~renderer();
+  circle_renderer(float scene_height = 5.0);
+  ~circle_renderer();
 
   // This renderer is batched, so we declare when to begin and end a batch.
-  void begin(const color& clear_color, double t);
+  void begin(double t);
   void end();
 
   // This is our public facing renderer API. We'll restructure as we design ECS.

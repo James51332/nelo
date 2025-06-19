@@ -23,6 +23,9 @@ public:
   using lambda = std::function<T(double)>;
 
 public:
+  // We need a default ctor because things get messy without one.
+  timeline() = default;
+
   // The most basic type of timeline is constant timeline. However, all non-lambda timelines are
   // defined relative to anchor which captures state at t = 0.
   template <typename U>
@@ -68,7 +71,7 @@ private:
   T anchor;
 
   // Store data about procedural timelines.
-  const bool is_procedural = false;
+  bool is_procedural = false;
   lambda generator;
 
   // Timelines need to have a length to be sequenced. The default length is one, or the the time

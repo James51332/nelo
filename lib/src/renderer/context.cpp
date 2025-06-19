@@ -72,6 +72,10 @@ context::context(float w, float h, bool headless)
   // Print a message out to confirm out success.
   std::cout << "Created nelo render context with OpenGL " << versionMajor << "." << versionMinor
             << std::endl;
+
+  // We can also go ahead and setup blending since it is needed by all renderers.
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 context::~context()

@@ -35,7 +35,8 @@ find_library(SWSCALE_LIBRARY swscale REQUIRED)
 # Source files
 set(SRC_FILES 
   src/renderer/context.cpp
-  src/renderer/renderer.cpp
+  src/renderer/circle_renderer.cpp
+  src/renderer/curve_renderer.cpp
   src/video/encoder.cpp
   src/scene/scene.cpp)
 
@@ -47,7 +48,15 @@ set(HEADER_FILES
   include/nelo/scene/easing.h
   include/nelo/scene/entity.h
   include/nelo/scene/collection.h
-  include/nelo/scene/scene.h)
+  include/nelo/scene/scene.h
+  include/nelo/scene/path.h
+  include/nelo/renderer/color.h
+  include/nelo/renderer/curve.h
+  include/nelo/renderer/context.h
+  include/nelo/renderer/curve_renderer.h
+  include/nelo/renderer/circle_renderer.h
+  include/nelo/renderer/shapes.h
+  include/nelo/renderer/transform.h)
 
 # Define the executable for the program
 add_library(nelo-api STATIC ${SRC_FILES} ${HEADER_FILES})

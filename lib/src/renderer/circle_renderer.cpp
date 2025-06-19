@@ -1,4 +1,4 @@
-#include "renderer/renderer.h"
+#include "renderer/circle_renderer.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
@@ -51,16 +51,9 @@ void main()
   frag_color = vec4(tmp_col.xyz, tmp_col.w * alpha);
 })";
 
-renderer::renderer(float scene_height)
+circle_renderer::circle_renderer(float scene_height)
   : scene_height(scene_height)
 {
-  // The render context sets up our OpenGL, so we don't need to handle anything on that front. We
-  // need to create our data structures. For now, the data structures to setup are the program, vbo,
-  // vao, and ibo. We shouldn't need anything besides that. However, we will enable blending for
-  // circles since they are rendered as quads.
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
   // Create the shaders we need for our program.
   GLuint vs = glCreateShader(GL_VERTEX_SHADER);
   glShaderSource(vs, 1, &circle_vertex, nullptr);
@@ -151,30 +144,26 @@ renderer::renderer(float scene_height)
                         (void*)(sizeof(glm::vec3) + sizeof(glm::vec4)));
 }
 
-renderer::~renderer()
+circle_renderer::~circle_renderer()
 {
   // Who wants to friggin leak something. NOT me.
-  delete vertex_array;
+  delete[] vertex_array;
   glDeleteProgram(circle_program);
   glDeleteBuffers(1, &circle_vbo);
   glDeleteBuffers(1, &circle_ibo);
   glDeleteVertexArrays(1, &circle_vao);
 }
 
-void renderer::begin(const color& clear_color, double t)
+void circle_renderer::begin(double t)
 {
   if (is_recording)
     throw std::runtime_error("Attempted to begin render batch while another batch is active!");
 
   is_recording = true;
   cur_time = t;
-
-  // Clear the screen
-  glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void renderer::end()
+void circle_renderer::end()
 {
   if (!is_recording)
     throw std::runtime_error("Attempted to end render batch when no batch was active");
@@ -183,7 +172,7 @@ void renderer::end()
   flush();
 }
 
-void renderer::submit(const transform& transform, const circle& circle)
+void circle_renderer::submit(const transform& transform, const circle& circle)
 {
   // Make sure that we are actually in a thing.
   if (!is_recording)
@@ -231,7 +220,7 @@ void renderer::submit(const transform& transform, const circle& circle)
   num_circles++;
 }
 
-void renderer::flush()
+void circle_renderer::flush()
 {
   // This method is private, so we don't need to verify that we are in a frame. However, we can
   // still return if there are no circles to draw.

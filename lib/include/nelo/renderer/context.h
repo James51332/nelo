@@ -32,7 +32,8 @@ private:
   inline static bool created_singleton = false;
 
   // Since the context is a singleton, we can allow the renderer to access some static state.
-  friend class renderer;
+  friend class circle_renderer;
+  friend class curve_renderer;
   inline static float width, height;
 
 private:
