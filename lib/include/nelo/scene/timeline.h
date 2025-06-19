@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <type_traits>
 #include <unordered_set>
 #include <vector>
 
@@ -10,6 +11,19 @@
 
 namespace nelo
 {
+
+template <typename T>
+class timeline;
+
+namespace detail
+{
+
+template <typename F, typename T>
+concept is_generator = requires(F f, double t) {
+  { f(t) } -> std::same_as<T>;
+};
+
+} // namespace detail
 
 // Timeline represents a value that changes over time. It supports keyframes, relative animations,
 // and blending with easing. Timelines can also be procedural, meaning they are defined a by a
@@ -29,12 +43,12 @@ public:
   // The most basic type of timeline is constant timeline. However, all non-lambda timelines are
   // defined relative to anchor which captures state at t = 0.
   template <typename U>
-    requires std::convertible_to<U, T> && (!std::invocable<U, double>)
+    requires std::convertible_to<U, T> && (!detail::is_generator<U, T>)
   timeline(U&& anchor);
 
   // Constructs a procedural timeline. These cannot have keyframes.
   template <typename F>
-    requires std::invocable<F, double>
+    requires detail::is_generator<F, T>
   timeline(F&& generator);
 
   // Evaluate the timeline at any given time.
@@ -91,7 +105,7 @@ private:
   struct animation
   {
     double start;
-    timeline<T> timeline;
+    timeline<T> effect;
     bool multiply;
   };
   std::vector<animation> animations;
@@ -125,7 +139,7 @@ struct timeline_id
 
 template <typename T>
 template <typename U>
-  requires std::convertible_to<U, T> && (!std::invocable<U, double>)
+  requires std::convertible_to<U, T> && (!detail::is_generator<U, T>)
 timeline<T>::timeline(U&& anchor)
   : anchor(std::forward<U>(anchor)), id(detail::timeline_id::current++)
 {
@@ -133,7 +147,7 @@ timeline<T>::timeline(U&& anchor)
 
 template <typename T>
 template <typename F>
-  requires std::invocable<F, double>
+  requires detail::is_generator<F, T>
 timeline<T>::timeline(F&& generator)
   : is_procedural(true), generator(generator), id(detail::timeline_id::current++)
 {
@@ -189,7 +203,7 @@ T timeline<T>::sample(double time) const
 
     // Apply the animation either additively or multiplicatively.
     double relTime = time - anim.start;
-    T delta = anim.timeline.sample(relTime);
+    T delta = anim.effect.sample(relTime);
 
     // If we are addable, we can execute this code safely.
     if constexpr (addable<T>)
@@ -223,7 +237,7 @@ timeline<T>& timeline<T>::add_keyframe(double at, T value, easing_func easing)
   if (keyframes.empty())
   {
     keyframes.push_back(state);
-    return;
+    return (*this);
   }
 
   // Otherwise, find where to insert.
@@ -327,7 +341,7 @@ double timeline<T>::default_length() const
   // Now, handle the animations.
   for (auto& anim : animations)
   {
-    double end = anim.start + anim.timeline.length();
+    double end = anim.start + anim.effect.length();
     if (end > len)
       len = end;
   }

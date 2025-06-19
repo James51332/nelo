@@ -1,4 +1,5 @@
 #include <glad/glad.h>
+#include <iostream>
 #include <nelo/renderer/circle_renderer.h>
 #include <nelo/renderer/context.h>
 #include <nelo/renderer/curve_renderer.h>
@@ -9,7 +10,7 @@
 int main()
 {
   // Create our nelo render context in a windowed mode.
-  nelo::context context(800, 600, false);
+  nelo::context context(800, 600, true);
 
   // We also go ahead an create a renderer, which for now, can also be a unique ptr.
   nelo::circle_renderer circle_renderer(5);
@@ -26,7 +27,7 @@ int main()
 
   // Update the window until we are closed, rendering via raw OpenGL for now.
   double time = 0.0;
-  while (context.active() && time <= 10.0)
+  while (context.active() && time <= 1.0)
   {
     // Poll events.
     context.update();
@@ -52,6 +53,9 @@ int main()
     context.present();
     encoder.submit();
   }
+
+  for (int i = 0; i < 40; i++)
+    std::cout << curve.spline.sample(static_cast<double>(i)).sample(0.5).x << std::endl;
 
   encoder.end();
 }

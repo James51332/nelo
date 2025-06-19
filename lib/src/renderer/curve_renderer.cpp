@@ -3,6 +3,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "renderer/context.h"
+
 namespace nelo
 {
 
@@ -139,6 +141,11 @@ void curve_renderer::begin(double t)
 
   current_vertex = 0;
   current_index = 0;
+
+  glUseProgram(curve_program);
+  glUniform2f(glGetUniformLocation(curve_program, "viewport_size"), context::width,
+              context::height);
+  glUniform1f(glGetUniformLocation(curve_program, "scene_height"), scene_height);
 }
 
 void curve_renderer::end()
@@ -165,34 +172,37 @@ void curve_renderer::submit(const transform& trans, const curve& curve)
   std::uint32_t start_vertex = current_vertex;
   std::uint32_t start_index = current_index;
 
+  for (auto& point : points)
+    std::cout << point.position.x << ", " << point.position.y << std::endl;
+  std::cout << "-------------------" << std::endl;
+
   for (int i = 0; i < points.size() - 1; i++)
   {
     curve_vertex a = points[i];
     curve_vertex b = points[i + 1];
 
-    glm::vec3 dir = glm::normalize(b.position - a.position);
-
     // Only considering normal for this one.
-    glm::vec2 normal = glm::vec2(-dir.y, dir.x);
+    glm::vec3 dir = glm::normalize(b.position - a.position);
+    glm::vec3 normal = glm::vec3(-dir.y, dir.x, 0.0f);
 
-    glm::vec3 a1 = a.position + glm::vec3(normal, 0.0f) * static_cast<float>(a.stroke);
-    glm::vec3 a2 = a.position - glm::vec3(normal, 0.0f) * static_cast<float>(a.stroke);
-    glm::vec3 b1 = b.position + glm::vec3(normal, 0.0f) * static_cast<float>(b.stroke);
-    glm::vec3 b2 = b.position - glm::vec3(normal, 0.0f) * static_cast<float>(b.stroke);
+    glm::vec3 a1 = a.position + normal * static_cast<float>(a.weight);
+    glm::vec3 a2 = a.position - normal * static_cast<float>(a.weight);
+    glm::vec3 b1 = b.position + normal * static_cast<float>(b.weight);
+    glm::vec3 b2 = b.position - normal * static_cast<float>(b.weight);
 
     // Add vertices
-    vertices[current_vertex + 0] = {a1, a.color, a.stroke, a.alpha};
-    vertices[current_vertex + 1] = {b1, b.color, b.stroke, b.alpha};
-    vertices[current_vertex + 2] = {b2, b.color, b.stroke, b.alpha};
-    vertices[current_vertex + 3] = {a2, a.color, b.stroke, a.alpha};
+    vertices[current_vertex + 0] = {a1, a.stroke, a.weight, a.alpha};
+    vertices[current_vertex + 1] = {b1, b.stroke, b.weight, b.alpha};
+    vertices[current_vertex + 2] = {b2, b.stroke, b.weight, b.alpha};
+    vertices[current_vertex + 3] = {a2, a.stroke, b.weight, a.alpha};
 
     // Add indices (2 triangles)
-    indices[current_index] = current_vertex + 0;
-    indices[current_index] = current_vertex + 1;
-    indices[current_index] = current_vertex + 2;
-    indices[current_index] = current_vertex + 0;
-    indices[current_index] = current_vertex + 2;
-    indices[current_index] = current_vertex + 3;
+    indices[current_index + 0] = current_vertex + 0;
+    indices[current_index + 1] = current_vertex + 1;
+    indices[current_index + 2] = current_vertex + 2;
+    indices[current_index + 3] = current_vertex + 0;
+    indices[current_index + 4] = current_vertex + 2;
+    indices[current_index + 5] = current_vertex + 3;
 
     current_vertex += 4;
     current_index += 6;
@@ -235,8 +245,8 @@ std::vector<curve_renderer::curve_vertex> curve_renderer::subdivide(const curve&
   std::function<curve_vertex(double)> sample = [&curve, t](double alpha) -> curve_vertex
   {
     return curve_vertex{.position = curve.spline.sample(t).sample(alpha),
-                        .color = curve.color.sample(t).sample(alpha),
                         .stroke = curve.stroke.sample(t).sample(alpha),
+                        .weight = curve.weight.sample(t).sample(alpha),
                         .alpha = alpha};
   };
 
@@ -292,7 +302,7 @@ void curve_renderer::subdivide_helper(std::function<curve_vertex(double)>& sampl
     // to be clever. The solution is to subdivide from back to front.
     subdivide_helper(sample, output, max_index, max_index + 1, mid_time, max_time, min_sub - 1,
                      max_sub - 1, threshold);
-    subdivide_helper(sample, output, min_index, max_index, min_time, max_time, min_sub - 1,
+    subdivide_helper(sample, output, min_index, min_index + 1, min_time, mid_time, min_sub - 1,
                      max_sub - 1, threshold);
   }
 }

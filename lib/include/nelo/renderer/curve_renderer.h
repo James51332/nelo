@@ -19,8 +19,8 @@ public:
   struct curve_vertex
   {
     glm::vec3 position;
-    glm::vec4 color;
-    double stroke;
+    glm::vec4 stroke;
+    double weight;
     double alpha;
   };
 

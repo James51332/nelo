@@ -45,13 +45,15 @@ inline static std::function<glm::vec3(double)> square = [](double t)
   constexpr static glm::vec3 right = glm::vec3(1.0, 0.0, 0.0);
   constexpr static glm::vec3 top_right = glm::vec3(1.0, 1.0, 0.0);
   constexpr static glm::vec3 top_left = glm::vec3(-1.0, 1.0, 0.0);
-  constexpr static glm::vec3 bottom_left = glm::vec3(-1.0, 1.0, 0.0);
+  constexpr static glm::vec3 bottom_left = glm::vec3(-1.0, -1.0, 0.0);
   constexpr static glm::vec3 bottom_right = glm::vec3(1.0, -1.0, 0.0);
 
   // The square has four sides, but we start at 3 o'clock and break it into eight pieces.
   t *= 4.0;
 
   // Go around each side of the square, and return the side we are on.
+  if (t <= 0.0 || t >= 4.0)
+    return right;
   if (t <= 0.5)
     return lerp(right, top_right, 2.0 * t);
   else if (t <= 1.5)
