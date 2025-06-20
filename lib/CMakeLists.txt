@@ -61,10 +61,29 @@ set(HEADER_FILES
 # Define the executable for the program
 add_library(nelo-api STATIC ${SRC_FILES} ${HEADER_FILES})
 
+# For shaders, we will build our cache using the shader function
+set(EMBEDDED_HEADER "${CMAKE_BINARY_DIR}/cache/embedded_shaders.h")
+set(SHADER_DIR "${CMAKE_SOURCE_DIR}/shaders")
+file(GLOB_RECURSE SHADER_FILES "${SHADER_DIR}/*.*")
+
+add_custom_command(
+    OUTPUT ${EMBEDDED_HEADER}
+    COMMAND ${CMAKE_COMMAND} 
+      -DSHADER_DIR=${SHADER_DIR}
+      -DOUTPUT_HEADER=${EMBEDDED_HEADER} 
+      -P ${CMAKE_SOURCE_DIR}/cmake/EmbedShaders.cmake
+    DEPENDS ${SHADER_FILES}
+    COMMENT "Regenerating embedded shaders..."
+)
+add_custom_target(generate_shaders DEPENDS ${EMBEDDED_HEADER})
+add_dependencies(nelo-api generate_shaders)
+
 # Define the include directory to begin within the source directory
 target_include_directories(nelo-api
   PUBLIC
-    include/nelo)
+    include/nelo
+  PRIVATE
+    ${CMAKE_BUILD_DIR}/cache)
 
 # For apps the implement nelo, we add the include directory as a system dependency
 target_include_directories(nelo-api
