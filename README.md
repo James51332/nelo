@@ -29,7 +29,7 @@ nelo::timeline y = [](double t) { return t * t; };
 y.add_timeline(4.0, x);
 
 // We sample timelines too.
-nelo::log("Sampled timeline x at t = 2.0s: {}", x.sample(2.0));
+nelo::log::out("Sampled timeline x at t = 2.0s: {}", x.sample(2.0));
 ```
 
 Timelines are entirely templated, and here we see that the compiler deduces that these are `timeline<double>`, ANYTHING can be a timeline! Colors, transforms, text, and shapes are all able to be dynamically layered and composed.
