@@ -1,10 +1,10 @@
-#include <nelo/scene/timeline.h>
+#include <nelo/anim/timeline.h>
 using namespace nelo;
 
 #include <cassert>
 #include <glm/gtc/epsilon.hpp>
 
-int scene_timeline(int argc, char** argv)
+int anim_timeline(int argc, char** argv)
 {
   // Sample with a double for now.
   nelo::timeline x = 5;

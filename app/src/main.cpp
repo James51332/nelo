@@ -10,7 +10,7 @@
 int main()
 {
   // We can silence the console.
-  nelo::log::use_console(false);
+  nelo::log::use_console(true);
 
   // Create our nelo render context in a windowed mode.
   nelo::context context(800, 600, true);
@@ -26,11 +26,17 @@ int main()
   nelo::transform t = {.position = [](double t) -> glm::vec3
                        { return {3.0 * cos(3.0 * t), 3.0 * sin(3.0 * t), 0.0}; }};
   nelo::circle c;
-  nelo::curve curve = {.spline = nelo::paths::square};
+  nelo::curve curve = {.spline = [](double t) -> glm::vec3
+                       { return {4.0 * cos(2.0 * t), 3.0 * sin(sin(3.0 * t)), 0.0}; },
+                       .weight = [](double t) -> double { return 0.1 + 0.05 * sin(t * 5.0); },
+                       .stroke = [](double t) -> nelo::color
+                       { return glm::vec4(glm::vec3(0.7 * sin(4.0 * t)), 1.0); },
+                       .end = 15.0,
+                       .min_subdivisions = 8};
 
   // Update the window until we are closed.
   double time = 0.0;
-  while (context.active() && time <= 1.0)
+  while (context.active() && time <= 10.0)
   {
     // Poll events.
     context.update();

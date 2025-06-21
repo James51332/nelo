@@ -39,7 +39,8 @@ set(SRC_FILES
   src/core/log.cpp
   src/core/scene.cpp
   src/render/circle_renderer.cpp
-  src/render/curve_renderer.cpp)
+  src/render/curve_renderer.cpp
+  src/render/shaders.cpp)
 
 # Header files
 set(HEADER_FILES
@@ -55,6 +56,7 @@ set(HEADER_FILES
   include/nelo/core/scene.h
   include/nelo/render/circle_renderer.h
   include/nelo/render/curve_renderer.h
+  include/nelo/render/shaders.h
   include/nelo/types/curve.h
   include/nelo/types/path.h
   include/nelo/types/shapes.h
@@ -85,7 +87,7 @@ target_include_directories(nelo-api
   PUBLIC
     include/nelo
   PRIVATE
-    ${CMAKE_BUILD_DIR}/cache)
+    "${CMAKE_BINARY_DIR}/cache")
 
 # For apps the implement nelo, we add the include directory as a system dependency
 target_include_directories(nelo-api

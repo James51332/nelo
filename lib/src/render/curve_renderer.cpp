@@ -1,95 +1,18 @@
 #include "render/curve_renderer.h"
 
-#include <iostream>
 #include <stdexcept>
 
 #include "core/context.h"
-#include "core/log.h"
+#include "render/shaders.h"
 
 namespace nelo
 {
 
-const char* curve_vertex_shader = R"(
-#version 410 core
-
-layout (location = 0) in vec3 pos;
-layout (location = 1) in vec4 color;
-layout (location = 2) in double stroke;
-layout (location = 3) in double alpha;
-
-layout (location = 0) out vec4 tmp_col;
-
-uniform vec2 viewport_size;
-uniform float scene_height;
-
-void main()
-{
-  tmp_col = color;
-  
-  // Scale the width by the aspect ratio.
-  vec3 screen_pos = pos;
-  screen_pos.x *= viewport_size.y / viewport_size.x;
-  gl_Position = vec4(screen_pos.xy / scene_height, screen_pos.z, 1.0);
-})";
-
-const char* curve_fragment_shader = R"(
-#version 410 core
-
-layout (location = 0) in vec4 tmp_col;
-
-out vec4 frag_color;
-
-void main()
-{
-  frag_color = tmp_col;
-})";
-
 curve_renderer::curve_renderer(float scene_height)
   : scene_height(scene_height)
 {
-  // Create our OpenGL primitives.
-  GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vs, 1, &curve_vertex_shader, nullptr);
-  glCompileShader(vs);
-
-  // Check the vertex shader.
-  char infoLog[512];
-  int success;
-  glGetShaderiv(vs, GL_COMPILE_STATUS, &success);
-  if (!success)
-  {
-    glGetShaderInfoLog(vs, 512, NULL, infoLog);
-    log::out(infoLog);
-  }
-
-  // Now build and check the fragments shader.
-  GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fs, 1, &curve_fragment_shader, nullptr);
-  glCompileShader(fs);
-
-  glGetShaderiv(fs, GL_COMPILE_STATUS, &success);
-  if (!success)
-  {
-    glGetShaderInfoLog(fs, 512, NULL, infoLog);
-    log::out(infoLog);
-  }
-
-  // Build and link a program and make sure that we succeed.
-  curve_program = glCreateProgram();
-  glAttachShader(curve_program, vs);
-  glAttachShader(curve_program, fs);
-  glLinkProgram(curve_program);
-
-  glGetProgramiv(curve_program, GL_LINK_STATUS, &success);
-  if (!success)
-  {
-    glGetProgramInfoLog(curve_program, 512, nullptr, infoLog);
-    log::out(infoLog);
-  }
-
-  // Clean up our resources
-  glDeleteShader(vs);
-  glDeleteShader(fs);
+  // Load our shader program.
+  curve_program = shaders::load("curve_vertex.glsl", "curve_fragment.glsl");
 
   // Now, we gotta do some friggin maneuvering to create a vao.
   glGenVertexArrays(1, &curve_vao);

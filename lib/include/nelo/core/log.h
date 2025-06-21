@@ -16,7 +16,7 @@ class log
 {
 public:
   static void use_console(bool use = true);
-  static void use_file(const std::filesystem::path& file = "log.txt", bool use = true);
+  static void use_file(const std::filesystem::path& file = "nelo.log", bool use = true);
 
   static void out(const std::string& msg);
 

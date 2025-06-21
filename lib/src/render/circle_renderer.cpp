@@ -2,102 +2,19 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
-#include <iostream>
 #include <stdexcept>
 
 #include "core/context.h"
-#include "core/log.h"
+#include "render/shaders.h"
 
 namespace nelo
 {
 
-const char* circle_vertex = R"(
-#version 410 core
-
-layout (location = 0) in vec3 pos;
-layout (location = 1) in vec4 color;
-layout (location = 2) in vec2 uv;
-
-layout (location = 0) out vec4 tmp_col;
-layout (location = 1) out vec2 tmp_uv;
-
-uniform vec2 viewport_size;
-uniform float scene_height;
-
-void main()
-{
-  tmp_col = color;
-  tmp_uv = uv;
-  
-  // Scale the width by the aspect ratio.
-  vec3 screen_pos = pos;
-  screen_pos.x *= viewport_size.y / viewport_size.x;
-  gl_Position = vec4(screen_pos.xy / scene_height, screen_pos.z, 1.0);
-})";
-
-const char* circle_fragment = R"(
-#version 410 core
-
-layout (location = 0) in vec4 tmp_col;
-layout (location = 1) in vec2 tmp_uv;
-
-out vec4 frag_color;
-
-void main()
-{
-  // To determine if we are in the circle, we can use the uv coordinates. We'll map from -1 to 1.
-  float dist = length(tmp_uv);
-  float delta = fwidth(dist);
-  float alpha = smoothstep(1.0 + delta, 1.0 - delta, dist);
-  frag_color = vec4(tmp_col.xyz, tmp_col.w * alpha);
-})";
-
 circle_renderer::circle_renderer(float scene_height)
   : scene_height(scene_height)
 {
-  // Create the shaders we need for our program.
-  GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vs, 1, &circle_vertex, nullptr);
-  glCompileShader(vs);
-
-  // Check the vertex shader.
-  char infoLog[512];
-  int success;
-  glGetShaderiv(vs, GL_COMPILE_STATUS, &success);
-  if (!success)
-  {
-    glGetShaderInfoLog(vs, 512, NULL, infoLog);
-    log::out(infoLog);
-  }
-
-  // Now build and check the fragments shader.
-  GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fs, 1, &circle_fragment, nullptr);
-  glCompileShader(fs);
-
-  glGetShaderiv(fs, GL_COMPILE_STATUS, &success);
-  if (!success)
-  {
-    glGetShaderInfoLog(fs, 512, NULL, infoLog);
-    log::out(infoLog);
-  }
-
-  // Build and link a program and make sure that we succeed.
-  circle_program = glCreateProgram();
-  glAttachShader(circle_program, vs);
-  glAttachShader(circle_program, fs);
-  glLinkProgram(circle_program);
-
-  glGetProgramiv(circle_program, GL_LINK_STATUS, &success);
-  if (!success)
-  {
-    glGetProgramInfoLog(circle_program, 512, nullptr, infoLog);
-    log::out(infoLog);
-  }
-
-  // Clean up our resources
-  glDeleteShader(vs);
-  glDeleteShader(fs);
+  // Load our shaders
+  circle_program = shaders::load("circle_vertex.glsl", "circle_fragment.glsl");
 
   // Now, we gotta do some friggin maneuvering to create a vao.
   glGenVertexArrays(1, &circle_vao);

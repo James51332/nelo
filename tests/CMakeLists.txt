@@ -12,7 +12,7 @@ project(nelo-tests)
 
 # Generate a driver for our test file.
 set(NeloTests
-  scene/timeline.cpp
+  anim/timeline.cpp
 )
 create_test_sourcelist(Tests nelo_tests.cpp ${NeloTests})
 
