@@ -1,11 +1,12 @@
-#include "renderer/circle_renderer.h"
+#include "render/circle_renderer.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 #include <iostream>
 #include <stdexcept>
 
-#include "renderer/context.h"
+#include "core/context.h"
+#include "core/log.h"
 
 namespace nelo
 {
@@ -66,7 +67,7 @@ circle_renderer::circle_renderer(float scene_height)
   if (!success)
   {
     glGetShaderInfoLog(vs, 512, NULL, infoLog);
-    std::cout << infoLog << std::endl;
+    log::out(infoLog);
   }
 
   // Now build and check the fragments shader.
@@ -78,7 +79,7 @@ circle_renderer::circle_renderer(float scene_height)
   if (!success)
   {
     glGetShaderInfoLog(fs, 512, NULL, infoLog);
-    std::cout << infoLog << std::endl;
+    log::out(infoLog);
   }
 
   // Build and link a program and make sure that we succeed.
@@ -91,7 +92,7 @@ circle_renderer::circle_renderer(float scene_height)
   if (!success)
   {
     glGetProgramInfoLog(circle_program, 512, nullptr, infoLog);
-    std::cout << infoLog << std::endl;
+    log::out(infoLog);
   }
 
   // Clean up our resources

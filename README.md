@@ -13,7 +13,7 @@ nelo treats every animation as a pure function of time. No object state, no impe
 
 ## example
 
-nelo is in infancy, and the timeline API is still being fleshed out. In the future, nelo will primarily use a lua API. However, this will be powered by a robust C++ API. Here is how timelines work so far.
+nelo is a very young project, and the timeline API is still being fleshed out. In the future, nelo will primarily use a lua API. However, this will be powered by a robust C++ API. Here is how timelines work so far.
 
 ```cpp
 // Create a constant timeline. We can add keyframes.
@@ -29,7 +29,7 @@ nelo::timeline y = [](double t) { return t * t; };
 y.add_timeline(4.0, x);
 
 // We sample timelines too.
-std::cout << "Sampled timeline x at t = 2.0s: " << x.sample(2.0) << std::endl;
+nelo::log("Sampled timeline x at t = 2.0s: {}", x.sample(2.0));
 ```
 
 Timelines are entirely templated, and here we see that the compiler deduces that these are `timeline<double>`, ANYTHING can be a timeline! Colors, transforms, text, and shapes are all able to be dynamically layered and composed.
@@ -51,9 +51,9 @@ cmake --build . --target nelo
 ## doing
 
 These tasks are my top priorities to get a basic prototype for nelo up and running.
-1. setup testing via CTest.
- a. setup basic testing system
- b. use Github CI to run the tests automatically.
-2. define loop/sequence API for timelines.
-3. basic timeline based ECS.
-4. shapes renderer via OpenGL.
+1. More renderers (text, equations, polygons, etc.)
+2. Lua scripting
+
+## shaders
+
+Shaders are handled in a powerful manner through CMake in nelo. The shaders directory holds all shaders which come bundled with the library. Whenever these files are changed and the library is built, it automatically pulls them into the engine. The files can be deleted, and the shaders can be loaded all the same. This is fallback, so any changes made to these shaders don't require the engine to be rebuilt. However, do note that the since **the engine will not error if these files are not found; make sure the engine is run with the correct working directory if you modify the shaders without rebuilding**.

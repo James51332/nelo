@@ -3,8 +3,8 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
-#include "renderer/shapes.h"
-#include "renderer/transform.h"
+#include "types/shapes.h"
+#include "types/transform.h"
 
 namespace nelo
 {

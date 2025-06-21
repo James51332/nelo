@@ -5,8 +5,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-#include "renderer/curve.h"
-#include "renderer/transform.h"
+#include "types/curve.h"
+#include "types/transform.h"
 
 namespace nelo
 {

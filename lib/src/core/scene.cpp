@@ -1,4 +1,4 @@
-#include "scene/scene.h"
+#include "core/scene.h"
 
 namespace nelo
 {

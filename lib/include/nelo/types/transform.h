@@ -3,8 +3,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#include "scene/timeline.h"
-#include "scene/traits.h"
+#include "anim/timeline.h"
+#include "anim/traits.h"
 
 namespace nelo
 {

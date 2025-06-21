@@ -1,6 +1,6 @@
 #pragma once
 
-#include "easing.h"
+#include "anim/easing.h"
 
 namespace nelo
 {

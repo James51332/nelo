@@ -1,7 +1,7 @@
 #pragma once
 
-#include "renderer/color.h"
-#include "scene/path.h"
+#include "anim/color.h"
+#include "types/path.h"
 
 namespace nelo
 {

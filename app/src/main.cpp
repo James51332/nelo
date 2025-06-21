@@ -1,18 +1,21 @@
 #include <glad/glad.h>
-#include <iostream>
-#include <nelo/renderer/circle_renderer.h>
-#include <nelo/renderer/context.h>
-#include <nelo/renderer/curve_renderer.h>
-#include <nelo/scene/path.h>
-#include <nelo/scene/timeline.h>
-#include <nelo/video/encoder.h>
+#include <nelo/anim/timeline.h>
+#include <nelo/core/context.h>
+#include <nelo/core/encoder.h>
+#include <nelo/core/log.h>
+#include <nelo/render/circle_renderer.h>
+#include <nelo/render/curve_renderer.h>
+#include <nelo/types/path.h>
 
 int main()
 {
+  // We can silence the console.
+  nelo::log::use_console(false);
+
   // Create our nelo render context in a windowed mode.
   nelo::context context(800, 600, true);
 
-  // We also go ahead an create a renderer, which for now, can also be a unique ptr.
+  // We also go ahead and creatr our renderers. These will be unified in the future.
   nelo::circle_renderer circle_renderer(5);
   nelo::curve_renderer curve_renderer(5);
 
@@ -25,7 +28,7 @@ int main()
   nelo::circle c;
   nelo::curve curve = {.spline = nelo::paths::square};
 
-  // Update the window until we are closed, rendering via raw OpenGL for now.
+  // Update the window until we are closed.
   double time = 0.0;
   while (context.active() && time <= 1.0)
   {
@@ -33,7 +36,7 @@ int main()
     context.update();
 
     // Clear the screen.
-    glm::vec4 clear_color = glm::vec4(0.15f, 0.2f, 0.25f, 1.0f);
+    nelo::color clear_color = glm::vec4(0.15f, 0.2f, 0.25f, 1.0f);
     glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -53,9 +56,6 @@ int main()
     context.present();
     encoder.submit();
   }
-
-  for (int i = 0; i < 40; i++)
-    std::cout << curve.spline.sample(static_cast<double>(i)).sample(0.5).x << std::endl;
 
   encoder.end();
 }

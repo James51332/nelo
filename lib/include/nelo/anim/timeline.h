@@ -6,8 +6,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "keyframe.h"
-#include "traits.h"
+#include "anim/keyframe.h"
+#include "anim/traits.h"
 
 namespace nelo
 {

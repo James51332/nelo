@@ -1,4 +1,4 @@
-#include "video/encoder.h"
+#include "core/encoder.h"
 
 #include <glad/glad.h>
 #include <stdexcept>
@@ -6,19 +6,22 @@
 extern "C"
 {
 #include <libavutil/imgutils.h>
+#include <libavutil/log.h>
 #include <libavutil/opt.h>
 }
+
+#include "core/log.h"
 
 namespace nelo
 {
 
 encoder::encoder(std::uint32_t width, std::uint32_t height, std::uint32_t fps,
-                 const std::filesystem::path& output)
+                 const std::filesystem::path& output, bool verbose)
   : width(width), height(height), fps(fps)
 {
   // Initializer avformat lib
   if (!created_encoder)
-    avformat_network_init();
+    init_ffmpeg();
   created_encoder = true;
 
   // Create our format context.
@@ -160,6 +163,50 @@ void encoder::end()
   sws_freeContext(sws_ctx);
   avio_closep(&fmt_ctx->pb);
   avformat_free_context(fmt_ctx);
+}
+
+static void ffmpeg_logger(void* ptr, int level, const char* fmt, va_list vargs)
+{
+  // We don't need to be overly verbose. TODO In the future, adjust using nelo verbosity.
+  if (level > AV_LOG_INFO)
+    return;
+
+  // Format the ffmpeg message.
+  char msg[1024];
+  vsnprintf(msg, sizeof(msg), fmt, vargs);
+
+  // Trim off trailing newlines since nelo adds them.
+  std::string_view clean_msg(msg);
+  if (!clean_msg.empty() && clean_msg.back() == '\n')
+    clean_msg.remove_suffix(1);
+
+  // Map FFmpeg log level to our own
+  auto tag = [](int level) -> std::string_view
+  {
+    switch (level)
+    {
+      case AV_LOG_PANIC: return "PANIC";
+      case AV_LOG_FATAL: return "FATAL";
+      case AV_LOG_ERROR: return "ERROR";
+      case AV_LOG_WARNING: return "WARN";
+      case AV_LOG_INFO: return "INFO";
+      case AV_LOG_VERBOSE: return "VERBOSE";
+      case AV_LOG_DEBUG: return "DEBUG";
+      case AV_LOG_TRACE: return "TRACE";
+      default: return "LOG";
+    }
+  };
+
+  // Now redirect to a buffer, file, or suppress
+  log::out("[FFmpeg|{}] {}", tag(level), clean_msg);
+}
+
+void encoder::init_ffmpeg()
+{
+  avformat_network_init();
+
+  // Be quiet unless nelo says otherwise.
+  av_log_set_callback(ffmpeg_logger);
 }
 
 } // namespace nelo

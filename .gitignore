@@ -13,3 +13,7 @@ compile_commands.json
 
 # MacOS Files
 .DS_Store
+
+# Any Videos
+*.mov
+*.mp4

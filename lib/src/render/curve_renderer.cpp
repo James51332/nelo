@@ -1,9 +1,10 @@
-#include "renderer/curve_renderer.h"
+#include "render/curve_renderer.h"
 
 #include <iostream>
 #include <stdexcept>
 
-#include "renderer/context.h"
+#include "core/context.h"
+#include "core/log.h"
 
 namespace nelo
 {
@@ -58,7 +59,7 @@ curve_renderer::curve_renderer(float scene_height)
   if (!success)
   {
     glGetShaderInfoLog(vs, 512, NULL, infoLog);
-    std::cout << infoLog << std::endl;
+    log::out(infoLog);
   }
 
   // Now build and check the fragments shader.
@@ -70,7 +71,7 @@ curve_renderer::curve_renderer(float scene_height)
   if (!success)
   {
     glGetShaderInfoLog(fs, 512, NULL, infoLog);
-    std::cout << infoLog << std::endl;
+    log::out(infoLog);
   }
 
   // Build and link a program and make sure that we succeed.
@@ -83,7 +84,7 @@ curve_renderer::curve_renderer(float scene_height)
   if (!success)
   {
     glGetProgramInfoLog(curve_program, 512, nullptr, infoLog);
-    std::cout << infoLog << std::endl;
+    log::out(infoLog);
   }
 
   // Clean up our resources
@@ -171,10 +172,6 @@ void curve_renderer::submit(const transform& trans, const curve& curve)
   // create a trapezoid between.
   std::uint32_t start_vertex = current_vertex;
   std::uint32_t start_index = current_index;
-
-  for (auto& point : points)
-    std::cout << point.position.x << ", " << point.position.y << std::endl;
-  std::cout << "-------------------" << std::endl;
 
   for (int i = 0; i < points.size() - 1; i++)
   {

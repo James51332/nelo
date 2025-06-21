@@ -2,8 +2,8 @@
 
 #include <unordered_map>
 
-#include "entity.h"
-#include "timeline.h"
+#include "anim/timeline.h"
+#include "core/entity.h"
 
 namespace nelo
 {

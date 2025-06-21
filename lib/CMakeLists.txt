@@ -34,29 +34,31 @@ find_library(SWSCALE_LIBRARY swscale REQUIRED)
 
 # Source files
 set(SRC_FILES 
-  src/renderer/context.cpp
-  src/renderer/circle_renderer.cpp
-  src/renderer/curve_renderer.cpp
-  src/video/encoder.cpp
-  src/scene/scene.cpp)
+  src/core/context.cpp
+  src/core/encoder.cpp
+  src/core/log.cpp
+  src/core/scene.cpp
+  src/render/circle_renderer.cpp
+  src/render/curve_renderer.cpp)
 
 # Header files
 set(HEADER_FILES
-  include/nelo/scene/timeline.h
-  include/nelo/scene/keyframe.h
-  include/nelo/scene/traits.h
-  include/nelo/scene/easing.h
-  include/nelo/scene/entity.h
-  include/nelo/scene/collection.h
-  include/nelo/scene/scene.h
-  include/nelo/scene/path.h
-  include/nelo/renderer/color.h
-  include/nelo/renderer/curve.h
-  include/nelo/renderer/context.h
-  include/nelo/renderer/curve_renderer.h
-  include/nelo/renderer/circle_renderer.h
-  include/nelo/renderer/shapes.h
-  include/nelo/renderer/transform.h)
+  include/nelo/anim/color.h
+  include/nelo/anim/easing.h
+  include/nelo/anim/timeline.h
+  include/nelo/anim/keyframe.h
+  include/nelo/anim/traits.h
+  include/nelo/core/collection.h
+  include/nelo/core/context.h
+  include/nelo/core/entity.h
+  include/nelo/core/log.h
+  include/nelo/core/scene.h
+  include/nelo/render/circle_renderer.h
+  include/nelo/render/curve_renderer.h
+  include/nelo/types/curve.h
+  include/nelo/types/path.h
+  include/nelo/types/shapes.h
+  include/nelo/types/transform.h)
 
 # Define the executable for the program
 add_library(nelo-api STATIC ${SRC_FILES} ${HEADER_FILES})

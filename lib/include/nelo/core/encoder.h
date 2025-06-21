@@ -21,13 +21,16 @@ class encoder
 public:
   // The output format of the video is determined by the file extension.
   encoder(std::uint32_t width, std::uint32_t height, std::uint32_t fps,
-          const std::filesystem::path& output);
+          const std::filesystem::path& output, bool verbose = false);
 
   // Reads the data from the currently bound framebuffer into a video stream.
   void submit();
 
   // Ends the video and outputs a file. After this is called, we cannot add more frames.
   void end();
+
+private:
+  void init_ffmpeg();
 
 private:
   // We only initalize the libraries once.

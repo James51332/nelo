@@ -3,8 +3,8 @@
 #include <any>
 #include <typeindex>
 
-#include "collection.h"
-#include "entity.h"
+#include "core/collection.h"
+#include "core/entity.h"
 
 namespace nelo
 {

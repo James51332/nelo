@@ -1,9 +1,10 @@
-#include "renderer/context.h"
+#include "core/context.h"
 
 #include <glad/glad.h>
-#include <iostream>
 #include <stdexcept>
 #include <string>
+
+#include "core/log.h"
 
 namespace nelo
 {
@@ -70,8 +71,7 @@ context::context(float w, float h, bool headless)
   glGetIntegerv(GL_MINOR_VERSION, &versionMinor);
 
   // Print a message out to confirm out success.
-  std::cout << "Created nelo render context with OpenGL " << versionMajor << "." << versionMinor
-            << std::endl;
+  log::out("Created nelo render context with OpenGL {}.{}", versionMajor, versionMinor);
 
   // We can also go ahead and setup blending since it is needed by all renderers.
   glEnable(GL_BLEND);
