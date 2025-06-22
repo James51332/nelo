@@ -22,6 +22,10 @@ add_subdirectory(thirdparty/glad)
 # glm is our math library for fast compiler intrinsics.
 add_subdirectory(thirdparty/glm)
 
+# For lua, we have a light wrapper to build the official c. We use sol2 as a wrapper to interface with lua.
+add_subdirectory(thirdparty/lua)
+add_subdirectory(thirdparty/sol2)
+
 # ffmpeg has weird license restrictions, so we won't ship it with this app, we'll just mark it as a dependency.
 find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h REQUIRED)
 find_library(AVCODEC_LIBRARY avcodec REQUIRED)
@@ -40,7 +44,8 @@ set(SRC_FILES
   src/core/scene.cpp
   src/render/circle_renderer.cpp
   src/render/curve_renderer.cpp
-  src/render/shaders.cpp)
+  src/render/shaders.cpp
+  src/script/server.cpp)
 
 # Header files
 set(HEADER_FILES
@@ -57,6 +62,7 @@ set(HEADER_FILES
   include/nelo/render/circle_renderer.h
   include/nelo/render/curve_renderer.h
   include/nelo/render/shaders.h
+  include/nelo/script/server.h
   include/nelo/types/curve.h
   include/nelo/types/path.h
   include/nelo/types/shapes.h
@@ -107,4 +113,6 @@ target_link_libraries(nelo-api
     ${AVCODEC_LIBRARY}
     ${AVUTIL_LIBRARY}
     ${AVFORMAT_LIBRARY}
-    ${SWSCALE_LIBRARY})
+    ${SWSCALE_LIBRARY}
+    lua
+    sol2::sol2)

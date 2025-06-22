@@ -4,3 +4,9 @@
 [submodule "thirdparty/glm"]
 	path = lib/thirdparty/glm
 	url = https://github.com/g-truc/glm
+[submodule "lib/thirdparty/lua/lua"]
+	path = lib/thirdparty/lua/lua
+	url = https://github.com/lua/lua
+[submodule "lib/thirdparty/sol2"]
+	path = lib/thirdparty/sol2
+	url = https://github.com/ThePhD/sol2

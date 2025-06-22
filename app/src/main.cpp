@@ -5,12 +5,16 @@
 #include <nelo/core/log.h>
 #include <nelo/render/circle_renderer.h>
 #include <nelo/render/curve_renderer.h>
+#include <nelo/script/server.h>
 #include <nelo/types/path.h>
 
 int main()
 {
   // We can silence the console.
   nelo::log::use_console(true);
+
+  // Let's test out lua. This should print a message from lua.
+  nelo::server lua_server;
 
   // Create our nelo render context in a windowed mode.
   nelo::context context(800, 600, true);
