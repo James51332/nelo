@@ -14,7 +14,10 @@ namespace nelo
 class scene
 {
 public:
-  scene();
+  scene(const std::string& name);
+
+  void set_name(const std::string& name) { scene_name = name; }
+  const std::string& get_name() const { return scene_name; }
 
   // Create and destroy entities
   entity create_entity();
@@ -42,9 +45,17 @@ public:
   void set_time(double time) { scene_time = time; }
   double get_time() const { return scene_time; }
 
+  // Render the animation. TODO We need to implement framebuffers to handle any size, or rendering
+  // with multiple scenes.
+  void play(double start, double end);
+  void play(double duration) { play(0.0, duration); }
+
 private:
-  // We start at one and move up.
-  entity next_entity = 1;
+  // We start at one and move up. No harm making this static so entites can't accidentally be used
+  // in wrong scene.
+  inline static entity next_entity = 1;
+
+  std::string scene_name;
 
   // The global time within the scene.
   double scene_time = 0.0;

@@ -15,8 +15,15 @@ namespace detail
 class collection_base
 {
 public:
-  virtual bool exists(entity key);
-  virtual void remove(entity key);
+  virtual bool exists(entity key)
+  {
+    throw std::runtime_error("Cannot check if entity exists in collection_base!");
+  }
+
+  virtual void remove(entity key)
+  {
+    throw std::runtime_error("Cannot remove from collection_base!");
+  }
 };
 
 } // namespace detail

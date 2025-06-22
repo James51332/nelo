@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include <glm/glm.hpp>
 
 namespace nelo
 {
@@ -27,14 +28,12 @@ public:
   bool headless() const { return is_headless; }
   bool active() const { return is_active; }
 
-private:
-  // Static field to enforce singleton.
-  inline static bool created_singleton = false;
+  static glm::vec2 size() { return glm::vec2(width, height); }
 
-  // Since the context is a singleton, we can allow the renderer to access some static state.
-  friend class circle_renderer;
-  friend class curve_renderer;
-  inline static float width, height;
+private:
+  // Static field to enforce singleton. Also store the size globally.
+  inline static bool created_singleton = false;
+  inline static float width = 0, height = 0;
 
 private:
   // We use this even when we are headless.

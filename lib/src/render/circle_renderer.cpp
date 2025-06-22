@@ -148,8 +148,8 @@ void circle_renderer::flush()
   // A super easy way to get started with having a nice viewport is to just fetch and upload some
   // uniforms each frame.
   glUseProgram(circle_program);
-  glUniform2f(glGetUniformLocation(circle_program, "viewport_size"), context::width,
-              context::height);
+  glUniform2f(glGetUniformLocation(circle_program, "viewport_size"), context::size().x,
+              context::size().y);
   glUniform1f(glGetUniformLocation(circle_program, "scene_height"), scene_height);
 
   // Update our vertex buffer with the new data.

@@ -67,8 +67,8 @@ void curve_renderer::begin(double t)
   current_index = 0;
 
   glUseProgram(curve_program);
-  glUniform2f(glGetUniformLocation(curve_program, "viewport_size"), context::width,
-              context::height);
+  glUniform2f(glGetUniformLocation(curve_program, "viewport_size"), context::size().x,
+              context::size().y);
   glUniform1f(glGetUniformLocation(curve_program, "scene_height"), scene_height);
 }
 
