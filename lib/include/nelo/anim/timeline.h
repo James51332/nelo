@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_set>
@@ -12,16 +13,22 @@
 namespace nelo
 {
 
+// Timeline is an implicitly ref counted object which can be evaluated at any given time.
 template <typename T>
 class timeline;
 
 namespace detail
 {
 
+// Concept which enables constructor for lambda timeline.
 template <typename F, typename T>
 concept is_generator = requires(F f, double t) {
   { f(t) } -> std::same_as<T>;
 };
+
+// Forward declaring timeline data which is stored on the heap always.
+template <typename T>
+struct timeline_data;
 
 } // namespace detail
 
@@ -54,18 +61,19 @@ public:
   // Evaluate the timeline at any given time.
   T sample(double time) const;
 
-  // Adds a keyframe to the timeline. Recomputes the default length.
+  // Adds a keyframe to the timeline. Recomputes the default length. We can safely return a
+  // timeline<T>&.
   timeline<T>& add_keyframe(double at, T value, easing_func easing);
 
   // Adds an animation to the timeline. Recomputes the default length. TODO negative lengths may be
   // useful for sequencing, or define separate sequencing API. TODO consider flattening (absorb
   // keyframes and animations).
-  timeline<T>& add_timeline(double at, timeline<T> value)
+  timeline<T>& add_timeline(double at, const timeline<T>& value)
     requires addable<T>;
 
   // Layer timelines via multiplication. Applies the passed timeline to this on LHS. Recomputes
   // the default length.
-  timeline<T>& multiply_timeline(double at, timeline<T> value)
+  timeline<T>& multiply_timeline(double at, const timeline<T>& value)
     requires multipliable<T>;
 
   // Manage the length of the animation. Set zero or negative value to use the default.
@@ -74,6 +82,17 @@ public:
   double length() const;
 
 private:
+  // We want timelines to be light-ish objects. We are therefore going to store them on the heap
+  // secretly, and wrap their data with shared_ptr's.
+  std::shared_ptr<detail::timeline_data<T>> data;
+};
+
+namespace detail
+{
+
+template <typename T>
+struct timeline_data
+{
   // When we are adding timelines as animations, we want to make sure that we don't add ourself as a
   // relative animation. The easiest way to do this is to use a unique ID for each timeline, then
   // define the dependencies of timelines in a set. Then, we easily verify that we are not dependent
@@ -86,7 +105,7 @@ private:
 
   // Store data about procedural timelines.
   bool is_procedural = false;
-  lambda generator;
+  timeline<T>::lambda generator;
 
   // Timelines need to have a length to be sequenced. The default length is one, or the the time
   // that the last animation ends. This is updated whenever a keyframe or animation is added, unless
@@ -110,6 +129,8 @@ private:
   };
   std::vector<animation> animations;
 };
+
+} // namespace detail
 
 // CTAD allow us to declare a timeline and implicitly infer the data type.
 template <typename T>
@@ -141,16 +162,21 @@ template <typename T>
 template <typename U>
   requires std::convertible_to<U, T> && (!detail::is_generator<U, T>)
 timeline<T>::timeline(U&& anchor)
-  : anchor(std::forward<U>(anchor)), id(detail::timeline_id::current++)
+  : data(std::make_shared<detail::timeline_data<T>>())
 {
+  data->anchor = std::forward<U>(anchor);
+  data->id = detail::timeline_id::current++;
 }
 
 template <typename T>
 template <typename F>
   requires detail::is_generator<F, T>
 timeline<T>::timeline(F&& generator)
-  : is_procedural(true), generator(generator), id(detail::timeline_id::current++)
+  : data(std::make_shared<detail::timeline_data<T>>())
 {
+  data->is_procedural = true;
+  data->generator = generator;
+  data->id = detail::timeline_id::current++;
 }
 
 template <typename T>
@@ -160,20 +186,20 @@ T timeline<T>::sample(double time) const
   T state;
 
   // If we are procedural, use the lambda. Otherwise, use keyframes.
-  if (is_procedural)
-    state = generator(time);
+  if (data->is_procedural)
+    state = data->generator(time);
   else
   {
     // Negative times always return the anchor for non-procedural.
     if (time <= 0.0)
-      return anchor;
+      return data->anchor;
 
     // Set our state as the anchor initially.
-    state = anchor;
+    state = data->anchor;
 
     // Next, handle the keyframes. For now, we can just loop to find the correct one.
     double lastTime = 0.0; // The time of the last keyframe (initial anchor).
-    for (auto& keyframe : keyframes)
+    for (auto& keyframe : data->keyframes)
     {
       // We've found the keyframe to blend with!
       if (keyframe.at >= time)
@@ -196,7 +222,7 @@ T timeline<T>::sample(double time) const
 
   // Now, we need to apply our animations. These are layered on top of the underlying keyframes in
   // order that they are added to the timeline.
-  for (auto& anim : animations)
+  for (auto& anim : data->animations)
   {
     if (time < anim.start)
       continue;
@@ -228,26 +254,26 @@ template <typename T>
 timeline<T>& timeline<T>::add_keyframe(double at, T value, easing_func easing)
 {
   // We can't add keyframes to lambda timelines.
-  if (is_procedural)
+  if (data->is_procedural)
     throw std::runtime_error("Unable to add keyframes to lambda timeline!");
 
   keyframe state{at, value, easing};
 
   // If we don't have any keyframes, add and return.
-  if (keyframes.empty())
+  if (data->keyframes.empty())
   {
-    keyframes.push_back(state);
+    data->keyframes.push_back(state);
     return (*this);
   }
 
   // Otherwise, find where to insert.
   bool inserted = false;
-  for (auto it = keyframes.begin(); it != keyframes.end(); ++it)
+  for (auto it = data->keyframes.begin(); it != data->keyframes.end(); ++it)
   {
     // If we are before the next, we'll insert.
     if (at < it->at)
     {
-      keyframes.insert(it, state);
+      data->keyframes.insert(it, state);
       inserted = true;
       break;
     }
@@ -255,10 +281,10 @@ timeline<T>& timeline<T>::add_keyframe(double at, T value, easing_func easing)
 
   // Check if we are the last to be inserted.
   if (!inserted)
-    keyframes.push_back(state);
+    data->keyframes.push_back(state);
 
   // If the user has the length set to the default, we can recompute.
-  if (!user_length)
+  if (!data->user_length)
     set_length();
 
   // Return this to allow factory API.
@@ -266,22 +292,22 @@ timeline<T>& timeline<T>::add_keyframe(double at, T value, easing_func easing)
 }
 
 template <typename T>
-timeline<T>& timeline<T>::add_timeline(double start, timeline<T> value)
+timeline<T>& timeline<T>::add_timeline(double start, const timeline<T>& value)
   requires addable<T>
 {
   // Make sure that we can safely add this animation by checking if we are in its dependencies.
-  if (value.dependencies.contains(id))
+  if (value.data->dependencies.contains(data->id))
     throw std::runtime_error("Unable to add animation that depends on self!");
 
   // Add the dependency (and its dependencies)
-  dependencies.insert(value.id);
-  dependencies.insert(value.dependencies.begin(), value.dependencies.end());
+  data->dependencies.insert(value.data->id);
+  data->dependencies.insert(value.data->dependencies.begin(), value.data->dependencies.end());
 
   // Add our animation to the list of those to apply.
-  animations.emplace_back(start, value, false);
+  data->animations.emplace_back(start, value, false);
 
   // If the user has the length set to the default, we can recompute.
-  if (!user_length)
+  if (!data->user_length)
     set_length();
 
   // Return a reference to ourself to support factory style API.
@@ -289,22 +315,22 @@ timeline<T>& timeline<T>::add_timeline(double start, timeline<T> value)
 }
 
 template <typename T>
-timeline<T>& timeline<T>::multiply_timeline(double start, timeline<T> value)
+timeline<T>& timeline<T>::multiply_timeline(double start, const timeline<T>& value)
   requires multipliable<T>
 {
   // Make sure that we can safely add this animation by checking if we are in its dependencies
-  if (value.dependencies.contains(id))
+  if (value.data->dependencies.contains(data->id))
     throw std::runtime_error("Unable to add animation that depends on self!");
 
   // Add the dependency (and its dependencies)
-  dependencies.insert(value.id);
-  dependencies.insert(value.dependencies.begin(), value.dependencies.end());
+  data->dependencies.insert(value.data->id);
+  data->dependencies.insert(value.data->dependencies.begin(), value.data->dependencies.end());
 
   // Add our animation to the list of those to apply.
-  animations.emplace_back(start, value, true);
+  data->animations.emplace_back(start, value, true);
 
   // If the user has the length set to the default, we can recompute.
-  if (!user_length)
+  if (!data->user_length)
     set_length();
 
   return (*this);
@@ -316,13 +342,13 @@ void timeline<T>::set_length(double length)
   // If we have a non-positive length, use the default length.
   if (length <= 0.0)
   {
-    user_length = false;
-    cached_length = default_length();
+    data->user_length = false;
+    data->cached_length = default_length();
   }
   else
   {
-    user_length = true;
-    cached_length = length;
+    data->user_length = true;
+    data->cached_length = length;
   }
 }
 
@@ -330,16 +356,16 @@ template <typename T>
 double timeline<T>::default_length() const
 {
   // If we have no keyframes or animations, default length is one second.
-  if (keyframes.empty() && animations.empty())
+  if (data->keyframes.empty() && data->animations.empty())
     return 1.0;
 
   // Otherwise, start with the last keyframe as the length.
   double len = 0.0;
-  if (!keyframes.empty())
-    len = keyframes.back().at;
+  if (!data->keyframes.empty())
+    len = data->keyframes.back().at;
 
   // Now, handle the animations.
-  for (auto& anim : animations)
+  for (auto& anim : data->animations)
   {
     double end = anim.start + anim.effect.length();
     if (end > len)
@@ -353,7 +379,7 @@ double timeline<T>::default_length() const
 template <typename T>
 double timeline<T>::length() const
 {
-  return cached_length;
+  return data->cached_length;
 }
 
 } // namespace nelo
