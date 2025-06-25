@@ -50,7 +50,11 @@ public:
   void play(double start, double end);
   void play(double duration) { play(0.0, duration); }
 
+  // TODO Remove this. Just a test to see if we can create a timeline in lua.
+  void set_path(timeline<glm::vec3> pth) { tmp = pth; }
+
 private:
+  timeline<glm::vec3> tmp;
   // We start at one and move up. No harm making this static so entites can't accidentally be used
   // in wrong scene.
   inline static entity next_entity = 1;

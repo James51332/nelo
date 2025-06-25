@@ -29,12 +29,22 @@ struct curve
   timeline<bool> use_transform = false;
 
   // Subdivisions is the number of times that the line can be subdivided recursively, not total.
-  timeline<int> min_subdivisions = 4;
-  timeline<int> max_subdivisions = 10;
+  // These values are casted to integers internally.
+  timeline<double> min_subdivisions = 4;
+  timeline<double> max_subdivisions = 10;
 
   // How far a point needs to be from the line connecting the points surrouding it in order for the
   // segments around it to be subdivided.
   timeline<double> threshold = 0.005;
+};
+
+// TODO Fill in this methods
+template <>
+struct timeline_traits<curve>
+{
+  curve lerp(curve a, curve b, double t) = delete;
+  curve add(curve a, curve b) = delete;
+  curve multiple(curve a, curve b) = delete;
 };
 
 // We also want to be able to trace around a shape at any point to generate a curve. TODO Write an

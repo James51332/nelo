@@ -12,4 +12,13 @@ struct circle
   timeline<color> fill_color = glm::vec4(1.0f);
 };
 
+// TODO Fill in this methods
+template <>
+struct timeline_traits<circle>
+{
+  circle lerp(circle a, circle b, double t) = delete;
+  circle add(circle a, circle b) = delete;
+  circle multiple(circle a, circle b) = delete;
+};
+
 } // namespace nelo

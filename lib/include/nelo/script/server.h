@@ -3,8 +3,6 @@
 #include <filesystem>
 #include <sol/sol.hpp>
 
-#include "core/scene.h"
-
 namespace nelo
 {
 
@@ -18,7 +16,6 @@ public:
 
 private:
   sol::state lua;
-  sol::usertype<scene> scene_type;
 };
 
 } // namespace nelo

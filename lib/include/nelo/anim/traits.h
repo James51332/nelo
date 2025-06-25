@@ -42,11 +42,11 @@ concept multipliable = requires(T a, T b) {
 
 // We can also go ahead an define the specialization for the most common data types here.
 template <>
-struct timeline_traits<int>
+struct timeline_traits<bool>
 {
-  static int lerp(int a, int b, double t) { return a + (b - a) * t; }
-  static int add(int a, int b) { return a + b; }
-  static int multiply(int a, int b) { return a * b; }
+  static int lerp(int a, int b, double t) = delete;
+  static int add(int a, int b) = delete;
+  static int multiply(int a, int b) = delete;
 };
 
 template <>

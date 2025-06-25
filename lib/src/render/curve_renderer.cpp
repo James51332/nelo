@@ -146,8 +146,8 @@ void curve_renderer::submit(const transform& trans, const curve& curve)
 std::vector<curve_renderer::curve_vertex> curve_renderer::subdivide(const curve& curve, double t)
 {
   // Some details for how detailed we want to be.
-  int min_sub = curve.min_subdivisions.sample(t);
-  int max_sub = curve.max_subdivisions.sample(t);
+  int min_sub = static_cast<int>(glm::round(curve.min_subdivisions.sample(t)));
+  int max_sub = static_cast<int>(glm::round(curve.max_subdivisions.sample(t)));
   double threshold = curve.threshold.sample(t);
 
   // We'll use recursion to subdivide wherever the path is deemed curvy.

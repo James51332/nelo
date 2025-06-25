@@ -52,8 +52,8 @@ void scene::play(double start, double end)
   nelo::encoder encoder(width, height, fps, output_path);
 
   // We can also create a timeline, and use it to drive our animation.
-  nelo::transform t = {.position = [](double t) -> glm::vec3
-                       { return {3.0 * cos(3.0 * t), 3.0 * sin(3.0 * t), 0.0}; }};
+  nelo::transform t = {tmp};
+
   nelo::circle c;
   nelo::curve curve = {.spline = [](double t) -> glm::vec3
                        { return {4.0 * cos(2.0 * t), 3.0 * sin(sin(3.0 * t)), 0.0}; },
