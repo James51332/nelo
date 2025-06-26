@@ -15,7 +15,12 @@ scene::scene(const std::string& name)
 
 entity scene::create_entity()
 {
-  return next_entity++;
+  entity id = next_entity++;
+
+  // Entities will come with a transform by default.
+  add_component<transform>(id);
+
+  return id;
 }
 
 void scene::destroy_entity(entity e)
@@ -51,18 +56,6 @@ void scene::play(double start, double end)
   std::filesystem::path output_path = scene_name + file_ext;
   nelo::encoder encoder(width, height, fps, output_path);
 
-  // We can also create a timeline, and use it to drive our animation.
-  nelo::transform t = {tmp};
-
-  nelo::circle c;
-  nelo::curve curve = {.spline = [](double t) -> glm::vec3
-                       { return {4.0 * cos(2.0 * t), 3.0 * sin(sin(3.0 * t)), 0.0}; },
-                       .weight = [](double t) -> double { return 0.1 + 0.05 * sin(t * 5.0); },
-                       .stroke = [](double t) -> nelo::color
-                       { return glm::vec4(glm::vec3(0.7 * sin(4.0 * t)), 1.0); },
-                       .end = 15.0,
-                       .min_subdivisions = 8};
-
   // Update the window until we are closed.
   double time = start;
   while (context.active() && time <= end)
@@ -79,11 +72,26 @@ void scene::play(double start, double end)
 
     // Use our renderers. This will be handle by a scene system later.
     circle_renderer.begin(time);
-    circle_renderer.submit(t, c);
-    circle_renderer.end();
-
     curve_renderer.begin(time);
-    curve_renderer.submit(t, curve);
+
+    // TODO We are assuming that we still have transform. We need to enforce this by removing the
+    // ability to remove components from entities, creating views that return entities with both
+    // components, or both.
+    auto& circle_col = get_collection<circle>();
+    for (auto& pair : circle_col)
+    {
+      auto trans = get_component<transform>(pair.first);
+      circle_renderer.submit(trans.sample(time), pair.second.sample(time));
+    }
+
+    auto& curve_col = get_collection<curve>();
+    for (auto& pair : curve_col)
+    {
+      auto trans = get_component<transform>(pair.first);
+      curve_renderer.submit(trans.sample(time), pair.second.sample(time));
+    }
+
+    circle_renderer.end();
     curve_renderer.end();
 
     // Present the back buffer and submit to encoder.

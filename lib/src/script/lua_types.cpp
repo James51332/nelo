@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "anim/color.h"
+#include "script/lua_scene.h"
 #include "script/lua_timeline.h"
 #include "types/curve.h"
 #include "types/path.h"
@@ -23,21 +24,15 @@ namespace nelo
 template <typename T, typename C>
 auto timeline_property(timeline<T> C::* member)
 {
-  return sol::property([member](const C& self) -> const timeline<T>& { return self.*member; },
-                       [member](C& self, const sol::object& o)
+  return sol::property([member](C& self) -> timeline<T> { return self.*member; },
+                       [member](C& self, const sol::object& obj)
                        {
-                         if (o.is<T>())
-                         {
-                           self.*member = timeline<T>(o.as<T>());
-                         }
-                         else if (o.is<timeline<T>>())
-                         {
-                           self.*member = o.as<timeline<T>>();
-                         }
+                         if (obj.is<T>())
+                           self.*member = timeline<T>(obj.as<T>());
+                         else if (obj.is<timeline<T>>())
+                           self.*member = obj.as<timeline<T>>();
                          else
-                         {
                            throw std::runtime_error("Invalid assignment to timeline property");
-                         }
                        });
 }
 
@@ -76,6 +71,9 @@ void lua_types::create_types(sol::state& lua)
 
   // Now, let's declare our timeline types.
   lua_timeline::create_types(lua);
+
+  // Finally, let's create the ECS types.
+  lua_scene::create_types(lua);
 }
 
 std::type_index lua_types::deduce(sol::object obj)

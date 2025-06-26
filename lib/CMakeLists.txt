@@ -45,6 +45,7 @@ set(SRC_FILES
   src/render/circle_renderer.cpp
   src/render/curve_renderer.cpp
   src/render/shaders.cpp
+  src/script/lua_scene.cpp
   src/script/lua_timeline.cpp
   src/script/lua_types.cpp
   src/script/server.cpp)
@@ -64,6 +65,7 @@ set(HEADER_FILES
   include/nelo/render/circle_renderer.h
   include/nelo/render/curve_renderer.h
   include/nelo/render/shaders.h
+  include/nelo/script/lua_scene.h
   include/nelo/script/lua_timeline.h
   include/nelo/script/lua_types.h
   include/nelo/script/server.h
