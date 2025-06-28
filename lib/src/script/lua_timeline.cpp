@@ -11,7 +11,7 @@
 #include "types/transform.h"
 
 #define CHECK_AND_RETURN_LUA_TIMELINE(lua, check_type, index, lambda)                              \
-  if (typeid(check_type) == type)                                                                  \
+  if (typeid(check_type) == index)                                                                  \
     return sol::make_object(                                                                       \
         lua, timeline<check_type>(                                                                 \
                  [lambda](double t) -> check_type                                                  \
@@ -33,7 +33,7 @@ namespace nelo
 
 // Declares the timeline_type for lua.
 template <typename T>
-auto declare_timeline_type(sol::state& lua)
+auto declare_timeline_type(sol::table binding)
 {
   std::string type_name = lua_types::name(typeid(timeline<T>));
 
@@ -63,14 +63,14 @@ auto declare_timeline_type(sol::state& lua)
   // TODO Implement this.
   auto keyframe_ctor = [](sol::table table) { return timeline<T>(); };
 
-  lua.new_usertype<timeline<T>>(type_name, sol::meta_function::construct,
-                                sol::overload(anchor_ctor, lambda_ctor, keyframe_ctor), "sample",
-                                &timeline<T>::sample);
+  binding.new_usertype<timeline<T>>(type_name, sol::meta_function::construct,
+                                    sol::overload(anchor_ctor, lambda_ctor, keyframe_ctor),
+                                    "sample", &timeline<T>::sample);
 
   return anchor_ctor;
 }
 
-void lua_timeline::create_types(sol::state& lua)
+void lua_timeline::create_types(sol::state_view lua, sol::table binding)
 {
   // Timelines can either be created from a timeline_T ctor, or by using the global timeline method.
   // The global timeline method will deduce the correct type for anchors and keyframes,
@@ -79,21 +79,21 @@ void lua_timeline::create_types(sol::state& lua)
 
   auto timeline_ctors = sol::overload(
       // We can have timelines of all of our primitive types.
-      declare_timeline_type<bool>(lua), declare_timeline_type<double>(lua),
-      declare_timeline_type<glm::vec2>(lua), declare_timeline_type<glm::vec3>(lua),
-      declare_timeline_type<color>(lua),
+      declare_timeline_type<bool>(binding), declare_timeline_type<double>(binding),
+      declare_timeline_type<glm::vec2>(binding), declare_timeline_type<glm::vec3>(binding),
+      declare_timeline_type<color>(binding),
 
       // We can also have timelines of all of our collection types.
-      declare_timeline_type<transform>(lua), declare_timeline_type<circle>(lua),
-      declare_timeline_type<curve>(lua),
+      declare_timeline_type<transform>(binding), declare_timeline_type<circle>(binding),
+      declare_timeline_type<curve>(binding),
 
       // We can have nested timelines for path properties.
-      declare_timeline_type<timeline<path>>(lua),
-      declare_timeline_type<timeline<path_property<double>>>(lua),
-      declare_timeline_type<timeline<path_property<color>>>(lua),
+      declare_timeline_type<timeline<path>>(binding),
+      declare_timeline_type<timeline<path_property<double>>>(binding),
+      declare_timeline_type<timeline<path_property<color>>>(binding),
 
       // We'll declare our lambda ctor as well.
-      [&lua](const std::string& name, sol::function lambda)
+      [lua](const std::string& name, sol::function lambda)
       {
         std::type_index type = lua_types::type(name);
         CHECK_AND_RETURN_LUA_TIMELINE(lua, bool, type, lambda);
@@ -115,7 +115,7 @@ void lua_timeline::create_types(sol::state& lua)
   );
 
   // Now, we can register a global timeline function.
-  lua.set_function("timeline", timeline_ctors);
+  binding.set_function("timeline", timeline_ctors);
 }
 
 } // namespace nelo

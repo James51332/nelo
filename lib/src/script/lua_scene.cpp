@@ -38,9 +38,9 @@ auto lua_entity_component()
                        });
 }
 
-void lua_scene::create_types(sol::state& lua)
+void lua_scene::create_types(sol::state_view lua, sol::table binding)
 {
-  auto entity_type = lua.new_usertype<lua_entity>("entity", sol::no_constructor);
+  auto entity_type = binding.new_usertype<lua_entity>("entity", sol::no_constructor);
   entity_type["transform"] = lua_entity_component<transform>();
   entity_type["circle"] = lua_entity_component<circle>();
   entity_type["curve"] = lua_entity_component<curve>();
@@ -61,10 +61,10 @@ void lua_scene::create_types(sol::state& lua)
           throw std::runtime_error(
               "Unable to create entity! Please call this method using a colon.");
 
-        sol::state_view lua(ts);
+        sol::state_view state(ts);
 
         // self is already a Lua object; to safely hold a reference:
-        sol::reference owner(lua, self); // Makes a strong reference from the actual Lua object
+        sol::reference owner(state, self); // Makes a strong reference from the actual Lua object
 
         scene& cpp_scene = self.as<scene&>();
         return {cpp_scene.create_entity(), std::move(owner)};

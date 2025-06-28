@@ -74,7 +74,7 @@ set(HEADER_FILES
   include/nelo/types/shapes.h
   include/nelo/types/transform.h)
 
-# Define the executable for the program
+# Define the library for the program
 add_library(nelo-api STATIC ${SRC_FILES} ${HEADER_FILES})
 
 # For shaders, we will build our cache using the shader function

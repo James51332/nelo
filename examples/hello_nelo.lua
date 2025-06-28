@@ -1,6 +1,10 @@
--- Our first scene in nelo using lua. Let's give it a test.
+-- This is an optional setup when using internal engine. Needed when using nelo in any other lua tool.
+require("nelo").setup_globals()
+
+-- Create our scene. The name is video file name. 
 local hello_nelo = scene.new('Hello Nelo')
 
+-- We'll create a better API in the future. This is all pretty tentative.
 local circ = circle.new()
 circ.radius = timeline('number', function(t) return 1.5 + 0.5 * math.sin(math.pi * t) end)
 

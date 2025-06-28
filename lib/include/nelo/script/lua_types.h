@@ -11,7 +11,7 @@ class lua_types
 {
 public:
   // Creates all lua types needed in nelo.
-  static void create_types(sol::state& lua);
+  static void create_types(sol::state_view lua, sol::table binding);
 
   // Deduce the type index for a type.
   static std::type_index deduce(sol::object obj);

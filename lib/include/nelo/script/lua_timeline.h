@@ -11,7 +11,7 @@ namespace nelo
 struct lua_timeline
 {
   // Declares the lua type so that it can be used in the code.
-  static void create_types(sol::state& lua);
+  static void create_types(sol::state_view lua, sol::table binding);
 };
 
 } // namespace nelo
