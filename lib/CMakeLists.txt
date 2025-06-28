@@ -48,7 +48,7 @@ set(SRC_FILES
   src/script/lua_scene.cpp
   src/script/lua_timeline.cpp
   src/script/lua_types.cpp
-  src/script/server.cpp)
+  src/script/lua_server.cpp)
 
 # Header files
 set(HEADER_FILES
@@ -68,7 +68,7 @@ set(HEADER_FILES
   include/nelo/script/lua_scene.h
   include/nelo/script/lua_timeline.h
   include/nelo/script/lua_types.h
-  include/nelo/script/server.h
+  include/nelo/script/lua_server.h
   include/nelo/types/curve.h
   include/nelo/types/path.h
   include/nelo/types/shapes.h

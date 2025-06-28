@@ -1,11 +1,11 @@
-#include "script/server.h"
+#include "script/lua_server.h"
 
 #include "script/lua_types.h"
 
 namespace nelo
 {
 
-server::server()
+lua_server::lua_server()
 {
   // Start by opening the base libraries in lua.
   lua.open_libraries(sol::lib::base, sol::lib::string, sol::lib::math, sol::lib::package);
@@ -28,7 +28,7 @@ server::server()
   };
 }
 
-void server::execute(const std::filesystem::path& path)
+void lua_server::execute(const std::filesystem::path& path)
 {
   lua.script_file(path.string());
 }

@@ -7,10 +7,10 @@ namespace nelo
 {
 
 // A server is reponsible for executing nelo scripts. Each server has it's own state.
-class server
+class lua_server
 {
 public:
-  server();
+  lua_server();
 
   void execute(const std::filesystem::path& path);
 
