@@ -142,6 +142,47 @@ std::string lua_types::name(const std::type_index type)
     return type.name();
 }
 
+// We need a helper method here. This allows us to bind a sol property if we are timeline. Otherwise
+// we just return the member pointer. I don't think this will have much use elsewhere, so I'm just
+// declaring it here.
+template <typename T>
+struct is_timeline : std::false_type
+{
+};
+
+template <typename U>
+struct is_timeline<timeline<U>> : std::true_type
+{
+};
+
+// This helper method let's us assign a property to a table when the value can be either a
+template <typename T, typename U>
+static void assign_property(T& obj, const std::string& name, U T::* member, sol::object val)
+{
+  try
+  {
+    // If we're a timeline, see if we can assign ourself from a constant.
+    if constexpr (is_timeline<U>::value)
+    {
+      using timeline_type = typename U::value_type;
+      if (val.is<timeline_type>())
+        obj.*member = timeline<timeline_type>(val.as<timeline_type>());
+      else if (val.is<timeline<timeline_type>>())
+        obj.*member = val.as<timeline<timeline_type>>();
+      else
+        throw;
+    }
+    else
+      obj.*member = val.as<U>();
+  }
+  catch (...)
+  {
+    // Throw a pretty error so we can debug better.
+    auto msg = std::format("Unable to assign to {} property", name);
+    throw std::runtime_error(msg);
+  }
+}
+
 // These are helper methods which use a lua_traits::fields methods to assign to an object from an
 // array of set of key/value pairs.
 template <typename T>
@@ -162,23 +203,11 @@ static void assign_from_array(T& obj, sol::table t)
                if (index > t.size())
                  return;
 
+               auto name = field.first;
                auto member = field.second;
                sol::object val = t[index++];
                if (val.valid())
-               {
-                 using FieldT = std::decay_t<decltype(obj.*member)>;
-                 try
-                 {
-                   obj.*member = val.as<FieldT>();
-                 }
-                 catch (...)
-                 {
-                   std::string msg = std::format("Unable to assign to value of type {} because {} "
-                                                 "member could not be assigned !",
-                                                 lua_types::name(typeid(T)), field.first);
-                   throw std::runtime_error(msg);
-                 }
-               }
+                 assign_property(obj, name, member, val);
              })(),
          ...);
       },
@@ -196,67 +225,29 @@ static void assign_from_table(T& obj, sol::table t)
         ((
              [&]
              {
-               std::string name = field.first;
+               auto name = field.first;
                auto member = field.second;
                sol::object val = t[name];
                if (val.valid())
-               {
-                 using FieldT = std::decay_t<decltype(obj.*member)>;
-                 try
-                 {
-                   obj.*member = val.as<FieldT>();
-                 }
-                 catch (...)
-                 {
-                   std::string msg = std::format("Unable to assign to {} to member {}!",
-                                                 lua_types::name(typeid(T)), name);
-                   throw std::runtime_error(msg);
-                 }
-               }
+                 assign_property(obj, name, member, val);
              })(),
          ...);
       },
       fields_list);
 }
 
-// We need a helper method here. This allows us to bind a sol property if we are timeline. Otherwise
-// we just return the member pointer. I don't think this will have much use elsewhere, so I'm just
-// declaring it here.
-template <typename T>
-struct is_timeline : std::false_type
-{
-};
-
-template <typename U>
-struct is_timeline<timeline<U>> : std::true_type
-{
-};
-
-template <typename T, typename U>
-static auto timeline_property(timeline<U> T::* member)
-{
-
-  return sol::property([member](T& self) -> timeline<U> { return self.*member; },
-                       [member](T& self, const sol::object& obj)
-                       {
-                         if (obj.is<U>())
-                           self.*member = timeline<U>(obj.as<U>());
-                         else if (obj.is<timeline<U>>())
-                           self.*member = obj.as<timeline<U>>();
-                         else
-                           throw std::runtime_error("Invalid assignment to timeline property");
-                       });
-}
-
 // Returns the member pointer, unless the type is a timeline. Then, it returns a sol::property which
 // allows the timeline to be set from a constant or a timeline<T>.
 template <typename T, typename FieldT>
-static auto core_type_property(FieldT T::* member)
+static auto core_type_property(const std::string& name, FieldT T::* member)
 {
-  if constexpr (is_timeline<FieldT>::value)
-    return timeline_property(member);
-  else
+  // If we are a simple type, just return the member pointer.
+  if constexpr (!is_timeline<FieldT>::value)
     return member;
+  else
+    return sol::property([&name, member](T& self) { return self.*member; },
+                         [&name, member](T& self, sol::object obj)
+                         { assign_property(self, name, member, obj); });
 }
 
 template <typename T, typename... Args>
@@ -314,7 +305,7 @@ static void create_core_type(sol::state_view state, sol::table binding, Args&&..
              {
                // We'll set each type using the name as the key, and a property from the member
                // pointer.
-               type[fields.first] = core_type_property(fields.second);
+               type[fields.first] = core_type_property(fields.first, fields.second);
              })(),
          ...);
       },
