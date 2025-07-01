@@ -11,7 +11,7 @@
 #include "types/transform.h"
 
 #define CHECK_AND_RETURN_LUA_TIMELINE(lua, check_type, index, lambda)                              \
-  if (typeid(check_type) == index)                                                                  \
+  if (typeid(check_type) == index)                                                                 \
     return sol::make_object(                                                                       \
         lua, timeline<check_type>(                                                                 \
                  [lambda](double t) -> check_type                                                  \
@@ -63,10 +63,8 @@ auto declare_timeline_type(sol::table binding)
   // TODO Implement this.
   auto keyframe_ctor = [](sol::table table) { return timeline<T>(); };
 
-  binding.new_usertype<timeline<T>>(type_name, sol::meta_function::construct,
-                                    sol::overload(anchor_ctor, lambda_ctor, keyframe_ctor),
-                                    "sample", &timeline<T>::sample);
-
+  binding.new_usertype<timeline<T>>(type_name, sol::no_constructor, "sample", &timeline<T>::sample);
+  binding[type_name] = sol::overload(anchor_ctor, lambda_ctor, keyframe_ctor);
   return anchor_ctor;
 }
 

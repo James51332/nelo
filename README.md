@@ -50,9 +50,16 @@ cmake --build . --target nelo
 
 ## doing
 
-These tasks are my top priorities to get a basic prototype for nelo up and running.
-1. More renderers (text, equations, polygons, etc.)
-2. Lua scripting
+There are so many directions to take nelo, but I want to get all of the basics set up for the v0.1 release. Here are the top priorities so far.
+1. Simplify Lua API
+2. Better OpenGL Buffer (and Framebuffers)
+3. Visibility Components
+4. Transform Hierarchy/Grouping
+5. Improve Curve Rasterization
+6. More Shape Renderers 
+7. Text/LaTeX Rendering
+8. Improve FFmpeg Dependency in Build System
+9. Luarocks Installation (w/ Lua autocomplete)
 
 ## shaders
 

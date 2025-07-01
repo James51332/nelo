@@ -1,6 +1,7 @@
 #pragma once
 
 #include "anim/color.h"
+#include "script/lua_traits.h"
 #include "types/path.h"
 
 namespace nelo
@@ -21,10 +22,9 @@ struct curve
 
   // These track the beginning and end of rendering.
   timeline<double> start = 0.0;
-
-  // If end is less than start, the path will be rendered from zero to the length of the path.
   timeline<double> end = -1.0;
 
+  // If end is less than start, the path will be rendered from zero to the length of the path.
   // By default, a curve will ignore the transform of the entity, but it can be made to use it.
   timeline<bool> use_transform = false;
 
@@ -36,6 +36,23 @@ struct curve
   // How far a point needs to be from the line connecting the points surrouding it in order for the
   // segments around it to be subdivided.
   timeline<double> threshold = 0.005;
+};
+
+// Declare the lua traits for this type.
+template <>
+struct lua_traits<curve>
+{
+  constexpr static auto name() { return "curve"; }
+
+  constexpr static auto fields()
+  {
+    return std::make_tuple(field("spline", &curve::spline), field("stroke", &curve::stroke),
+                           field("weight", &curve::weight), field("start", &curve::start),
+                           field("end", &curve::end), field("use_transform", &curve::use_transform),
+                           field("min_subdivisions", &curve::min_subdivisions),
+                           field("max_subdivisions", &curve::max_subdivisions),
+                           field("threshold", &curve::threshold));
+  }
 };
 
 // TODO Fill in this methods
