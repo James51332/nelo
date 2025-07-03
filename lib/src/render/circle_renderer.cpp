@@ -4,14 +4,13 @@
 #include <glm/gtx/quaternion.hpp>
 #include <stdexcept>
 
-#include "core/context.h"
 #include "render/shaders.h"
 
 namespace nelo
 {
 
-circle_renderer::circle_renderer(float scene_height)
-  : scene_height(scene_height)
+circle_renderer::circle_renderer(std::uint32_t width, std::uint32_t height, float scene_height)
+  : width(width), height(height), scene_height(scene_height)
 {
   // Load our shaders
   circle_program = shaders::load("circle_vertex.glsl", "circle_fragment.glsl");
@@ -148,8 +147,7 @@ void circle_renderer::flush()
   // A super easy way to get started with having a nice viewport is to just fetch and upload some
   // uniforms each frame.
   glUseProgram(circle_program);
-  glUniform2f(glGetUniformLocation(circle_program, "viewport_size"), context::size().x,
-              context::size().y);
+  glUniform2f(glGetUniformLocation(circle_program, "viewport_size"), width, height);
   glUniform1f(glGetUniformLocation(circle_program, "scene_height"), scene_height);
 
   // Update our vertex buffer with the new data.

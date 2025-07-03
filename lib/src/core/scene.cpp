@@ -1,9 +1,9 @@
 #include "core/scene.h"
 
-#include "core/context.h"
 #include "core/encoder.h"
 #include "render/circle_renderer.h"
 #include "render/curve_renderer.h"
+#include "render/framebuffer.h"
 
 namespace nelo
 {
@@ -35,34 +35,29 @@ void scene::destroy_entity(entity e)
 
 void scene::play(double start, double end)
 {
-  // TODO These are some constants we want to eventually be configurable.
-  constexpr static int width = 800;
-  constexpr static int height = 600;
+  // TODO These are some constants we want to eventually be configurable. We may want to move this
+  // into some sort of scene renderer.
   constexpr static int fps = 60;
   constexpr static double scene_height = 5.0;
   constexpr static std::string file_ext = ".mov";
   constexpr static nelo::color clear_color = glm::vec4(0.15f, 0.2f, 0.25f, 1.0f);
 
-  // Create our nelo render context in a headless mode. Eventually, this should be maintained
-  // globally, and each scene should render to a framebuffer.
-  nelo::context context(width, height, true);
+  // Let's create a framebuffer with the scene width and height.
+  framebuffer image(width, height);
+  image.bind();
+  glViewport(0, 0, width, height);
 
-  // Start by creating the encoder for the scene. We need to create a scene render to handle this at
-  // somepoint.
-  nelo::circle_renderer circle_renderer(scene_height);
-  nelo::curve_renderer curve_renderer(scene_height);
+  circle_renderer circle_renderer(width, height, static_cast<float>(scene_height));
+  curve_renderer curve_renderer(width, height, static_cast<float>(scene_height));
 
   // We create an encoder to output this to video.
   std::filesystem::path output_path = scene_name + file_ext;
-  nelo::encoder encoder(width, height, fps, output_path);
+  encoder encoder(static_cast<int>(width), static_cast<int>(height), fps, output_path);
 
   // Update the window until we are closed.
   double time = start;
-  while (context.active() && time <= end)
+  while (time <= end)
   {
-    // Poll events.
-    context.update();
-
     // Clear the screen.
     glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -74,9 +69,7 @@ void scene::play(double start, double end)
     circle_renderer.begin(time);
     curve_renderer.begin(time);
 
-    // TODO We are assuming that we still have transform. We need to enforce this by removing the
-    // ability to remove components from entities, creating views that return entities with both
-    // components, or both.
+    // TODO We should create views to get all entities with both components.
     auto& circle_col = get_collection<circle>();
     for (auto& pair : circle_col)
     {
@@ -94,12 +87,25 @@ void scene::play(double start, double end)
     circle_renderer.end();
     curve_renderer.end();
 
-    // Present the back buffer and submit to encoder.
-    context.present();
+    // Submit this frame to the encoder.
     encoder.submit();
   }
 
+  // Complete the video write.
   encoder.end();
+  image.unbind();
+}
+
+void scene::set_size(double width, double height)
+{
+  if (width < 0 || height < 0)
+  {
+    auto msg = std::format("Cannot set scene size to {} x {}!", width, height);
+    throw std::runtime_error(msg);
+  }
+
+  this->width = static_cast<std::uint32_t>(width);
+  this->height = static_cast<std::uint32_t>(height);
 }
 
 } // namespace nelo

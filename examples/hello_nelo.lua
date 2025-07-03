@@ -15,4 +15,5 @@ local object = hello_nelo:create_entity {
 }
 
 -- Render our scene for 10 seconds.
+hello_nelo:set_size(1280, 720)
 hello_nelo:play(10.0)

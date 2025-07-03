@@ -53,6 +53,9 @@ public:
   void play(double start, double end);
   void play(double duration) { play(0.0, duration); }
 
+  // Let us keep track of the scene render size. Use double for lua bindings
+  void set_size(double width, double height);
+
 private:
   // We start at one and move up. No harm making this static so entites can't accidentally be used
   // in wrong scene.
@@ -65,6 +68,9 @@ private:
 
   // We strictly enforce that each of these is of type collection<T>.
   std::unordered_map<std::type_index, std::any> collections;
+
+  // Our scene size. We store as uint32_t even though public API is set via double.
+  std::uint32_t width = 800, height = 600;
 };
 
 template <typename T>

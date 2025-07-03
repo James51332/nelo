@@ -122,6 +122,8 @@ void lua_scene::create_types(sol::state_view lua, sol::table binding)
 
         return std::move(e);
       });
+
+  scene_type["set_size"] = &scene::set_size;
 }
 
 } // namespace nelo

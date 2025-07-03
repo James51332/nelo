@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
@@ -17,7 +18,7 @@ class circle_renderer
 {
 public:
   // The renderer is the owner of the context for the current design.
-  circle_renderer(float scene_height = 5.0);
+  circle_renderer(std::uint32_t width, std::uint32_t height, float scene_height = 5.0);
   ~circle_renderer();
 
   // This renderer is batched, so we declare when to begin and end a batch.
@@ -38,6 +39,7 @@ private:
   double cur_time = 0.0;
 
   // The actual window height of the renderer.
+  std::uint32_t width, height;
   float scene_height = 0.0f;
 
   // Simple struct that we can send to GPU to draw circles.

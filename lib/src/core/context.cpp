@@ -1,21 +1,24 @@
 #include "core/context.h"
 
+#include <format>
 #include <glad/glad.h>
 #include <stdexcept>
-#include <string>
 
 #include "core/log.h"
 
 namespace nelo
 {
 
-context::context(float w, float h, bool headless)
-  : is_headless(headless), is_active(true)
+void context::create(std::uint32_t width, std::uint32_t height, bool headless)
 {
-  // Ensure that we only create only context per app.
-  if (created_singleton)
-    throw std::runtime_error("Unable to create multiple contexts per nelo instance!");
-  created_singleton = true;
+  if (initialized)
+    throw std::runtime_error("Unable to create multiple contexts per app!");
+  initialized = true;
+
+  // Set our state according to the given value.
+  view_width = width;
+  view_height = height;
+  is_headless = headless;
 
   // Initialize SDL library with our proper settings.
   SDL_Init(SDL_INIT_VIDEO);
@@ -28,15 +31,13 @@ context::context(float w, float h, bool headless)
     flags |= SDL_WINDOW_HIDDEN;
 
   // Finally, we can go ahead and create our window.
-  width = w;
-  height = h;
   window = SDL_CreateWindow("nelo", width, height, flags);
 
   // If we fail, we can go ahead an throw an error.
   if (!window)
   {
-    std::string msg = SDL_GetError();
-    throw std::runtime_error("Unable to create an window required for context: " + msg);
+    auto msg = std::format("Unable to create window: {}", SDL_GetError());
+    throw std::runtime_error(msg);
   }
 
   // Set our flags for the OpenGL context. We always use version 4.1 to support macOS.
@@ -48,16 +49,16 @@ context::context(float w, float h, bool headless)
   render_context = SDL_GL_CreateContext(window);
   if (!render_context)
   {
-    std::string msg = SDL_GetError();
-    throw std::runtime_error("Unable to create OpenGL context: " + msg);
+    auto msg = std::format("Unable to create OpenGL context: {}", SDL_GetError());
+    throw std::runtime_error(msg);
   }
 
   // Make the context current (it's the only context within the app).
   bool result = SDL_GL_MakeCurrent(window, render_context);
   if (!result)
   {
-    std::string msg = SDL_GetError();
-    throw std::runtime_error("Unabled to make OpenGL context current: " + msg);
+    auto msg = std::format("Unable to set primary render context: {}", SDL_GetError());
+    throw std::runtime_error(msg);
   }
 
   // After, we'll load the OpenGL functiois pointer via glad.
@@ -71,6 +72,7 @@ context::context(float w, float h, bool headless)
   glGetIntegerv(GL_MINOR_VERSION, &versionMinor);
 
   // Print a message out to confirm out success.
+  is_active = true;
   log::out("Created nelo render context with OpenGL {}.{}", versionMajor, versionMinor);
 
   // We can also go ahead and setup blending since it is needed by all renderers.
@@ -78,23 +80,23 @@ context::context(float w, float h, bool headless)
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-context::~context()
+void context::kill()
 {
+  if (!initialized)
+    return;
+
   // We'll first destroy our OpenGL context.
   SDL_GL_DestroyContext(render_context);
 
   // Shutdown our window and shutdown SDL.
   SDL_DestroyWindow(window);
   SDL_Quit();
-
-  // Don't mark the context singleton as being destroyed. Once per lifecycle.
-  // created_singleton = false;
 }
 
-void context::update()
+void context::poll()
 {
-  // If we are not active, then we won't update anything.
-  if (!is_active)
+  // If we are not active or headless, then we won't update anything.
+  if (!initialized || !is_active || is_headless)
     return;
 
   // Poll all of the events have occured (probably none if running headless).
@@ -102,14 +104,15 @@ void context::update()
   while (SDL_PollEvent(&event))
   {
     if (event.type == SDL_EVENT_QUIT)
-    {
       is_active = false;
-    }
   }
 }
 
-void context::present()
+void context::swap()
 {
+  if (!initialized || is_headless)
+    return;
+
   SDL_GL_SwapWindow(window);
 }
 

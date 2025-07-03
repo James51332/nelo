@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -25,7 +26,7 @@ public:
   };
 
 public:
-  curve_renderer(float scene_height = 5.0f);
+  curve_renderer(std::uint32_t width, std::uint32_t height, float scene_height = 5.0f);
   ~curve_renderer();
 
   void begin(double t);
@@ -51,6 +52,7 @@ private:
   double cur_time = 0.0;
 
   // The actual window height of the renderer.
+  std::uint32_t width, height;
   float scene_height = 0.0f;
 
   // The renderer is not batched, but we can allow the driver to not wait for the draw call before

@@ -2,14 +2,13 @@
 
 #include <stdexcept>
 
-#include "core/context.h"
 #include "render/shaders.h"
 
 namespace nelo
 {
 
-curve_renderer::curve_renderer(float scene_height)
-  : scene_height(scene_height)
+curve_renderer::curve_renderer(std::uint32_t width, std::uint32_t height, float scene_height)
+  : width(width), height(height), scene_height(scene_height)
 {
   // Load our shader program.
   curve_program = shaders::load("curve_vertex.glsl", "curve_fragment.glsl");
@@ -67,8 +66,7 @@ void curve_renderer::begin(double t)
   current_index = 0;
 
   glUseProgram(curve_program);
-  glUniform2f(glGetUniformLocation(curve_program, "viewport_size"), context::size().x,
-              context::size().y);
+  glUniform2f(glGetUniformLocation(curve_program, "viewport_size"), width, height);
   glUniform1f(glGetUniformLocation(curve_program, "scene_height"), scene_height);
 }
 
