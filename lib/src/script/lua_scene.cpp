@@ -58,8 +58,8 @@ void lua_scene::create_types(sol::state_view lua, sol::table binding)
   // Declare the scene type as well. For now, I like if we don't enable deleting stuff. These
   // scripts are designed to by light an stateless. There's not a good reason I can think of to
   // create a removal API.
-  auto scene_type = lua.new_usertype<scene>("scene", sol::call_constructor,
-                                            sol::constructors<scene(const std::string&)>());
+  auto scene_type = binding.new_usertype<scene>("scene", sol::call_constructor,
+                                                sol::constructors<scene(const std::string&)>());
 
   // We can play for a duration over or over an interval.
   scene_type["play"] = sol::overload(static_cast<void (scene::*)(double)>(&scene::play),
