@@ -10,9 +10,6 @@ lua_server::lua_server()
   // Start by opening the base libraries in lua.
   lua.open_libraries(sol::lib::base, sol::lib::string, sol::lib::math, sol::lib::package);
 
-  // Then load our library globally.
-  lua_types::create_types(lua, lua.globals());
-
   // Register our preload function.
   lua["package"]["preload"]["nelo"] = [](lua_State* L)
   {
@@ -21,8 +18,9 @@ lua_server::lua_server()
     sol::table mod = lua.create_table();
     lua_types::create_types(lua, mod);
 
-    // No-op for compatibility with lua module.
-    mod["setup_globals"] = []() {};
+    // Loading this table is slightly different. we'll automatically bind to the global table.
+    sol::function bind_globals = mod["setup_globals"];
+    bind_globals();
 
     return sol::stack::push(lua, mod);
   };

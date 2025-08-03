@@ -2,6 +2,9 @@
 #include <nelo/core/log.h>
 #include <nelo/script/lua_server.h>
 
+#include <nelo/core/scene.h>
+#include <nelo/types/shapes.h>
+
 int main()
 {
   // Create our nelo render context in a headless mode.

@@ -42,9 +42,11 @@ set(SRC_FILES
   src/core/encoder.cpp
   src/core/log.cpp
   src/core/scene.cpp
+  src/render/buffer.cpp
   src/render/circle_renderer.cpp
   src/render/curve_renderer.cpp
   src/render/framebuffer.cpp
+  src/render/scene_renderer.cpp
   src/render/shaders.cpp
   src/script/lua_scene.cpp
   src/script/lua_timeline.cpp
@@ -63,10 +65,14 @@ set(HEADER_FILES
   include/nelo/core/entity.h
   include/nelo/core/log.h
   include/nelo/core/scene.h
+  include/nelo/render/buffer.h
   include/nelo/render/circle_renderer.h
+  include/nelo/render/command.h
   include/nelo/render/curve_renderer.h
   include/nelo/render/framebuffer.h
   include/nelo/render/shaders.h
+  include/nelo/render/renderer.h
+  include/nelo/render/vao_cache.h
   include/nelo/script/lua_scene.h
   include/nelo/script/lua_traits.h
   include/nelo/script/lua_timeline.h
@@ -75,7 +81,8 @@ set(HEADER_FILES
   include/nelo/types/curve.h
   include/nelo/types/path.h
   include/nelo/types/shapes.h
-  include/nelo/types/transform.h)
+  include/nelo/types/transform.h
+  include/nelo/types/visibility.h)
 
 # Define the library for the program
 add_library(nelo-api STATIC ${SRC_FILES} ${HEADER_FILES})

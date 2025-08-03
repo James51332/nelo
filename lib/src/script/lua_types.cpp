@@ -25,8 +25,32 @@ void lua_types::create_types(sol::state_view lua, sol::table binding)
   // Now, let's declare our timeline types.
   lua_timeline::create_types(lua, binding);
 
-  // Finally, let's create the ECS types.
+  // Create the ECS types.
   lua_scene::create_types(lua, binding);
+
+  // We also create a method to load globals if the user wants.
+  binding["setup_globals"] = [lua, binding]()
+  {
+    // Don't set them up more than once.
+    static bool has_setup_globals = false;
+    if (has_setup_globals)
+      return;
+    has_setup_globals = true;
+
+    // Clone all properties on this table to the global table.
+    sol::table globals = lua.globals();
+    for (const auto& pair : binding)
+    {
+      sol::object key = pair.first;
+      sol::object value = pair.second;
+
+      // Only copy string keys to avoid indexing by number
+      if (key.is<std::string>())
+        globals.set(key, value);
+    }
+
+    has_setup_globals = true;
+  };
 }
 
 std::type_index lua_types::deduce(sol::object obj)

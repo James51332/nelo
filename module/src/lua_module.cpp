@@ -15,19 +15,6 @@ extern "C" int luaopen_nelo(lua_State* L)
   sol::table nelo = lua.create_table();
   nelo::lua_types::create_types(lua, nelo);
 
-  // We also create a method to load globals if the user wants.
-  nelo["setup_globals"] = [lua]()
-  {
-    // Don't set them up more than once.
-    static bool has_setup_globals = false;
-    if (has_setup_globals)
-      return;
-
-    // Nice and easy to do this again.
-    nelo::lua_types::create_types(lua, lua.globals());
-    has_setup_globals = true;
-  };
-
   // We return the number of tables added to the lua stack.
   return sol::stack::push(lua, nelo);
 }

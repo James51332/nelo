@@ -1,11 +1,10 @@
 #pragma once
 
-#include <cstdint>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
-#include "types/shapes.h"
-#include "types/transform.h"
+#include "render/buffer.h"
+#include "render/renderer.h"
 
 namespace nelo
 {
@@ -14,34 +13,17 @@ namespace nelo
 // very basic stuff, so we only have the one class. Each render pipeline may have a seperate
 // renderer (e.g shapes, text, paths, 3D). This can interop with the ECS once we have it. This
 // renderer might turn into the shapes renderer.
-class circle_renderer
+class circle_renderer : public renderer
 {
 public:
   // The renderer is the owner of the context for the current design.
-  circle_renderer(std::uint32_t width, std::uint32_t height, float scene_height = 5.0);
+  circle_renderer();
   ~circle_renderer();
 
   // This renderer is batched, so we declare when to begin and end a batch.
-  void begin(double t);
-  void end();
-
-  // This is our public facing renderer API. We'll restructure as we design ECS.
-  void submit(const transform& trans, const circle& obj);
+  void generate_commands(command_buffer& buffer, scene& state, double t);
 
 private:
-  // If we are full too early, then we need to flush instead of forcing the user to draw more stuff.
-  void flush();
-
-private:
-  // Value to check whether the renderer is currently active. We cannot render unless we begin a
-  // batch, even though we are internally drawing immediately for the time being.
-  bool is_recording = false;
-  double cur_time = 0.0;
-
-  // The actual window height of the renderer.
-  std::uint32_t width, height;
-  float scene_height = 0.0f;
-
   // Simple struct that we can send to GPU to draw circles.
   struct sprite_vertex
   {
@@ -59,10 +41,10 @@ private:
   sprite_vertex* vertex_array = nullptr;
 
   // For now, we can just store the raw GL types to get a prototype up and running ASAP.
-  GLuint circle_program;
-  GLuint circle_vao;
-  GLuint circle_vbo;
-  GLuint circle_ibo;
+  GLuint program;
+  vertex_layout layout;
+  buffer_pool pool;
+  std::shared_ptr<buffer> ibo;
 };
 
 } // namespace nelo

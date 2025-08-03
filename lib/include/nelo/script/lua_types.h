@@ -8,6 +8,7 @@
 #include "types/curve.h"
 #include "types/shapes.h"
 #include "types/transform.h"
+#include "types/visibility.h"
 
 namespace nelo
 {
@@ -25,7 +26,7 @@ public:
   // All core and component types to be declared in lua. These must have a lua_traits
   // specialization.
   using core_types = type_list<glm::vec2, glm::vec3, color, glm::quat>;
-  using component_types = type_list<transform, circle, curve>;
+  using component_types = type_list<transform, circle, curve, visibility>;
 
 public:
   // Creates all lua types needed in nelo.
