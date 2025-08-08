@@ -80,7 +80,8 @@ void circle_renderer::generate_commands(command_buffer& cmd_buffer, scene& state
       {{-1.1f, 1.1f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f}, {-1.1f, 1.1f} }
   };
 
-  // Let's acquire a vbo and replace as needed.
+  // Let's reset our pool acquire a vbo. We'll acquire another if we fill up.
+  pool.reset();
   std::shared_ptr<buffer> vbo = pool.acquire();
 
   // Now, we can iterate over the buckets and submit draw calls.
@@ -105,6 +106,10 @@ void circle_renderer::generate_commands(command_buffer& cmd_buffer, scene& state
       command.index_count = num_batched * 6;
       command.z_index = z_index;
       cmd_buffer.submit(command);
+
+      // We should update the starting index and reset batch count.
+      num_circles += num_batched;
+      num_batched = 0;
     };
 
     // Encode all of the entities into a command buffer and encode the draw command.
@@ -144,15 +149,12 @@ void circle_renderer::generate_commands(command_buffer& cmd_buffer, scene& state
       // Now, we just increment the number of batched that we have.
       num_batched++;
 
-      // We should check and see if we are at the max number of circles.
+      // We should check and see if we are at the max number of circles. If we are, we should flush
+      // the batch, and begin a new batch in a new VBO.
       if (num_circles + num_batched >= max_circles)
       {
-        // If we are, we should flush the batch, and begin a new batch in a new VBO.
         flush_batch();
-
         vbo = pool.acquire();
-        num_batched = 0;
-        num_circles = 0;
       }
     }
 

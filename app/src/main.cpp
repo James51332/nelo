@@ -8,7 +8,7 @@
 int main()
 {
   // Create our nelo render context in a headless mode.
-  nelo::context::create();
+  nelo::context::create(1280, 720, false);
 
   // Since we are headless, we don't need to worry about polling OS events.
   nelo::lua_server lua_server;

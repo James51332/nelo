@@ -3,6 +3,8 @@
 #include <glad/glad.h>
 #include <set>
 
+#include "core/context.h"
+
 #include "core/encoder.h"
 #include "core/scene.h"
 #include "render/command.h"
@@ -36,8 +38,9 @@ void scene_renderer::set_size(std::uint32_t width, std::uint32_t height)
 void scene_renderer::play(scene& state, double start, double end)
 {
   // Let's create a framebuffer with the scene width and height.
-  framebuffer image(width, height);
-  image.bind();
+  // framebuffer image(width, height);
+  // image.bind();
+  context::poll();
 
   // We create an encoder to output this to video.
   std::filesystem::path output_path = state.get_name() + file_ext;
@@ -45,13 +48,17 @@ void scene_renderer::play(scene& state, double start, double end)
 
   // Update the window until we are closed.
   double time = start;
-  while (time <= end)
+  while (context::active())
   {
     // Update the time.
-    time += 1 / static_cast<double>(fps);
+    time += 0.001f * SDL_GetTicks();
+    // 1 / static_cast<double>(fps);
+
+    context::poll();
 
     // Play a single frame.
     play_frame(state, time);
+    context::swap();
 
     // Submit this frame to the encoder.
     encoder.submit();
@@ -59,7 +66,7 @@ void scene_renderer::play(scene& state, double start, double end)
 
   // Complete the video write.
   encoder.end();
-  image.unbind();
+  // image.unbind();
 }
 
 void scene_renderer::play_frame(scene& state, double t)
