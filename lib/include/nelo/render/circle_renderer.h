@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <vector>
 
 #include "render/buffer.h"
 #include "render/renderer.h"
@@ -9,14 +10,10 @@
 namespace nelo
 {
 
-// The renderer is our public API for rendering. For now, we are only going to support rendering
-// very basic stuff, so we only have the one class. Each render pipeline may have a seperate
-// renderer (e.g shapes, text, paths, 3D). This can interop with the ECS once we have it. This
-// renderer might turn into the shapes renderer.
+// Renderer for circle components. Batches wherever possible. Added to scene_renderer by default.
 class circle_renderer : public renderer
 {
 public:
-  // The renderer is the owner of the context for the current design.
   circle_renderer();
   ~circle_renderer();
 
@@ -38,7 +35,7 @@ private:
   const int max_vertices = max_circles * 4;
   const int max_indices = max_circles * 6;
   int num_circles = 0;
-  sprite_vertex* vertex_array = nullptr;
+  std::vector<sprite_vertex> vertex_array;
 
   // For now, we can just store the raw GL types to get a prototype up and running ASAP.
   GLuint program;

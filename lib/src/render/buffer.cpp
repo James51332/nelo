@@ -7,7 +7,7 @@ namespace nelo
 {
 
 buffer::buffer(GLenum type, std::size_t num_bytes, GLenum usage)
-  : type(type), usage(usage)
+  : type(type), size(num_bytes), usage(usage)
 {
   // We can create all buffers as empty. Almost all access to buffers will be after creation
   // anyways.
@@ -25,7 +25,7 @@ buffer::~buffer()
 void buffer::set_bytes(std::size_t offset, std::size_t num_bytes, const void* bytes)
 {
   // For now, there's not a great reason to unbind buffers. Likely is wasteful.
-  if (offset + num_bytes >= size)
+  if (offset + num_bytes > size)
   {
     auto msg =
         std::format("Invalid range to set buffer! (offset: {}, range: {})", offset, num_bytes);

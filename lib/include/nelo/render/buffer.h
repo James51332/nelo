@@ -27,6 +27,7 @@ public:
 
   const GLuint object() const { return bufferID; }
   const GLenum buffer_type() const { return type; }
+  const std::size_t buffer_size() const { return size; }
   const GLenum buffer_usage() const { return usage; }
 
 private:

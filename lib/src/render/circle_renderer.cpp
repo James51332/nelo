@@ -22,7 +22,7 @@ circle_renderer::circle_renderer()
   };
 
   // Create the vertex buffer and whatnot.
-  vertex_array = new sprite_vertex[max_vertices];
+  vertex_array = std::vector<sprite_vertex>(10000);
 
   // Create the index buffer and whatnot. It can be statically generated.
   std::uint32_t* index_array = new std::uint32_t[max_indices];
@@ -48,8 +48,7 @@ circle_renderer::circle_renderer()
 
 circle_renderer::~circle_renderer()
 {
-  // Who wants to friggin leak something? NOT me.
-  delete[] vertex_array;
+  // TODO We should create a system to automatically delete shaders.
   glDeleteProgram(program);
 }
 
@@ -95,6 +94,12 @@ void circle_renderer::generate_commands(command_buffer& cmd_buffer, scene& state
       // Don't worry about drawing if we have no circles in the batch.
       if (num_batched == 0)
         return;
+
+      // Update our vbo with the vertex data.
+      constexpr std::size_t vert_size = sizeof(sprite_vertex);
+      std::size_t offset = vert_size * num_circles * 4;
+      std::size_t num_bytes = vert_size * num_batched * 4;
+      vbo->set_bytes(offset, num_bytes, vertex_array.data() + offset);
 
       // Submit the draw call.
       draw_command command;
