@@ -20,7 +20,7 @@ public:
   // This renderer is batched, so we declare when to begin and end a batch.
   void generate_commands(command_buffer& buffer, scene& state, double t);
 
-private:
+public:
   // Simple struct that we can send to GPU to draw circles.
   struct sprite_vertex
   {
@@ -29,6 +29,7 @@ private:
     glm::vec2 uv;
   };
 
+private:
   // To batch circles, we'll store a list of vertices and indices, then copy them into the buffer
   // before drawing.
   const int max_circles = 10000;

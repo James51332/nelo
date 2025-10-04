@@ -6,7 +6,9 @@
 #include "core/context.h"
 
 #include "core/encoder.h"
+#include "core/log.h"
 #include "core/scene.h"
+#include "render/circle_renderer.h"
 #include "render/command.h"
 #include "render/framebuffer.h"
 #include "render/renderer.h"
@@ -86,6 +88,8 @@ void scene_renderer::play_frame(scene& state, double t)
   std::sort(commands.begin(), commands.end(),
             [](auto& a, auto& b) { return a.z_index < b.z_index; });
 
+  nelo::log::out("# Commands: {}", commands.size());
+
   // Finally, we can actually call the draw commands.
   std::set<GLuint> usedShaders;
 
@@ -112,6 +116,31 @@ void scene_renderer::play_frame(scene& state, double t)
     // Finally, we bind our vao and index buffers and submit!
     glBindVertexArray(vao);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo->object());
+
+    glDisable(GL_CULL_FACE);
+
+    // Let's read the bits from our bound vbo.
+    GLvoid* dataPtr = glMapBuffer(GL_ARRAY_BUFFER, GL_READ_ONLY);
+    if (dataPtr)
+    {
+      // 3. Copy the data from the mapped pointer to a CPU-side array
+      // You must know the size of your VBO's data for this step
+      size_t dataSize = 4 * sizeof(circle_renderer::sprite_vertex); /* your VBO size in bytes */
+      std::vector<circle_renderer::sprite_vertex> cpuBuffer(dataSize /
+                                                            sizeof(circle_renderer::sprite_vertex));
+      memcpy(cpuBuffer.data(), dataPtr, dataSize);
+
+      for (auto vert : cpuBuffer)
+      {
+        log::out("Position: ({}, {}, {}), Color: ({}, {}, {}, {}), UV: ({}, {})", vert.position.x,
+                 vert.position.y, vert.position.z, vert.color.r, vert.color.g, vert.color.b,
+                 vert.color.a, vert.uv.x, vert.uv.y);
+      }
+
+      // 4. Unmap the buffer when finished
+      glUnmapBuffer(GL_ARRAY_BUFFER);
+    }
+
     glDrawElements(command.primitive_type, command.index_count, command.index_type,
                    reinterpret_cast<const void*>(command.index_offset));
   }

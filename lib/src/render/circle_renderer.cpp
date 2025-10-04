@@ -146,7 +146,7 @@ void circle_renderer::generate_commands(command_buffer& cmd_buffer, scene& state
 
         // Make the changes we need.
         glm::vec4 pos = mat * glm::vec4(scale * radius * vertices[vert].position, 1.0);
-        vertex_array[vert].position = glm::vec3(pos / pos.w);
+        vertex_array[vert].position = vertices[vert].position; // glm::vec3(pos / pos.w);
         vertex_array[vert].color = col;
         vertex_array[vert].uv = vertices[vert].uv;
       }

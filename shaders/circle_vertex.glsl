@@ -17,6 +17,6 @@ void main()
   
   // Scale the width by the aspect ratio.
   vec3 screen_pos = pos;
-  screen_pos.x *= viewport_size.y / viewport_size.x;
-  gl_Position = vec4(screen_pos.xy / scene_height, screen_pos.z, 1.0);
+  // screen_pos.x *= viewport_size.y / viewport_size.x;
+  gl_Position = vec4(screen_pos.xy, screen_pos.z, 1.0);
 }
