@@ -27,14 +27,7 @@ add_subdirectory(thirdparty/lua)
 add_subdirectory(thirdparty/sol2)
 
 # ffmpeg has weird license restrictions, so we won't ship it with this app, we'll just mark it as a dependency.
-find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h REQUIRED)
-find_library(AVCODEC_LIBRARY avcodec REQUIRED)
-find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h REQUIRED)
-find_library(AVUTIL_LIBRARY avutil REQUIRED)
-find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h REQUIRED)
-find_library(AVFORMAT_LIBRARY avformat REQUIRED)
-find_path(SWSCALE_INCLUDE_DIR libswscale/swscale.h REQUIRED)
-find_library(SWSCALE_LIBRARY swscale REQUIRED)
+include(${CMAKE_SOURCE_DIR}/cmake/FindFFmpeg.cmake)
 
 # Source files
 set(SRC_FILES 
@@ -115,10 +108,7 @@ target_include_directories(nelo-api
 target_include_directories(nelo-api
   PUBLIC SYSTEM
     include
-    ${AVCODEC_INCLUDE_DIR}
-    ${AVUTIL_INCLUDE_DIR}
-    ${AVFORMAT_INCLUDE_DIR}
-    ${SWSCALE_INCLUDE_DIR})
+    ffmpeg)
 
 # Add our dependencies
 target_link_libraries(nelo-api
@@ -126,9 +116,6 @@ target_link_libraries(nelo-api
     SDL3::SDL3-static
     glad
     glm::glm
-    ${AVCODEC_LIBRARY}
-    ${AVUTIL_LIBRARY}
-    ${AVFORMAT_LIBRARY}
-    ${SWSCALE_LIBRARY}
+    ffmpeg
     lua
     sol2::sol2)
