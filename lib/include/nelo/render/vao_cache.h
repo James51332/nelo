@@ -76,11 +76,12 @@ public:
     std::size_t offset = 0;
     for (auto element : layout.elements)
     {
-      offset += vertex_layout::element_size(element.type) * element.count;
-
       glEnableVertexAttribArray(slot);
       glVertexAttribPointer(slot, element.count, element.type, element.normalized,
                             static_cast<GLsizei>(stride), reinterpret_cast<const void*>(offset));
+
+      offset += vertex_layout::element_size(element.type) * element.count;
+      slot++;
     }
 
     // Unbind to avoid leaking state.

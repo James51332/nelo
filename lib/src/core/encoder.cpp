@@ -25,7 +25,7 @@ encoder::encoder(std::uint32_t width, std::uint32_t height, std::uint32_t fps,
   created_encoder = true;
 
   // Create our format context.
-  avformat_alloc_output_context2(&fmt_ctx, nullptr, nullptr, output.c_str());
+  avformat_alloc_output_context2(&fmt_ctx, nullptr, nullptr, output.string().c_str());
   if (!fmt_ctx)
     throw std::runtime_error("Unable to create output context for file: " + output.string());
 
@@ -43,9 +43,9 @@ encoder::encoder(std::uint32_t width, std::uint32_t height, std::uint32_t fps,
   codec_ctx = avcodec_alloc_context3(codec);
   codec_ctx->width = width;
   codec_ctx->height = height;
-  codec_ctx->time_base = (AVRational){1, static_cast<int>(fps)};
-  codec_ctx->pkt_timebase = (AVRational){1, static_cast<int>(fps)};
-  codec_ctx->framerate = (AVRational){static_cast<int>(fps), 1};
+  codec_ctx->time_base = AVRational(1, static_cast<int>(fps));
+  codec_ctx->pkt_timebase = AVRational(1, static_cast<int>(fps));
+  codec_ctx->framerate = AVRational(static_cast<int>(fps), 1);
   codec_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
   codec_ctx->gop_size = 12;
   codec_ctx->max_b_frames = 2;
@@ -60,7 +60,7 @@ encoder::encoder(std::uint32_t width, std::uint32_t height, std::uint32_t fps,
 
   // Open output file
   if (!(fmt_ctx->oformat->flags & AVFMT_NOFILE))
-    if (avio_open(&fmt_ctx->pb, output.c_str(), AVIO_FLAG_WRITE) < 0)
+    if (avio_open(&fmt_ctx->pb, output.string().c_str(), AVIO_FLAG_WRITE) < 0)
       throw std::runtime_error("Unable to write to output file!");
 
   // Write file header containing data about the video.
@@ -69,7 +69,7 @@ encoder::encoder(std::uint32_t width, std::uint32_t height, std::uint32_t fps,
 
   // Allocate our packet
   pkt = av_packet_alloc();
-  pkt->time_base = (AVRational){1, static_cast<int>(fps)};
+  pkt->time_base = AVRational(1, static_cast<int>(fps));
   pkt->duration = 1;
 
   // Allocate frames and buffers.

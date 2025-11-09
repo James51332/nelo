@@ -9,4 +9,4 @@ add_executable(nelo ${SRC_FILES})
 
 target_link_libraries(nelo
   PRIVATE
-    nelo-api)
+    nelo-api ffmpeg)

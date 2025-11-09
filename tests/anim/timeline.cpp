@@ -4,7 +4,7 @@ using namespace nelo;
 #include <cassert>
 #include <glm/gtc/epsilon.hpp>
 
-int anim_timeline(int argc, char** argv)
+int anim_timeline(int argc, char** const argv)
 {
   // Sample with a double for now.
   nelo::timeline x = 5;

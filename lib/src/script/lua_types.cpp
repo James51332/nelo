@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <stdexcept>
+#include <format>
 #include <unordered_map>
 
 #include "script/lua_scene.h"
@@ -212,7 +213,7 @@ static void assign_property(T& obj, const std::string& name, U T::* member, sol:
 template <typename T>
 static void assign_from_array(T& obj, sol::table t)
 {
-  constexpr auto fields_list = lua_traits<T>::fields();
+  const auto fields_list = lua_traits<T>::fields();
   std::size_t index = 1; // Lua starts with index one.
 
   // Apply our fields_list as a parameter pack to a lambda to use fold statement.
@@ -241,7 +242,7 @@ static void assign_from_array(T& obj, sol::table t)
 template <typename T>
 static void assign_from_table(T& obj, sol::table t)
 {
-  constexpr auto fields_list = lua_traits<T>::fields();
+  const auto fields_list = lua_traits<T>::fields();
 
   std::apply(
       [&](auto&&... field)
@@ -274,51 +275,100 @@ static auto core_type_property(const std::string& name, FieldT T::* member)
                          { assign_property(self, name, member, obj); });
 }
 
-template <typename T, typename... Args>
-static void create_core_type(sol::state_view state, sol::table binding, Args&&... args)
+// MSVC really doesn't like when we use an apply and iterate over a parameter pack to create a lambda.
+// I guess I can understand why. That's a bit confusing to even state. But we can use this hack to not
+// break the compiler.
+template <typename T, typename Tuple, std::size_t... I>
+auto create_all_arg_ctor_impl(Tuple&& fields, std::index_sequence<I...>)
+{
+  // Generate a lambda whose parameters match the exact types of the fields
+  return [](std::decay_t<decltype(std::declval<T>().*std::get<I>(fields).second)>... args)
+  { return T{args...}; };
+}
+
+template <typename T, typename Tuple>
+auto create_all_arg_ctor(Tuple&& fields)
+{
+  constexpr auto N = std::tuple_size_v<std::decay_t<Tuple>>;
+  return create_all_arg_ctor_impl<T>(std::forward<Tuple>(fields), std::make_index_sequence<N>{});
+}
+
+template <typename T>
+static void create_core_type(sol::state_view state, sol::table binding)
 {
   // To implement this method, we kinda use some template magic. Each type here has a fields<T>()
   // specialization that returns a tuple of pairs of name and member pointers to fields. We'll
   // flatten this tuple and pass to sol, as well as use it to enable initialization from a table
   // with or without named keys, automatically.
-  constexpr auto name = lua_traits<T>::name();
-  constexpr auto fields_list = lua_traits<T>::fields();
+  const auto name = lua_traits<T>::name();
+  const auto fields_list = lua_traits<T>::fields();
+
+
+  // These are easy ctors. The hard one is the all args ctor.
+  auto no_arg_ctor = [](sol::this_state ts) { return T(); };
+  auto table_ctor = [](sol::table t)
+  {
+    T obj{};
+
+    if (t[1].valid())
+      assign_from_array(obj, t);
+    else
+      assign_from_table(obj, t);
+
+    return obj;
+  };
+
+  auto all_arg_ctor = create_all_arg_ctor<T>(fields_list);
+
+  auto ctor =
+      [&]()
+  {
+    if constexpr (std::tuple_size_v<decltype(fields_list)> == 0)
+      return sol::factories(no_arg_ctor, table_ctor);
+    else
+      return sol::factories(no_arg_ctor, all_arg_ctor, table_ctor);
+  }();
+  
+
+  // Our fields list is a tuple. To iterate over each of the types, we can use apply to set it as
+  // the types for a parameter pack, then fold over them to create a constructor with each of them.
+  //auto ctor = std::apply(
+  //    [](auto&&... fields)
+  //    {
+  //      // Expand the parameter pack to get our all args ctor.
+  //      // auto all_arg_ctor =
+  //      return [](std::decay_t<decltype(std::declval<T>().*fields.second)>... args)
+  //      { return T{args...}; };
+
+  //      // if constexpr (std::tuple_size_v<decltype(fields_list)> == 0)
+  //      //   return sol::factories(no_arg_ctor, table_ctor);
+  //      // else
+  //      //   return sol::factories(no_arg_ctor, all_arg_ctor, table_ctor);
+  //    },
+  //    fields_list);
 
   // We'll support constructing from an array or a map. Check if the first element can be
   // accessed via index. Note that if a type doesn't have fields, this doesn't do anything. We
   // also support a regular ctor that applies to all fields. We need to check if a type has any
   // fields to do this.
+  //auto ctor = sol::factories(no_arg_ctor, table_ctor);
+      //std::apply(
+      //[&](auto&&... fields)
+      //{
 
-  auto ctor = std::apply(
-      [&](auto&&... fields)
-      {
-        auto no_arg_ctor = [](sol::this_state ts) { return T(); };
-        auto all_arg_ctor = [](std::decay_t<decltype(std::declval<T>().*fields.second)>... args)
-        { return T{args...}; };
-        auto table_ctor = [](sol::table t)
-        {
-          T obj{};
 
-          if (t[1].valid())
-            assign_from_array(obj, t);
-          else
-            assign_from_table(obj, t);
-
-          return obj;
-        };
-
-        // We'll have to default ctors if the type has no fields.
-        if constexpr (std::tuple_size_v<decltype(fields_list)> == 0)
-          return sol::factories(no_arg_ctor, table_ctor);
-        else
-          return sol::factories(no_arg_ctor, all_arg_ctor, table_ctor);
-      },
-      fields_list);
+      //  // We'll have to default ctors if the type has no fields.
+      //  if constexpr (std::tuple_size_v<decltype(fields_list)> == 0)
+      //    return sol::factories(no_arg_ctor, table_ctor);
+      //  else
+      //    return sol::factories(no_arg_ctor, all_arg_ctor, table_ctor);
+      //},
+      //fields_list);
 
   // Now, we can create the type. We want to use T() instead of T.new(), so we'll use the default
   // constructor, then create a sol::call_constructor method that is overloaded with our nice new
   // methods. We need to again use std::apply to expand our flattened fields.
-  auto type = binding.new_usertype<T>(name, sol::call_constructor, ctor, args...);
+  auto type = binding.new_usertype<T>(name, sol::call_constructor, ctor);
 
   // Now, we'll iterate over each of the fields and declare them as properties.
   std::apply(

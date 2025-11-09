@@ -35,7 +35,7 @@ private:
   // TODO These are some constants we want to eventually be configurable.
   constexpr static int fps = 60;
   constexpr static double scene_height = 5.0;
-  constexpr static std::string file_ext = ".mov";
+  inline constexpr static const char* const file_ext = ".mov";
   constexpr static color clear_color = glm::vec4(0.15f, 0.2f, 0.25f, 1.0f);
 
   void play_frame(scene& state, double t);

@@ -22,7 +22,7 @@ circle_renderer::circle_renderer()
   };
 
   // Create the vertex buffer and whatnot.
-  vertex_array = std::vector<sprite_vertex>(10000);
+  vertex_array = std::vector<sprite_vertex>(max_vertices);
 
   // Create the index buffer and whatnot. It can be statically generated.
   std::uint32_t* index_array = new std::uint32_t[max_indices];
@@ -31,16 +31,17 @@ circle_renderer::circle_renderer()
     int first_vert = i * 4;
     int first_index = i * 6;
 
-    index_array[first_index + 0] = first_index + 0;
-    index_array[first_index + 1] = first_index + 1;
-    index_array[first_index + 2] = first_index + 2;
-    index_array[first_index + 3] = first_index + 0;
-    index_array[first_index + 4] = first_index + 2;
-    index_array[first_index + 5] = first_index + 3;
+    index_array[first_index + 0] = first_vert + 0;
+    index_array[first_index + 1] = first_vert + 1;
+    index_array[first_index + 2] = first_vert + 2;
+    index_array[first_index + 3] = first_vert + 0;
+    index_array[first_index + 4] = first_vert + 2;
+    index_array[first_index + 5] = first_vert + 3;
   }
 
   // Generate the ibo (it will be attached to the vao).
   ibo = std::make_shared<buffer>(GL_ELEMENT_ARRAY_BUFFER, max_indices * sizeof(std::uint32_t));
+  ibo->set_bytes(0, max_indices * sizeof(std::uint32_t), index_array);
 
   // We can free this jit yo.
   delete[] index_array;
@@ -73,10 +74,10 @@ void circle_renderer::generate_commands(command_buffer& cmd_buffer, scene& state
   // Store the vertices of a standard triangle that we are transforming. We add a little extra space
   // to give soft edges to the circle.
   constexpr static sprite_vertex vertices[] = {
-      {{1.1f, 1.1f, 0.0f},   {1.0f, 1.0f, 1.0f, 1.0f}, {1.1f, 1.1f}  },
-      {{1.1f, -1.1f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f}, {1.1f, -1.1f} },
-      {{-1.1f, -1.1f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {-1.1f, -1.1f}},
-      {{-1.1f, 1.1f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f}, {-1.1f, 1.1f} }
+      {{1.1f, -1.1f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {1.1f, -1.1f}  },
+      {{-1.1f, -1.1f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {-1.1f, -1.1f} },
+      {{-1.1f, 1.1f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {-1.1f, 1.1f}},
+      {{1.1f, 1.1f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {1.1f, 1.1f} }
   };
 
   // Let's reset our pool acquire a vbo. We'll acquire another if we fill up.
@@ -86,20 +87,14 @@ void circle_renderer::generate_commands(command_buffer& cmd_buffer, scene& state
   // Now, we can iterate over the buckets and submit draw calls.
   for (auto& [z_index, bucket] : buckets)
   {
-    // Get the bucket and its z_index.
-    // Track how many entities we have batched for this bucket since last sent.
-    std::size_t num_batched = 0;
     auto flush_batch = [&]()
     {
       // Don't worry about drawing if we have no circles in the batch.
-      if (num_batched == 0)
+      if (num_circles == 0)
         return;
 
       // Update our vbo with the vertex data.
-      constexpr std::size_t vert_size = sizeof(sprite_vertex);
-      std::size_t offset = vert_size * num_circles * 4;
-      std::size_t num_bytes = vert_size * num_batched * 4;
-      vbo->set_bytes(offset, num_bytes, vertex_array.data() + offset);
+      vbo->set_bytes(0, num_circles * 4 * sizeof(sprite_vertex), vertex_array.data());
 
       // Submit the draw call.
       draw_command command;
@@ -107,14 +102,13 @@ void circle_renderer::generate_commands(command_buffer& cmd_buffer, scene& state
       command.layout = layout;
       command.vbo = vbo;
       command.ibo = ibo;
-      command.index_offset = num_circles * 6;
-      command.index_count = num_batched * 6;
+      command.index_offset = 0;
+      command.index_count = num_circles * 6;
       command.z_index = z_index;
       cmd_buffer.submit(command);
 
       // We should update the starting index and reset batch count.
-      num_circles += num_batched;
-      num_batched = 0;
+      num_circles = 0;
     };
 
     // Encode all of the entities into a command buffer and encode the draw command.
@@ -146,17 +140,17 @@ void circle_renderer::generate_commands(command_buffer& cmd_buffer, scene& state
 
         // Make the changes we need.
         glm::vec4 pos = mat * glm::vec4(scale * radius * vertices[vert].position, 1.0);
-        vertex_array[vert].position = vertices[vert].position; // glm::vec3(pos / pos.w);
-        vertex_array[vert].color = col;
+        vertex_array[vert].position = glm::vec3(pos / pos.w);
+        vertex_array[vert].color = glm::vec4(1.0f);
         vertex_array[vert].uv = vertices[vert].uv;
       }
 
       // Now, we just increment the number of batched that we have.
-      num_batched++;
+      num_circles++;
 
       // We should check and see if we are at the max number of circles. If we are, we should flush
       // the batch, and begin a new batch in a new VBO.
-      if (num_circles + num_batched >= max_circles)
+      if (num_circles >= max_circles)
       {
         flush_batch();
         vbo = pool.acquire();

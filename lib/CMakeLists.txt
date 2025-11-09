@@ -104,6 +104,11 @@ target_include_directories(nelo-api
   PRIVATE
     "${CMAKE_BINARY_DIR}/cache")
 
+# MSVC is lagging behind GCC/Clang and doesn't like our template heavy code. This lets our object files be bigger.
+if (MSVC)
+    target_compile_options(nelo-api PRIVATE /bigobj)
+endif()
+
 # For apps the implement nelo, we add the include directory as a system dependency
 target_include_directories(nelo-api
   PUBLIC SYSTEM

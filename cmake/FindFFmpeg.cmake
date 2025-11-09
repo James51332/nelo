@@ -2,15 +2,15 @@
 cmake_minimum_required(VERSION 3.24)
 
 # Allow user to override FFMPEG path manually
-if (DEFINED ENV{FFMPEG_PATH})
-    set(FFMPEG_HINTS $ENV{FFMPEG_PATH})
+if (DEFINED FFMPEG_PATH)
+    set(FFMPEG_HINTS ${FFMPEG_PATH})
 endif()
 
 # Common Windows package manager install locations
 if (WIN32)
     list(APPEND FFMPEG_HINTS
-        "$ENV{USERPROFILE}\\scoop\\apps\\ffmpeg\\current"
-        "C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg"
+        "$ENV{USERPROFILE}\\scoop\\apps\\ffmpeg-shared\\current"
+        "C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg-shared"
         "C:/Program Files/ffmpeg"
         "C:/ffmpeg"
     )
@@ -22,6 +22,8 @@ list(APPEND FFMPEG_HINTS
     "/usr/local"
     "/opt/homebrew"
 )
+
+message("FFmpeg path hint is " ${FFMPEG_PATH})
 
 # ----------- Find FFmpeg libraries -----------
 find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h HINTS ${FFMPEG_HINTS} PATH_SUFFIXES include REQUIRED)

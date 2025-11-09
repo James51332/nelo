@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <glm/glm.hpp>
+#include <numbers>
 
 #include "anim/timeline.h"
 #include "anim/traits.h"
@@ -34,7 +35,7 @@ inline static glm::vec3 lerp(const glm::vec3& begin, const glm::vec3& end, doubl
 // directly.
 inline static std::function<glm::vec3(double)> circle = [](double t)
 {
-  t *= 2.0 * M_PI;
+  t *= 2.0 * std::numbers::pi;
   return glm::vec3(cos(t), sin(t), 0.0f);
 };
 
