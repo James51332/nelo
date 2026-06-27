@@ -17,3 +17,8 @@ compile_commands.json
 # Any Videos
 *.mov
 *.mp4
+
+
+# Added by cargo
+
+/target
