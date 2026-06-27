@@ -1,16 +1,3 @@
-# Build Files
-build/
-bin/
-out/
-*.o
-*.obj
-.cache/
-
-# Project Files
-.vscode
-.clangd
-compile_commands.json
-
 # MacOS Files
 .DS_Store
 
@@ -18,7 +5,17 @@ compile_commands.json
 *.mov
 *.mp4
 
+# Cargo
+target/
+
 
 # Added by cargo
 
 /target
+
+
+# Added by cargo
+#
+# already existing elements were commented out
+
+#/target

@@ -1,0 +1,14 @@
+[package]
+name = "nelo"
+version = "0.1.0"
+edition = "2024"
+authors = ["James Dadabo"]
+repository = "https://github.com/James51332/nelo/tree/rust"
+description = "A stateless, timeline-driven animation engine for explorable visual animations."
+readme = "README.md"
+license = "MIT"
+keywords = ["animation", "video", "graphics"]
+categories = ["graphics", "multimedia::video"]
+
+[dependencies]
+wgpu = "29.0.3"
