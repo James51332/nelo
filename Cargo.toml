@@ -12,3 +12,4 @@ categories = ["graphics", "multimedia::video"]
 
 [dependencies]
 wgpu = "29.0.3"
+winit = "0.30.13"
