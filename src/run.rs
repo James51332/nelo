@@ -17,7 +17,7 @@ use winit::platform::web::EventLoopExtWebSys;
 pub struct App {
     #[cfg(target_arch = "wasm32")]
     proxy: Option<winit::event_loop::EventLoopProxy<Context>>,
-    state: Option<Context>,
+    context: Option<Context>,
 }
 
 impl App {
@@ -25,7 +25,7 @@ impl App {
         #[cfg(target_arch = "wasm32")]
         let proxy = Some(event_loop.create_proxy());
         Self {
-            state: None,
+            context: None,
             #[cfg(target_arch = "wasm32")]
             proxy,
         }
@@ -39,15 +39,24 @@ impl ApplicationHandler<Context> for App {
 
         #[cfg(target_arch = "wasm32")]
         {
+            use log::info;
             use wasm_bindgen::JsCast;
             use winit::platform::web::WindowAttributesExtWebSys;
 
             const CANVAS_ID: &str = "canvas";
 
+            info!("test0");
             let window = wgpu::web_sys::window().unwrap_throw();
+            info!("test");
             let document = window.document().unwrap_throw();
+
+            info!("test1");
             let canvas = document.get_element_by_id(CANVAS_ID).unwrap_throw();
+
+            info!("test2");
             let html_canvas_element = canvas.unchecked_into();
+
+            info!("test3");
             window_attributes = window_attributes.with_canvas(Some(html_canvas_element));
         }
 
@@ -56,7 +65,7 @@ impl ApplicationHandler<Context> for App {
         #[cfg(not(target_arch = "wasm32"))]
         {
             // If we are not on web we can use pollster to await the window creation.
-            self.state = Some(pollster::block_on(Context::new(window)));
+            self.context = Some(pollster::block_on(Context::new(window)));
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -70,17 +79,21 @@ impl ApplicationHandler<Context> for App {
         }
     }
 
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, context: Context) {
+        self.context = Some(context);
+    }
+
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
-        let state = match &mut self.state {
+        let context = match &mut self.context {
             Some(canvas) => canvas,
             None => return,
         };
 
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::Resized(size) => state.resize(size.width, size.height),
+            WindowEvent::Resized(size) => context.resize(size.width, size.height),
             WindowEvent::RedrawRequested => {
-                state.render();
+                context.render();
             }
             _ => (),
         }

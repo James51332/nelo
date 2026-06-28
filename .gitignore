@@ -7,5 +7,5 @@
 
 # Cargo
 target/
-/target
 pkg/
+dist/
