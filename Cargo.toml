@@ -1,3 +1,7 @@
+[workspace]
+resolver = "3"
+members = ["native"]
+ 
 [package]
 name = "nelo"
 version = "0.1.0"
@@ -10,17 +14,6 @@ license = "MIT"
 keywords = ["animation", "video", "graphics"]
 categories = ["graphics", "multimedia::video"]
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
-console_error_panic_hook = "0.1.7"
-console_log = { version = "1.0.0", features = ["color", "wasm-bindgen"] }
-env_logger = "0.11.11"
 log = "0.4.33"
-pollster = "0.4.0"
-wasm-bindgen = "0.2.126"
-wasm-bindgen-futures = "0.4.76"
 wgpu = "29.0.3"
-winit = "0.30.13"
-

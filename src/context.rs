@@ -1,25 +1,22 @@
-use std::sync::Arc;
-use winit::window::Window;
-
-pub struct Context {
+#[allow(dead_code)]
+pub struct GPU {
     instance: wgpu::Instance,
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    is_surface_configured: bool,
-    window: Arc<Window>,
-
     render_pipeline: wgpu::RenderPipeline,
 }
 
-impl Context {
-    pub async fn new(window: Arc<Window>) -> Self {
-        let size = window.inner_size();
-
+impl GPU {
+    pub async fn new(
+        window: impl Into<wgpu::SurfaceTarget<'static>>,
+        width: u32,
+        height: u32,
+    ) -> Self {
         // Use window to get surface
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-        let surface = instance.create_surface(window.clone()).unwrap();
+        let surface = instance.create_surface(window).unwrap();
 
         // Then we need an GPU interface (adapter)
         let adapter = instance
@@ -55,8 +52,8 @@ impl Context {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: size.width,
-            height: size.height,
+            width,
+            height,
             present_mode: surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
@@ -126,8 +123,6 @@ impl Context {
             device,
             queue,
             config,
-            is_surface_configured: true,
-            window,
             render_pipeline,
         }
     }
@@ -137,18 +132,10 @@ impl Context {
             self.config.width = width;
             self.config.height = height;
             self.surface.configure(&self.device, &self.config);
-            self.is_surface_configured = true;
         }
     }
 
     pub fn render(&mut self) {
-        self.window.request_redraw();
-
-        // We can't render unless the surface is configured
-        if !self.is_surface_configured {
-            return;
-        }
-
         // Let's get the render texture from the swapchain.
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
