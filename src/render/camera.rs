@@ -6,16 +6,20 @@
 //! uniform is uploaded each frame from the current time and target size.
 
 use crate::context::Gpu;
+use glam::Mat4;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniform {
-    /// Column-major orthographic view-projection.
-    view_proj: [[f32; 4]; 4],
+    view_proj: Mat4,
     time: f32,
     _pad: [f32; 3],
 }
 
+/// Camera is currently defined to be exclusively orthographic, but the
+/// future will support multiple cameras and more complex APIs without
+/// needing to make significant pipeline changes. Cameras are always
+/// set to bind group 0.
 pub struct Camera {
     scene_height: f32,
     buffer: wgpu::Buffer,
@@ -83,13 +87,9 @@ impl Camera {
         let half_w = half_h * aspect;
 
         // Orthographic projection, column-major. Maps
-        // x in [-half_w, half_w] and y in [-half_h, half_h] to clip [-1, 1].
-        let view_proj = [
-            [1.0 / half_w, 0.0, 0.0, 0.0],
-            [0.0, 1.0 / half_h, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ];
+        let view_proj = glam::camera::lh::proj::directx::orthographic(
+            -half_w, half_w, -half_h, half_h, 0.0, 1.0,
+        );
 
         let uniform = CameraUniform {
             view_proj,

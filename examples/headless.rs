@@ -8,8 +8,10 @@
 //! cargo run --example headless
 //! ```
 
+use glam::prelude::*;
 use nelo::context::Gpu;
 use nelo::render::{Camera, Circle, CircleRenderer, FrameCtx, Renderer, Target, TextureTarget};
+use nelo::timeline::Timeline;
 
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 600;
@@ -27,7 +29,7 @@ async fn run() {
 
     let t = 1.0;
     let size = target.size();
-    let scene = demo_scene(t);
+    let scene = demo_scene();
 
     // Prepare + upload before the pass.
     let ctx = FrameCtx {
@@ -89,23 +91,34 @@ async fn run() {
     println!("wrote headless.png ({WIDTH}x{HEIGHT})");
 }
 
-fn demo_scene(t: f64) -> Vec<Circle> {
+fn demo_scene() -> Vec<Circle> {
     use std::f64::consts::TAU;
 
-    let mut circles = vec![Circle {
-        center: [0.0, 0.0],
-        radius: 1.0 + 0.2 * (t * 2.0).sin() as f32,
-        color: [0.9, 0.9, 1.0, 1.0],
-    }];
+    let mut circles = Vec::new();
 
-    let n = 12;
-    for i in 0..n {
-        let angle = i as f64 / n as f64 * TAU + t * 0.6;
-        let hue = i as f32 / n as f32;
+    // Central pulsing circle.
+    circles.push(Circle {
+        center: Timeline::constant(Vec2::new(0.0, 0.0)),
+        radius: Timeline::dynamic(|t: f64| 1.0 + 0.2 * (t as f32 * 2.0).sin()),
+        color: Timeline::constant(Vec4::new(0.9, 0.9, 1.0, 1.0)),
+    });
+
+    // Orbiting ring.
+    const N: usize = 12;
+    for i in 0..N {
         circles.push(Circle {
-            center: [3.5 * angle.cos() as f32, 3.5 * angle.sin() as f32],
-            radius: 0.5,
-            color: [0.5 + 0.5 * hue, 0.6, 1.0 - 0.5 * hue, 1.0],
+            center: Timeline::dynamic(move |t: f64| {
+                let phase = i as f64 / N as f64 * TAU;
+                let angle = phase + t * 0.6;
+                let x = 3.5 * angle.cos();
+                let y = 3.5 * angle.sin();
+                Vec2::new(x as f32, y as f32)
+            }),
+            radius: Timeline::constant(0.5),
+            color: Timeline::dynamic(move |_: f64| {
+                let hue = i as f32 / N as f32;
+                Vec4::new(0.5 + 0.5 * hue, 0.6, 1.0 - 0.5 * hue, 1.0)
+            }),
         });
     }
 

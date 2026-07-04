@@ -7,13 +7,14 @@
 
 use crate::context::Gpu;
 use crate::render::{FrameCtx, Renderer};
+use crate::timeline::Timeline;
+use glam::prelude::*;
 
 /// A circle to draw, in world space.
-#[derive(Clone, Copy)]
 pub struct Circle {
-    pub center: [f32; 2],
-    pub radius: f32,
-    pub color: [f32; 4],
+    pub center: Timeline<Vec2>,
+    pub radius: Timeline<f32>,
+    pub color: Timeline<Vec4>,
 }
 
 #[repr(C)]
@@ -34,7 +35,11 @@ pub struct CircleRenderer {
 }
 
 impl CircleRenderer {
-    pub fn new(gpu: &Gpu, camera_layout: &wgpu::BindGroupLayout, format: wgpu::TextureFormat) -> Self {
+    pub fn new(
+        gpu: &Gpu,
+        camera_layout: &wgpu::BindGroupLayout,
+        format: wgpu::TextureFormat,
+    ) -> Self {
         let shader = gpu
             .device()
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -131,9 +136,9 @@ impl Renderer for CircleRenderer {
         let data: Vec<CircleInstance> = items[..capped]
             .iter()
             .map(|c| CircleInstance {
-                center: c.center,
-                radius: c.radius,
-                color: c.color,
+                center: c.center.sample(ctx.time).to_array(),
+                radius: c.radius.sample(ctx.time),
+                color: c.color.sample(ctx.time).to_array(),
             })
             .collect();
 
