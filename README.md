@@ -4,7 +4,7 @@ A stateless, timeline-driven animation engine for explorable visual animations.
 
 ## philosophy
 
-#### Moments in a scene are independent of one another. Everything is a function of time.
+> Moments in a scene are independent of one another. Everything is a function of time.*
 
 At the heart of nelo is the `Timeline`, a generic type which can be queried at any given time.
 
@@ -29,15 +29,23 @@ to the level of any iterative simulation tool:
 
 ## to do
 
-* Keyframes
-* Composition
-* Scenes
-* Renderers
-    * 2D Renderer (Circles, Boxes, Lines, etc.)
-    * Path Renderer
-    * Text Renderer
-    * 3D Renderer
-* Animations
-* Grouping
-* Exporting (via `ffmpeg`)
+* [ ] Timeline
+    * [x] Signal Trait
+    * [x] Constants
+    * [x] Closures
+    * [ ] Keyframes
+    * [ ] Composition
+    * [x] Lengths
+* [ ] Scene
+    * [ ] Entities
+    * [ ] Renderer System
+    * [ ] Grouping
+* [ ] Renderers
+    * [x] Circle Renderer
+    * [ ] Path Renderer
+    * [ ] Text Renderer
+    * [ ] Camera Timeline
+* [ ] Input Timelines
+* [ ] Animations
+* [ ] Exporting (via `ffmpeg`)
 
