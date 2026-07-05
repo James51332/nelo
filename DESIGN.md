@@ -37,7 +37,7 @@ These two gate almost everything else and should be settled first.
 
 | Decision | Leaning | Gates |
 | --- | --- | --- |
-| `Signal` carries `length() -> Option<f64>` (`None` = unbounded) | **Yes** | sequencing, animation defaults, export range |
+| `Signal` carries `length() -> Option<f32>` (`None` = unbounded) | **Yes** | sequencing, animation defaults, export range |
 | Renderer boundary is a backend-agnostic **draw-command list** | **Yes** | library split, all 4 renderer types, ffmpeg export |
 | Timelines are built by **immutable composition**, never mutation | **Yes** | eliminates dependency cycles, matches Rust ownership |
 | Everything renderable reduces to a **`Path`** (SDF as optimization) | **Lean yes** | universal morphing, unified stroke/fill |
@@ -51,8 +51,8 @@ These two gate almost everything else and should be settled first.
 
 **v2:**
 
-- `Signal` is the trait: `sample(&self, t: f64) -> Self::Output`, plus
-  `length(&self) -> Option<f64>`. Closures implement it (already true in the Rust code).
+- `Signal` is the trait: `sample(&self, t: f32) -> Self::Output`, plus
+  `length(&self) -> Option<f32>`. Closures implement it (already true in the Rust code).
 - `Timeline<T>` is `Constant(T) | Dynamic(Arc<dyn Signal>)` (already implemented).
 - `Path` is a **newtype**, not an alias:
   ```rust
@@ -66,8 +66,8 @@ These two gate almost everything else and should be settled first.
 **Decisions**
 - ✅ `Path` is a newtype implementing `Signal` + `From<Path> for Timeline<Vec2>`.
 - ✅ Immutable composition (see [Combinators](#2-composition--combinators)).
-- 🔶 Open: introduce `Alpha(f64)` newtype to distinguish "path parameter" from "wall-clock
-  time" at the type level? Both are `f64` today; the confusion is the root of v1's
+- 🔶 Open: introduce `Alpha(f32)` newtype to distinguish "path parameter" from "wall-clock
+  time" at the type level? Both are `f32` today; the confusion is the root of v1's
   `path_property` awkwardness. Leaning: at least document the convention on `Path`; adopt
   `Alpha` if the two-dimensional (`Timeline<Path<T>>`) cases prove error-prone.
 
@@ -90,7 +90,7 @@ The five README operations, made precise:
   out into a separate `shift(t0)` / `delay` combinator to keep `add` orthogonal.
 - **Multiply** — `T: Mul`. Order matters (matrices/quats are non-commutative); document the
   convention (`a.mul(b)` = apply `b` then `a`, matrix-style).
-- **Compose** — `self.compose(g)` where `g: Signal<Output=f64>` ⇒ `t → self.sample(g(t))`.
+- **Compose** — `self.compose(g)` where `g: Signal<Output=f32>` ⇒ `t → self.sample(g(t))`.
   The time-remapping primitive; loop, ping-pong, ease-over-time all fall out of it.
 - **Sequence** — `a.then(b)`: play `a` for `a.length()`, then `b`. **Requires `length()`.**
 - **Sample** — higher-order: `self.sample_within(|inner| …)`. The `Timeline<Path>` "timeline
@@ -99,7 +99,7 @@ The five README operations, made precise:
 **Decisions**
 - ✅ Combinators are `Signal`-implementing wrapper structs, constructed via fluent methods.
 - ✅ Time-offset lives in its own `shift`/`delay` combinator, not baked into add/multiply.
-- ✅ `Signal::length() -> Option<f64>`; `None` = unbounded; `sequence` requires a bound.
+- ✅ `Signal::length() -> Option<f32>`; `None` = unbounded; `sequence` requires a bound.
 - 🔶 Open: constant-folding (`Constant + Constant → Constant`)? Premature; the enum keeps it
   possible later. Skip until profiling asks for it.
 
@@ -119,8 +119,8 @@ keyframes; eases if `T: lerpable`, otherwise snaps (good — handles text/discre
   enum Easing {
       Step, Linear,
       Quad(Direction), Cubic(Direction),
-      CubicBezier(f64, f64, f64, f64),
-      Custom(Arc<dyn Fn(f64) -> f64>),
+      CubicBezier(f32, f32, f32, f32),
+      Custom(Arc<dyn Fn(f32) -> f32>),
   }
   ```
 - Ease-or-snap: `T: Lerp` eases; non-`Lerp` snaps. Leaning **explicit** — a distinct
@@ -288,7 +288,7 @@ only real decision is *where the seam goes*.
   trait Simulator {
       type State;
       fn init(&self) -> Self::State;
-      fn step(&mut self, state: &mut Self::State, t: f64, dt: f64);
+      fn step(&mut self, state: &mut Self::State, t: f32, dt: f32);
       fn emit(&self, state: &Self::State) -> Vec<AgentSnapshot>;
   }
   ```

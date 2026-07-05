@@ -26,7 +26,7 @@ use crate::context::Gpu;
 pub struct FrameCtx<'a> {
     pub gpu: &'a Gpu,
     /// Wall-clock time of the frame, in seconds.
-    pub time: f64,
+    pub time: f32,
     /// Target size in physical pixels.
     pub size: (u32, u32),
 }

@@ -80,7 +80,7 @@ impl Camera {
     }
 
     /// Recompute and upload the view-projection for this frame.
-    pub fn upload(&self, gpu: &Gpu, time: f64, size: (u32, u32)) {
+    pub fn upload(&self, gpu: &Gpu, time: f32, size: (u32, u32)) {
         let (w, h) = size;
         let aspect = if h == 0 { 1.0 } else { w as f32 / h as f32 };
         let half_h = self.scene_height * 0.5;
@@ -93,7 +93,7 @@ impl Camera {
 
         let uniform = CameraUniform {
             view_proj,
-            time: time as f32,
+            time: time,
             _pad: [0.0; 3],
         };
         gpu.queue()

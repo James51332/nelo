@@ -1,0 +1,171 @@
+use crate::signal::Signal;
+use crate::timeline::Timeline;
+use glam::{Quat, Vec2, Vec3, Vec4};
+
+/// All types that wish to use the keyframe system
+/// must implement the lerp trait.
+pub trait Lerp {
+    fn interpolate(a: &Self, b: &Self, t: f32) -> Self;
+}
+
+macro_rules! impl_lerp {
+    ($($t:ty),*) => { $(
+        impl Lerp for $t {
+            fn interpolate(a: &Self, b: &Self, t: f32) -> Self { a + (b - a) * t }
+        }
+    )* };
+}
+impl_lerp!(f32, Vec2, Vec3, Vec4);
+
+impl Lerp for Quat {
+    fn interpolate(a: &Self, b: &Self, t: f32) -> Self {
+        a.clone().slerp(b.clone(), t)
+    }
+}
+
+/// Easing functions are simply maps from `f32` -> `f32`
+/// Use the [`sample`](Easing::sample) method to manually
+/// map a linear time variable from [0, 1] -> [0, 1]. Only
+/// a handful are implemented right now, but all of penner's
+/// will be implemented soon.
+pub enum Easing {
+    Step,
+    Linear,
+    QuadIn,
+    QuadOut,
+    QuadInOut,
+    CubicIn,
+    CubicOut,
+    CubicInOut,
+}
+
+impl Easing {
+    /// Implementation for penner's easing function.
+    ///
+    /// Based on [easings.net](https://easings.net/)
+    pub fn sample(&self, t: f32) -> f32 {
+        match self {
+            Self::Step => 0.0,
+            Self::Linear => t,
+            Self::QuadIn => t * t,
+            Self::QuadOut => 1.0 - (1.0 - t) * (1.0 - t),
+            Self::QuadInOut => {
+                if t <= 0.5 {
+                    2.0 * t * t
+                } else {
+                    1.0 - 2.0 * (1.0 - t) * (1.0 - t)
+                }
+            }
+            Self::CubicIn => t.powi(3),
+            Self::CubicOut => 1.0 - (1.0 - t).powi(3),
+            Self::CubicInOut => {
+                if t <= 0.5 {
+                    4.0 * t * t * t
+                } else {
+                    1.0 - 4.0 * (1.0 - t).powi(3)
+                }
+            }
+        }
+    }
+}
+
+/// Keyframes are a convenient way to create a `Timeline`.
+/// They define state at a fixed point in time for a timeline.
+/// Anytype which wishes to be part of a keyframe must implement
+/// the `Lerp` trait.
+struct Keyframe<T: Lerp> {
+    time: f32,
+    value: T,
+    easing: Easing,
+}
+
+/// Keyframes struct implements Signal trait. We require that the keyframes
+/// are sorted by their end time. This struct is a private, intermediate
+/// which implements Signal so it can be converted into a timeline.
+struct Keyframes<T: Lerp + Clone>(Vec<Keyframe<T>>);
+
+impl<T: Lerp + Clone + 'static> Signal for Keyframes<T> {
+    type Output = T;
+    fn sample(&self, t: f32) -> T {
+        // Number of keyframes at or before `t`. Because the list is sorted,
+        // this is also the index of the first keyframe strictly after `t`, so
+        // `[i - 1, i]` is the pair that brackets `t`.
+        let i = self.0.partition_point(|k| k.time <= t);
+
+        // Before the first keyframe: hold the first value.
+        if i == 0 {
+            return self.0[0].value.clone();
+        }
+
+        // At or after the last keyframe: hold the last value.
+        if i == self.0.len() {
+            return self.0[i - 1].value.clone();
+        }
+
+        // Interpolate across the bracket. Previous is <= t, and next is > t, so
+        // the denominator is strictly positive (no divide-by-zero). Easing is
+        // read from the next keyframe.
+        let prev = &self.0[i - 1];
+        let next = &self.0[i];
+        let progress = (t - prev.time) / (next.time - prev.time);
+        T::interpolate(&prev.value, &next.value, next.easing.sample(progress))
+    }
+
+    fn length(&self) -> Option<f32> {
+        self.0.last().map(|t| t.time)
+    }
+}
+
+/// Keyframe builder is used to build a keyframe that meets the requirements for the
+/// API. Therefore, this is the only way to access the API.
+pub struct KeyframeBuilder<T: Lerp + Clone + 'static> {
+    frames: Vec<Keyframe<T>>,
+}
+
+impl<T: Lerp + Clone + 'static> KeyframeBuilder<T> {
+    fn new(anchor: T) -> Self {
+        Self {
+            frames: vec![Keyframe {
+                time: 0.0,
+                value: anchor,
+                easing: Easing::Step,
+            }],
+        }
+    }
+
+    pub fn at(mut self, time: f32, value: T) -> Self {
+        self.frames.push(Keyframe {
+            time,
+            value,
+            easing: Easing::Linear,
+        });
+
+        self
+    }
+
+    pub fn ease_at(mut self, time: f32, value: T, easing: Easing) -> Self {
+        self.frames.push(Keyframe {
+            time,
+            value,
+            easing,
+        });
+
+        self
+    }
+
+    pub fn build(mut self) -> Timeline<T> {
+        self.frames.sort_by(|a, b| a.time.total_cmp(&b.time));
+        Timeline::dynamic(Keyframes(self.frames))
+    }
+}
+
+impl<T: Lerp + Clone + 'static> Timeline<T> {
+    /// Use this method to create a timeline where you know the value
+    /// at a fixed number of points in time. These can be specified
+    /// directly using the builder's `at` and `ease_at` methods. Requires
+    /// `T` to implement `Lerp` trait, which is enabled for some of the
+    /// common types within the engine.
+    pub fn keyframes(anchor: T) -> KeyframeBuilder<T> {
+        KeyframeBuilder::new(anchor)
+    }
+}

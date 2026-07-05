@@ -10,8 +10,8 @@ fn main() {
         t2.length()
     );
     for t in 0..5 {
-        let v1 = t1.sample(t as f64);
-        let v2 = t2.sample(t as f64);
+        let v1 = t1.sample(t as f32);
+        let v2 = t2.sample(t as f32);
         println!("t={t} => t1={v1} & t2={v2}");
     }
 }

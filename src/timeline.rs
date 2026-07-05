@@ -36,7 +36,7 @@ impl<T: 'static> Timeline<T> {
 
     /// The timeline's finite duration, or `None` if it runs forever. A constant
     /// has no inherent end; a dynamic one defers to its [`Signal::length`].
-    pub fn length(&self) -> Option<f64> {
+    pub fn length(&self) -> Option<f32> {
         match self {
             Self::Constant(_) => None,
             Self::Dynamic(s) => s.length(),
@@ -48,7 +48,7 @@ impl<T: Clone + 'static> Timeline<T> {
     /// The value at time `t`. A constant clones its held value; a dynamic one
     /// samples the underlying signal. (Sampling needs `Clone` so the constant
     /// case can hand back an owned value.)
-    pub fn sample(&self, t: f64) -> T {
+    pub fn sample(&self, t: f32) -> T {
         match self {
             Self::Constant(s) => s.clone(),
             Self::Dynamic(s) => s.sample(t),
@@ -68,7 +68,7 @@ impl<T: Clone + 'static> Timeline<T> {
     /// Attach a finite duration, returning a dynamic timeline whose
     /// [`length`](Timeline::length) reports `length`. Sampling is unchanged —
     /// only the reported duration is added — so this works on a constant too.
-    pub fn with_length(self, length: f64) -> Timeline<T> {
+    pub fn with_length(self, length: f32) -> Timeline<T> {
         Self::Dynamic(Arc::new(WithLength {
             inner: self.into_signal(),
             length,
@@ -81,7 +81,7 @@ impl<T: Clone + 'static> Timeline<T> {
 struct Const<T>(T);
 impl<T: Clone + 'static> Signal for Const<T> {
     type Output = T;
-    fn sample(&self, _t: f64) -> Self::Output {
+    fn sample(&self, _t: f32) -> Self::Output {
         self.0.clone()
     }
 }
@@ -91,15 +91,15 @@ impl<T: Clone + 'static> Signal for Const<T> {
 /// into a [`Timeline::Dynamic`], so it stays private like [`Const`].
 struct WithLength<T: 'static> {
     inner: Arc<dyn Signal<Output = T>>,
-    length: f64,
+    length: f32,
 }
 
 impl<T: 'static> Signal for WithLength<T> {
     type Output = T;
-    fn sample(&self, t: f64) -> Self::Output {
+    fn sample(&self, t: f32) -> Self::Output {
         self.inner.sample(t)
     }
-    fn length(&self) -> Option<f64> {
+    fn length(&self) -> Option<f32> {
         Some(self.length)
     }
 }

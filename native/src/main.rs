@@ -29,7 +29,7 @@ pub struct App {
 impl App {
     fn draw(&mut self) {
         let Some(r) = &mut self.renderers else { return };
-        let t = self.start.map(|s| s.elapsed().as_secs_f64()).unwrap_or(0.0);
+        let t = self.start.map(|s| s.elapsed().as_secs_f32()).unwrap_or(0.0);
 
         let size = r.target.size();
         let items = demo_scene();
@@ -135,14 +135,14 @@ impl ApplicationHandler for App {
 
 /// A small animated scene: a ring of orbiting circles around a pulsing center.
 fn demo_scene() -> Vec<Circle> {
-    use std::f64::consts::TAU;
+    use std::f32::consts::TAU;
 
     let mut circles = Vec::new();
 
     // Central pulsing circle.
     circles.push(Circle {
         center: Timeline::constant(Vec2::new(0.0, 0.0)),
-        radius: Timeline::dynamic(|t: f64| 1.0 + 0.2 * (t as f32 * 2.0).sin()),
+        radius: Timeline::dynamic(|t: f32| 1.0 + 0.2 * (t as f32 * 2.0).sin()),
         color: Timeline::constant(Vec4::new(0.9, 0.9, 1.0, 1.0)),
     });
 
@@ -150,15 +150,15 @@ fn demo_scene() -> Vec<Circle> {
     const N: usize = 12;
     for i in 0..N {
         circles.push(Circle {
-            center: Timeline::dynamic(move |t: f64| {
-                let phase = i as f64 / N as f64 * TAU;
+            center: Timeline::dynamic(move |t: f32| {
+                let phase = i as f32 / N as f32 * TAU;
                 let angle = phase + t * 0.6;
                 let x = 3.5 * angle.cos();
                 let y = 3.5 * angle.sin();
                 Vec2::new(x as f32, y as f32)
             }),
             radius: Timeline::constant(0.5),
-            color: Timeline::dynamic(move |_: f64| {
+            color: Timeline::dynamic(move |_: f32| {
                 let hue = i as f32 / N as f32;
                 Vec4::new(0.5 + 0.5 * hue, 0.6, 1.0 - 0.5 * hue, 1.0)
             }),

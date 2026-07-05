@@ -33,7 +33,7 @@ to the level of any iterative simulation tool:
     * [x] Signal Trait
     * [x] Constants
     * [x] Closures
-    * [ ] Keyframes
+    * [x] Keyframes
     * [ ] Composition
     * [x] Lengths
 * [ ] Scene
