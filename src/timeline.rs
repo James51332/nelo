@@ -1,5 +1,6 @@
-//! Timelines are the are a deterministic stream of data over time. They have two
-//! flavors:
+//! Timelines are the are a deterministic stream of data over time.
+//!
+//! They have two flavors:
 //! * [`Constant`](Timeline::Constant) — a value that never changes, held inline
 //!   with no allocation and no dynamic dispatch.
 //! * [`Dynamic`](Timeline::Dynamic) — a real [`Signal`], type-erased behind an
