@@ -5,7 +5,7 @@
 //! aspect ratio. Zoom/pan are just animatable inputs later — for now the
 //! uniform is uploaded each frame from the current time and target size.
 
-use crate::context::Gpu;
+use crate::render::context::Gpu;
 use glam::Mat4;
 
 #[repr(C)]

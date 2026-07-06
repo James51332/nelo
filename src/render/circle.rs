@@ -5,7 +5,7 @@
 //! anti-aliases the edge. This is the resolution-independent path — a circle is
 //! crisp at any zoom without re-tessellation.
 
-use crate::context::Gpu;
+use crate::render::context::Gpu;
 use crate::render::{FrameCtx, Renderer};
 use crate::timeline::Timeline;
 use glam::prelude::*;

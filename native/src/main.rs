@@ -1,6 +1,5 @@
 use glam::prelude::*;
-use nelo::context::Gpu;
-use nelo::render::{Camera, Circle, CircleRenderer, FrameCtx, Renderer, Target, WindowTarget};
+use nelo::render::{Camera, Circle, CircleRenderer, FrameCtx, Gpu, Renderer, Target, WindowTarget};
 use nelo::timeline::Timeline;
 use std::sync::Arc;
 use std::time::Instant;

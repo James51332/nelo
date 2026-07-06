@@ -1,7 +1,7 @@
 //! Helper module to implement composition features for `Timeline`s
 
-use crate::signal::Signal;
 use crate::timeline::Timeline;
+use crate::timeline::signal::Signal;
 
 impl<T: Clone + 'static> Timeline<T> {
     /// Resamples this timeline with the inner parameter. Length is set to

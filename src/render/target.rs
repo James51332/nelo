@@ -1,11 +1,11 @@
-//! Render targets: where a frame goes.
+//! Render targets are where a frame goes.
 //!
 //! A [`WindowTarget`] presents to a swapchain; a [`TextureTarget`] renders to
 //! an offscreen texture that can be read back to the CPU for export. Both hand
 //! the driver a [`Frame`] (a view to render into) and both are driven by the
 //! same rendering code.
 
-use crate::context::Gpu;
+use crate::render::context::Gpu;
 
 /// A single frame acquired from a [`Target`]: the view to render into, plus any
 /// resources that must live until the frame is presented.

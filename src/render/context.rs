@@ -1,3 +1,5 @@
+//! Build and configure the [`Gpu`] context for rendering with nelo.
+
 /// The GPU context owns the device and queue. It has no surface and no
 /// pipelines, so it can be created headlessly (for export and tests) or
 /// alongside a window. Renderers and targets borrow it.

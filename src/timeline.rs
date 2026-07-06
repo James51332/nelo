@@ -1,25 +1,26 @@
-//! Timelines: a concrete, sampleable instance of a [`Signal`].
-//!
-//! A [`Signal`] is the abstract *description* of a time-varying value; a
-//! [`Timeline`] is the handle you actually store on a scene object and sample
-//! each frame. It folds the two cases you hit in practice into one type:
-//!
+//! Timelines are the are a deterministic stream of data over time. They have two
+//! flavors:
 //! * [`Constant`](Timeline::Constant) — a value that never changes, held inline
 //!   with no allocation and no dynamic dispatch.
-//! * [`Dynamic`](Timeline::Dynamic) — a real signal, type-erased behind an
+//! * [`Dynamic`](Timeline::Dynamic) — a real [`Signal`], type-erased behind an
 //!   `Arc` so a timeline stays `Clone` and can be shared cheaply.
 //!
 //! Callers sample both through the same [`sample`](Timeline::sample) call; the
 //! constant case is purely an optimisation, not a separate API.
 
-use crate::signal::Signal;
+pub mod compose;
+pub mod keyframe;
+pub mod signal;
+
+// Re-export these for convenient imports.
+pub use keyframe::{Easing, Lerp};
+pub use signal::Signal;
+
 use std::sync::Arc;
 
-/// A sampleable value over time: either a fixed constant or a shared [`Signal`].
+/// A sampleable value over time, either a fixed constant or a shared [`Signal`].
 pub enum Timeline<T> {
-    /// A value that does not vary with time — stored inline, no allocation.
     Constant(T),
-    /// A type-erased signal, shared by reference count.
     Dynamic(Arc<dyn Signal<Output = T>>),
 }
 
@@ -55,9 +56,8 @@ impl<T: Clone + 'static> Timeline<T> {
         }
     }
 
-    /// Attach a finite duration, returning a dynamic timeline whose
-    /// [`length`](Timeline::length) reports `length`. Sampling is unchanged —
-    /// only the reported duration is added — so this works on a constant too.
+    /// Attach a finite duration, creating a new timeline whose
+    /// [`length`](Timeline::length) reports `length`.
     pub fn with_length(self, length: f32) -> Self {
         Self::dynamic(WithLength {
             timeline: self,

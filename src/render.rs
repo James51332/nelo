@@ -1,26 +1,21 @@
-//! Rendering: the GPU-facing half of nelo.
+//! All render facing code in the animation engine.
 //!
 //! Three responsibilities are kept separate:
-//! * [`Gpu`](crate::context::Gpu) — owns the device and queue.
-//! * [`Target`] — *where* a frame is drawn (a window swapchain or an offscreen
+//! * [`Gpu`] — owns the device and queue.
+//! * [`Target`] — where a frame is drawn (a window swapchain or an offscreen
 //!   texture for export). One trait, two implementations.
 //! * [`Renderer`] — *what* to draw. Owns its pipeline and buffers; uploads in
 //!   [`Renderer::prepare`], records draws in [`Renderer::draw`].
-//!
-//! Multiple renderers share a single render pass per frame. The driver
-//! (see the `native` binary and the `headless` example) samples the scene,
-//! calls `prepare` on each renderer, opens one pass, binds the camera, and
-//! lets each renderer record its draws.
 
 pub mod camera;
 pub mod circle;
+pub mod context;
 pub mod target;
 
 pub use camera::Camera;
 pub use circle::{Circle, CircleRenderer};
+pub use context::Gpu;
 pub use target::{Frame, Target, TextureTarget, WindowTarget};
-
-use crate::context::Gpu;
 
 /// Per-frame context handed to renderers during [`Renderer::prepare`].
 pub struct FrameCtx<'a> {

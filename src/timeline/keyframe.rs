@@ -1,5 +1,5 @@
-use crate::signal::Signal;
-use crate::timeline::Timeline;
+///! Implementation for creating timelines from keyframes.
+use crate::timeline::{Timeline, signal::Signal};
 use glam::{Quat, Vec2, Vec3, Vec4};
 
 /// All types that wish to use the keyframe system

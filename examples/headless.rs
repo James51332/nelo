@@ -9,8 +9,9 @@
 //! ```
 
 use glam::prelude::*;
-use nelo::context::Gpu;
-use nelo::render::{Camera, Circle, CircleRenderer, FrameCtx, Renderer, Target, TextureTarget};
+use nelo::render::{
+    Camera, Circle, CircleRenderer, FrameCtx, Gpu, Renderer, Target, TextureTarget,
+};
 use nelo::timeline::Timeline;
 
 const WIDTH: u32 = 800;
