@@ -55,50 +55,32 @@ impl<T: Clone + 'static> Timeline<T> {
         }
     }
 
-    /// Collapse either variant into a single `Arc<dyn Signal>` by promoting a
-    /// constant to a [`Const`] signal. Lets wrappers like [`WithLength`] treat
-    /// both variants uniformly without a branch of their own.
-    fn into_signal(self) -> Arc<dyn Signal<Output = T>> {
-        match self {
-            Self::Constant(s) => Arc::new(Const(s)),
-            Self::Dynamic(s) => s,
-        }
-    }
-
     /// Attach a finite duration, returning a dynamic timeline whose
     /// [`length`](Timeline::length) reports `length`. Sampling is unchanged —
     /// only the reported duration is added — so this works on a constant too.
-    pub fn with_length(self, length: f32) -> Timeline<T> {
-        Self::Dynamic(Arc::new(WithLength {
-            inner: self.into_signal(),
+    pub fn with_length(self, length: f32) -> Self {
+        Self::dynamic(WithLength {
+            timeline: self,
             length,
-        }))
-    }
-}
-
-/// A constant lifted into a [`Signal`], so a [`Timeline::Constant`] can be
-/// wrapped by signal adaptors. Ignores `t` and clones its value.
-struct Const<T>(T);
-impl<T: Clone + 'static> Signal for Const<T> {
-    type Output = T;
-    fn sample(&self, _t: f32) -> Self::Output {
-        self.0.clone()
+        })
     }
 }
 
 /// A signal adaptor that forwards sampling to `inner` but overrides its
 /// reported duration. Built by [`Timeline::with_length`] and immediately erased
-/// into a [`Timeline::Dynamic`], so it stays private like [`Const`].
-struct WithLength<T: 'static> {
-    inner: Arc<dyn Signal<Output = T>>,
+/// into a [`Timeline::Dynamic`].
+struct WithLength<T: Clone + 'static> {
+    timeline: Timeline<T>,
     length: f32,
 }
 
-impl<T: 'static> Signal for WithLength<T> {
+impl<T: Clone + 'static> Signal for WithLength<T> {
     type Output = T;
+
     fn sample(&self, t: f32) -> Self::Output {
-        self.inner.sample(t)
+        self.timeline.sample(t)
     }
+
     fn length(&self) -> Option<f32> {
         Some(self.length)
     }

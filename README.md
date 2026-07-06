@@ -29,12 +29,12 @@ to the level of any iterative simulation tool:
 
 ## to do
 
-* [ ] Timeline
+* [x] Timeline
     * [x] Signal Trait
     * [x] Constants
     * [x] Closures
     * [x] Keyframes
-    * [ ] Composition
+    * [x] Composition
     * [x] Lengths
 * [ ] Scene
     * [ ] Entities
