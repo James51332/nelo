@@ -4,6 +4,9 @@
 //! ECS model for nelo.
 
 pub mod entity;
+pub mod transform;
+
+pub use transform::Transform;
 
 use crate::render::Renderable;
 use entity::EntityData;
@@ -25,8 +28,16 @@ impl Scene {
             .iter()
             .filter_map(|c| {
                 if let Some(geometry) = c.geometry {
+                    // Combine all of the transforms on this entity. We'll have to adjust this logic
+                    // when we support groups and hierarchy, but this is sufficient for now.
+                    let mut combined = Affine2::default();
+                    for transform in c.transforms.iter() {
+                        combined = transform.sample(t) * combined;
+                    }
+
+                    // Build a renderable.
                     Some(Renderable {
-                        transform: Affine2::from_translation(c.transform.sample(t)),
+                        transform: combined,
                         geometry,
                         fill: match &c.fill {
                             Some(timeline) => timeline.sample(t),
@@ -47,24 +58,26 @@ impl Scene {
         let mut scene = Self::new();
 
         // Central pulsing circle.
-        scene.circle().fill(Vec4::new(0.9, 0.9, 1.0, 1.0)).build();
+        scene
+            .circle()
+            .scale(|t: f32| 1.25 + 0.5 * t.sin())
+            .fill(Vec4::new(0.9, 0.9, 1.0, 1.0))
+            .build();
 
         // Orbiting ring.
         const N: usize = 12;
         for i in 0..N {
+            let hue = i as f32 / N as f32;
+            let color = Vec4::new(0.5 + 0.5 * hue, 0.6, 1.0 - 0.5 * hue, 1.0);
+            let phase = i as f32 / N as f32 * TAU;
+
             scene
                 .circle()
-                .translate(move |t: f32| {
-                    let phase = i as f32 / N as f32 * TAU;
-                    let angle = phase + t * 0.6;
-                    let x = 3.5 * angle.cos();
-                    let y = 3.5 * angle.sin();
-                    Vec2::new(x as f32, y as f32)
-                })
-                .fill(move |_: f32| {
-                    let hue = i as f32 / N as f32;
-                    Vec4::new(0.5 + 0.5 * hue, 0.6, 1.0 - 0.5 * hue, 1.0)
-                })
+                .scale(0.75)
+                .translate(Vec2::new(3.5, 0.0))
+                .rotate(phase)
+                .rotate(move |t: f32| t * 0.6)
+                .fill(color)
                 .build();
         }
 
