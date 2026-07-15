@@ -3,26 +3,24 @@
 //! They have two flavors:
 //! * [`Constant`](Timeline::Constant) — a value that never changes, held inline
 //!   with no allocation and no dynamic dispatch.
-//! * [`Dynamic`](Timeline::Dynamic) — a real [`Signal`], type-erased behind an
-//!   `Arc` so a timeline stays `Clone` and can be shared cheaply.
+//! * [`Dynamic`](Timeline::Dynamic) — a real [`Signal`], type-erased behind a
+//!   `Box` so a timeline stays `Clone` and can be shared cheaply.
 //!
 //! Callers sample both through the same [`sample`](Timeline::sample) call; the
 //! constant case is purely an optimisation, not a separate API.
 
 pub mod compose;
+pub mod from;
 pub mod keyframe;
 pub mod signal;
 
-// Re-export these for convenient imports.
 pub use keyframe::{Easing, Lerp};
 pub use signal::Signal;
-
-use std::sync::Arc;
 
 /// A sampleable value over time, either a fixed constant or a shared [`Signal`].
 pub enum Timeline<T> {
     Constant(T),
-    Dynamic(Arc<dyn Signal<Output = T>>),
+    Dynamic(Box<dyn Signal<Output = T>>),
 }
 
 impl<T: 'static> Timeline<T> {
@@ -33,7 +31,7 @@ impl<T: 'static> Timeline<T> {
 
     /// Erase a concrete signal (e.g. a closure) into a shareable timeline.
     pub fn dynamic(s: impl Signal<Output = T> + 'static) -> Self {
-        Self::Dynamic(Arc::new(s))
+        Self::Dynamic(Box::new(s))
     }
 
     /// The timeline's finite duration, or `None` if it runs forever. A constant

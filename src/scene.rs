@@ -39,4 +39,35 @@ impl Scene {
             })
             .collect()
     }
+
+    /// A small animated scene: a ring of orbiting circles around a pulsing center.
+    pub fn demo() -> Self {
+        use std::f32::consts::TAU;
+
+        let mut scene = Self::new();
+
+        // Central pulsing circle.
+        scene.circle().fill(Vec4::new(0.9, 0.9, 1.0, 1.0)).build();
+
+        // Orbiting ring.
+        const N: usize = 12;
+        for i in 0..N {
+            scene
+                .circle()
+                .translate(move |t: f32| {
+                    let phase = i as f32 / N as f32 * TAU;
+                    let angle = phase + t * 0.6;
+                    let x = 3.5 * angle.cos();
+                    let y = 3.5 * angle.sin();
+                    Vec2::new(x as f32, y as f32)
+                })
+                .fill(move |_: f32| {
+                    let hue = i as f32 / N as f32;
+                    Vec4::new(0.5 + 0.5 * hue, 0.6, 1.0 - 0.5 * hue, 1.0)
+                })
+                .build();
+        }
+
+        scene
+    }
 }

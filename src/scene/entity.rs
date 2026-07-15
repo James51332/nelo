@@ -38,13 +38,13 @@ impl<'a> EntityBuilder<'a> {
         }
     }
 
-    pub fn translate(mut self, transform: Timeline<Vec2>) -> Self {
-        self.transform = transform;
+    pub fn translate(mut self, transform: impl Into<Timeline<Vec2>>) -> Self {
+        self.transform = transform.into();
         self
     }
 
-    pub fn fill(mut self, fill: Timeline<Vec4>) -> Self {
-        self.fill = Some(fill);
+    pub fn fill(mut self, fill: impl Into<Timeline<Vec4>>) -> Self {
+        self.fill = Some(fill.into());
         self
     }
 

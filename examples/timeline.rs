@@ -1,4 +1,4 @@
-use nelo::timeline::Timeline;
+use nelo::timeline::{Easing, Timeline};
 
 fn main() {
     let t1 = Timeline::constant(5);
@@ -13,5 +13,18 @@ fn main() {
         let v1 = t1.sample(t as f32);
         let v2 = t2.sample(t as f32);
         println!("t={t} => t1={v1} & t2={v2}");
+    }
+
+    let keyframes = Timeline::keyframes(0.0)
+        .at(1.0, 4.0)
+        .ease_at(5.0, 0.0, Easing::CubicInOut)
+        .build();
+
+    for i in 0..6 {
+        let t = i as f32;
+        println!(
+            "Keyframed timeline at t={t} has value {}",
+            keyframes.sample(t)
+        );
     }
 }
