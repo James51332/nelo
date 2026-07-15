@@ -6,7 +6,7 @@
 use crate::timeline::Timeline;
 use glam::prelude::*;
 
-/// Captures different transformations which could be applied to [`Entity`].
+/// Captures different transformations which could be applied to an entity.
 pub enum Transform {
     Matrix(Timeline<Mat2>),
     Affine(Timeline<Affine2>),

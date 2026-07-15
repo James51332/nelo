@@ -2,12 +2,34 @@
 
 use crate::timeline::Timeline;
 use crate::timeline::signal::Signal;
+use std::ops::{Add, Mul};
+
+impl Timeline<f32> {
+    /// For f32 timelines, we can reverse the compose logic. Since multiple
+    /// composes require that we apply the innermost sampling last, we introduce
+    /// this API to reverse the logic, and apply in the natural order.
+    pub fn then<U: Clone + 'static>(self, outer: impl Into<Timeline<U>>) -> Timeline<U> {
+        Timeline::dynamic(Compose {
+            outer: outer.into(),
+            inner: self,
+        })
+    }
+
+    /// Returns a f32 timeline which forwards it's input at a multiplied rate.
+    /// Useful for [`Timeline<f32>::then`] API.
+    pub fn rate(rate: f32) -> Self {
+        Self::dynamic(move |t| t * rate)
+    }
+}
 
 impl<T: Clone + 'static> Timeline<T> {
     /// Resamples this timeline with the inner parameter. Length is set to
     /// that of inner timeline.
-    pub fn compose(self, inner: Timeline<f32>) -> Self {
-        Self::dynamic(Compose { outer: self, inner })
+    pub fn compose(self, inner: impl Into<Timeline<f32>>) -> Self {
+        Self::dynamic(Compose {
+            outer: self,
+            inner: inner.into(),
+        })
     }
 
     /// Delays this timeline by `delay` seconds and creates a new timeline.
@@ -17,31 +39,38 @@ impl<T: Clone + 'static> Timeline<T> {
             delay,
         })
     }
-}
 
-impl<T: Clone + 'static + std::ops::Add<T>> Timeline<T> {
     /// Adds this timeline to the timeline. The length is the maximum of the two.
-    pub fn add(self, other: Timeline<T>) -> Timeline<<T as std::ops::Add<T>>::Output> {
-        Timeline::<<T as std::ops::Add<T>>::Output>::dynamic(Sum {
+    pub fn add<U: Clone + 'static>(
+        self,
+        other: impl Into<Timeline<U>>,
+    ) -> Timeline<<T as Add<U>>::Output>
+    where
+        T: Add<U>,
+    {
+        Timeline::dynamic(Sum {
             first: self,
-            second: other,
+            second: other.into(),
         })
     }
-}
 
-impl<T: Clone + 'static + std::ops::Mul<T>> Timeline<T> {
     /// Multiply this timeline (LHS) with other timeline (RHS). The length is the maximum
-    /// of the two lengths.
-    pub fn multiply(self, other: Timeline<T>) -> Timeline<<T as std::ops::Mul<T>>::Output> {
-        Timeline::<<T as std::ops::Mul<T>>::Output>::dynamic(Product {
+    /// of the two lengths. This supports
+    pub fn multiply<U: Clone + 'static>(
+        self,
+        other: impl Into<Timeline<U>>,
+    ) -> Timeline<<T as Mul<U>>::Output>
+    where
+        T: Mul<U>,
+    {
+        Timeline::dynamic(Product {
             first: self,
-            second: other,
+            second: other.into(),
         })
     }
 }
 
-/// Type-erased struct that implements signal to support `Timeline::compose`
-/// method.
+/// Type-erased struct that implements signal to support `Timeline::compose` method.
 struct Compose<T> {
     outer: Timeline<T>,
     inner: Timeline<f32>,
@@ -84,13 +113,13 @@ impl<T: Clone + 'static> Signal for Shift<T> {
 
 /// Type-erased struct that implements signal to support `Timeline::add`
 /// method.
-struct Sum<T> {
+struct Sum<T, U> {
     first: Timeline<T>,
-    second: Timeline<T>,
+    second: Timeline<U>,
 }
 
-impl<T: Clone + std::ops::Add<T> + 'static> Signal for Sum<T> {
-    type Output = <T as std::ops::Add<T>>::Output;
+impl<T: Clone + Add<U> + 'static, U: Clone + 'static> Signal for Sum<T, U> {
+    type Output = <T as Add<U>>::Output;
 
     fn sample(&self, t: f32) -> Self::Output {
         self.first.sample(t) + self.second.sample(t)
@@ -106,13 +135,13 @@ impl<T: Clone + std::ops::Add<T> + 'static> Signal for Sum<T> {
 
 /// Type-erased struct that implements signal to support `Timeline::multiply`
 /// method.
-struct Product<T> {
+struct Product<T, U> {
     first: Timeline<T>,
-    second: Timeline<T>,
+    second: Timeline<U>,
 }
 
-impl<T: Clone + std::ops::Mul<T> + 'static> Signal for Product<T> {
-    type Output = <T as std::ops::Mul<T>>::Output;
+impl<T: Clone + Mul<U> + 'static, U: Clone + 'static> Signal for Product<T, U> {
+    type Output = <T as Mul<U>>::Output;
 
     fn sample(&self, t: f32) -> Self::Output {
         self.first.sample(t) * self.second.sample(t)

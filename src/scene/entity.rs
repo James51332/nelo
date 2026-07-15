@@ -1,4 +1,5 @@
-///! An `Entity` is simple an id.
+//! An `Entity` is simple an id representing rendering data.
+
 use crate::render::renderer::{Geometry, Primitive};
 use crate::scene::{Scene, Transform};
 use crate::timeline::Timeline;

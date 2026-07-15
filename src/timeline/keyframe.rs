@@ -39,11 +39,13 @@ pub enum Easing {
     CubicInOut,
 }
 
-impl Easing {
+impl Signal for Easing {
+    type Output = f32;
+
     /// Implementation for penner's easing function.
     ///
     /// Based on [easings.net](https://easings.net/)
-    pub fn sample(&self, t: f32) -> f32 {
+    fn sample(&self, t: f32) -> Self::Output {
         match self {
             Self::Step => 0.0,
             Self::Linear => t,
@@ -66,6 +68,12 @@ impl Easing {
                 }
             }
         }
+    }
+}
+
+impl Into<Timeline<f32>> for Easing {
+    fn into(self) -> Timeline<f32> {
+        Timeline::dynamic(self)
     }
 }
 
