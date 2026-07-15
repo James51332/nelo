@@ -5,7 +5,7 @@
 //! the driver a [`Frame`] (a view to render into) and both are driven by the
 //! same rendering code.
 
-use crate::render::context::Gpu;
+use crate::render::Gpu;
 
 /// A single frame acquired from a [`Target`]: the view to render into, plus any
 /// resources that must live until the frame is presented.

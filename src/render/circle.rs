@@ -1,28 +1,15 @@
 //! Circle renderer: instanced, signed-distance-field filled circles.
-//!
-//! Each circle is one instance `{center, radius, color}`. The vertex shader
-//! expands a unit quad per instance; the fragment shader evaluates the SDF and
-//! anti-aliases the edge. This is the resolution-independent path — a circle is
-//! crisp at any zoom without re-tessellation.
 
-use crate::render::context::Gpu;
-use crate::render::{FrameCtx, Renderer};
-use crate::timeline::Timeline;
+use crate::render::{Geometry, Gpu, Primitive, Renderable, Renderer};
 use glam::prelude::*;
-
-/// A circle to draw, in world space.
-pub struct Circle {
-    pub center: Timeline<Vec2>,
-    pub radius: Timeline<f32>,
-    pub color: Timeline<Vec4>,
-}
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct CircleInstance {
-    center: [f32; 2],
-    radius: f32,
-    color: [f32; 4],
+    fill: Vec4,        // 16 bytes
+    matrix2: Mat2,     // 16 bytes
+    translation: Vec2, // 8 bytes
+    _pad: Vec2,        // 8 bytes (48 total, 16-aligned)
 }
 
 /// Maximum circles per frame (fixed-capacity instance buffer).
@@ -59,9 +46,10 @@ impl CircleRenderer {
             array_stride: std::mem::size_of::<CircleInstance>() as u64,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &wgpu::vertex_attr_array![
-                0 => Float32x2, // center (offset 0)
-                1 => Float32,   // radius (offset 8)
-                2 => Float32x4, // color  (offset 12)
+                0 => Float32x4, // color       (offset 0)
+                1 => Float32x2, // matrix col1 (offset 16)
+                2 => Float32x2, // matrix col2 (offset 24)
+                3 => Float32x2, // translation (offset 32)
             ],
         };
 
@@ -121,9 +109,12 @@ impl CircleRenderer {
 }
 
 impl Renderer for CircleRenderer {
-    type Item = Circle;
+    fn geometry(&self) -> Option<&'static [Geometry]> {
+        Some(&[Geometry::Primitive(Primitive::Circle)])
+    }
 
-    fn prepare(&mut self, ctx: &FrameCtx, items: &[Circle]) {
+    fn prepare(&mut self, gpu: &Gpu, items: &[Renderable]) {
+        // We will rely on the renderables already being filtered.
         let capped = items.len().min(MAX_CIRCLES as usize);
         if capped < items.len() {
             log::warn!(
@@ -136,19 +127,19 @@ impl Renderer for CircleRenderer {
         let data: Vec<CircleInstance> = items[..capped]
             .iter()
             .map(|c| CircleInstance {
-                center: c.center.sample(ctx.time).to_array(),
-                radius: c.radius.sample(ctx.time),
-                color: c.color.sample(ctx.time).to_array(),
+                fill: c.fill,
+                matrix2: c.transform.matrix2,
+                translation: c.transform.translation,
+                _pad: Vec2::ZERO,
             })
             .collect();
 
-        ctx.gpu
-            .queue()
+        gpu.queue()
             .write_buffer(&self.instances, 0, bytemuck::cast_slice(&data));
         self.count = capped as u32;
     }
 
-    fn draw<'p>(&'p self, pass: &mut wgpu::RenderPass<'p>) {
+    fn submit<'a>(&'a self, pass: &mut wgpu::RenderPass<'a>) {
         if self.count == 0 {
             return;
         }

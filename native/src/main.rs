@@ -1,5 +1,6 @@
 use glam::prelude::*;
-use nelo::render::{Camera, Circle, CircleRenderer, FrameCtx, Gpu, Renderer, Target, WindowTarget};
+use nelo::render::{Camera, CircleRenderer, Gpu, SceneRenderer, Target, WindowTarget};
+use nelo::scene::Scene;
 use nelo::timeline::Timeline;
 use std::sync::Arc;
 use std::time::Instant;
@@ -8,78 +9,32 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowId};
 
-/// Vertical extent of the visible world, in world units.
 const SCENE_HEIGHT: f32 = 10.0;
 
-struct Renderers {
+struct RenderState {
     gpu: Gpu,
     target: WindowTarget,
-    camera: Camera,
-    circles: CircleRenderer,
+    renderer: SceneRenderer,
 }
 
 #[derive(Default)]
 pub struct App {
     window: Option<Arc<Window>>,
-    renderers: Option<Renderers>,
+    render_state: Option<RenderState>,
     start: Option<Instant>,
 }
 
 impl App {
     fn draw(&mut self) {
-        let Some(r) = &mut self.renderers else { return };
         let t = self.start.map(|s| s.elapsed().as_secs_f32()).unwrap_or(0.0);
-
-        let size = r.target.size();
-        let items = demo_scene();
-
-        // 1. Sample scene → uploads (before the pass).
-        let ctx = FrameCtx {
-            gpu: &r.gpu,
-            time: t,
-            size,
+        let Some(r) = &mut self.render_state else {
+            return;
         };
-        r.circles.prepare(&ctx, &items);
-        r.camera.upload(&r.gpu, t, size);
-
-        // 2. One encoder, one pass. The camera is bound at group 0.
         let Some(frame) = r.target.acquire(&r.gpu) else {
             return;
         };
-        let mut encoder = r
-            .gpu
-            .device()
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("nelo frame"),
-            });
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("nelo pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &frame.view,
-                    resolve_target: None,
-                    depth_slice: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.02,
-                            g: 0.02,
-                            b: 0.04,
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
-                multiview_mask: None,
-            });
-            pass.set_bind_group(0, r.camera.bind_group(), &[]);
-            r.circles.draw(&mut pass);
-        }
 
-        // 3. Submit and present.
-        r.gpu.queue().submit(std::iter::once(encoder.finish()));
+        r.renderer.render(&r.gpu, &frame.view, t);
         r.target.present(&r.gpu, frame);
     }
 }
@@ -102,20 +57,24 @@ impl ApplicationHandler for App {
         let (gpu, surface) = pollster::block_on(Gpu::with_surface(window.clone()));
         let target = WindowTarget::new(&gpu, surface, size.width, size.height);
         let camera = Camera::new(&gpu, SCENE_HEIGHT);
+
         let circles = CircleRenderer::new(&gpu, camera.layout(), target.format());
+        let mut renderer = SceneRenderer::new(camera, build_scene());
+        renderer.add(circles);
 
         self.window = Some(window);
-        self.renderers = Some(Renderers {
+        self.render_state = Some(RenderState {
             gpu,
+            renderer,
             target,
-            camera,
-            circles,
         });
         self.start = Some(Instant::now());
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
-        let Some(r) = &mut self.renderers else { return };
+        let Some(r) = &mut self.render_state else {
+            return;
+        };
 
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
@@ -133,38 +92,37 @@ impl ApplicationHandler for App {
 }
 
 /// A small animated scene: a ring of orbiting circles around a pulsing center.
-fn demo_scene() -> Vec<Circle> {
+fn build_scene() -> Scene {
     use std::f32::consts::TAU;
 
-    let mut circles = Vec::new();
+    let mut scene = Scene::new();
 
     // Central pulsing circle.
-    circles.push(Circle {
-        center: Timeline::constant(Vec2::new(0.0, 0.0)),
-        radius: Timeline::dynamic(|t: f32| 1.0 + 0.2 * (t as f32 * 2.0).sin()),
-        color: Timeline::constant(Vec4::new(0.9, 0.9, 1.0, 1.0)),
-    });
+    scene
+        .circle()
+        .fill(Timeline::constant(Vec4::new(0.9, 0.9, 1.0, 1.0)))
+        .build();
 
     // Orbiting ring.
     const N: usize = 12;
     for i in 0..N {
-        circles.push(Circle {
-            center: Timeline::dynamic(move |t: f32| {
+        scene
+            .circle()
+            .translate(Timeline::dynamic(move |t: f32| {
                 let phase = i as f32 / N as f32 * TAU;
                 let angle = phase + t * 0.6;
                 let x = 3.5 * angle.cos();
                 let y = 3.5 * angle.sin();
                 Vec2::new(x as f32, y as f32)
-            }),
-            radius: Timeline::constant(0.5),
-            color: Timeline::dynamic(move |_: f32| {
+            }))
+            .fill(Timeline::dynamic(move |_: f32| {
                 let hue = i as f32 / N as f32;
                 Vec4::new(0.5 + 0.5 * hue, 0.6, 1.0 - 0.5 * hue, 1.0)
-            }),
-        });
+            }))
+            .build();
     }
 
-    circles
+    scene
 }
 
 fn main() {

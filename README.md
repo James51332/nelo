@@ -36,16 +36,25 @@ to the level of any iterative simulation tool:
     * [x] Keyframes
     * [x] Composition
     * [x] Lengths
-* [ ] Scene
-    * [ ] Entities
-    * [ ] Renderer System
-    * [ ] Grouping
+    * [ ] Input Timelines
+* [ ] ECS
+    * [x] Scene
+    * [x] Entities
+    * [x] Geometries
+        * [x] Circles
+        * [ ] Paths
+        * [ ] Curves
+    * [ ] Transforms
 * [ ] Renderers
     * [x] Circle Renderer
     * [ ] Path Renderer
     * [ ] Text Renderer
-    * [ ] Camera Timeline
-* [ ] Input Timelines
-* [ ] Animations
-* [ ] Exporting (via `ffmpeg`)
+    * [ ] Math Renderer
+* [ ] Storyboard
+    * [ ] Actions
+    * [ ] Grouping
+* [ ] Exporting
+    * [ ] Video Files (via `ffmpeg`)
+    * [ ] WASM Scenes
+    * [ ] Images
 

@@ -19,9 +19,10 @@ var<uniform> camera: Camera;
 // Per-instance vertex input; one of these per circle. @location indices match
 // the `vertex_attr_array!` in `circle.rs`.
 struct Instance {
-    @location(0) center: vec2<f32>,
-    @location(1) radius: f32,
-    @location(2) color: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) col1: vec2<f32>,
+    @location(2) col2: vec2<f32>,
+    @location(3) translation: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -41,15 +42,15 @@ fn vs_main(@builtin(vertex_index) vid: u32, inst: Instance) -> VertexOutput {
     // Two triangles forming a quad in local space, padded to [-(1+pad), 1+pad].
     var corners = array<vec2<f32>, 6>(
         vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 1.0, -1.0),
-        vec2<f32>( 1.0,  1.0),
+        vec2<f32>(1.0, -1.0),
+        vec2<f32>(1.0, 1.0),
         vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 1.0,  1.0),
-        vec2<f32>(-1.0,  1.0),
+        vec2<f32>(1.0, 1.0),
+        vec2<f32>(-1.0, 1.0),
     );
 
     let local = corners[vid] * (1.0 + EDGE_PAD);
-    let world = inst.center + local * inst.radius;
+    let world = mat2x2<f32>(inst.col1, inst.col2) * local + inst.translation;
 
     var out: VertexOutput;
     out.clip_position = camera.view_proj * vec4<f32>(world, 0.0, 1.0);
@@ -65,7 +66,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let d = length(in.local) - 1.0;
     let aa = fwidth(d);
     let alpha = 1.0 - smoothstep(-aa, aa, d);
-    if (alpha <= 0.0) {
+    if alpha <= 0.0 {
         discard;
     }
     return vec4<f32>(in.color.rgb, in.color.a * alpha);

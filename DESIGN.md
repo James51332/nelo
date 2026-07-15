@@ -95,6 +95,9 @@ The five README operations, made precise:
 - **Sequence** — `a.then(b)`: play `a` for `a.length()`, then `b`. **Requires `length()`.**
 - **Sample** — higher-order: `self.sample_within(|inner| …)`. The `Timeline<Path>` "timeline
   of timelines" pattern. May need `Box<dyn>` at the boundary in Rust.
+- **Splice** *(new; not in the README)* — `base.splice(at, seg)`: `base` for `t < at`, `seg`
+  (shifted to `at`) after. Cut-and-continue; one branch over `shift`. This is the primitive the
+  Sequencing layer (§6) rides on — pulled out here because it belongs with the combinators.
 
 **Decisions**
 - ✅ Combinators are `Signal`-implementing wrapper structs, constructed via fluent methods.
@@ -201,20 +204,91 @@ graphics-API abstraction.
 - ✅ SDF for static/filled primitives, tessellation for strokes/morphs.
 - 🔶 Open: exact command enum shape (must accommodate future text/math variants).
 
-## 6. Animations (semantic sugar)
+## 6. Animations & Sequencing
 
-**v1:** none as such — "animations" were just the add/multiply layers.
+**v1:** none as such — "animations" were just the add/multiply layers; sequencing was
+`scene.play(start, end)` driving wall-clock time by mutation (conflating authoring and playback).
 
-**v2:** thin constructors over the combinators, **not** new machinery.
-`fade_in`, `move_to`, `spin`, `pulse` desugar to keyframe/closure timelines composed onto a
-component.
+**v2:** three thin layers over the existing combinators, **no new runtime concept**. The
+load-bearing idea: **sequencing happens at *authoring* time, not render time.** There are two
+clocks — wall-clock `t` (the argument to `Signal::sample`) and an *authoring cursor* ("where in
+the storyboard I'm writing"). The cursor lives only in the builder and is gone by the time
+anything is sampled. That is what lets an imperative, Manim-like `play`/`wait` authoring feel
+produce a purely declarative result — a scene of independent timelines — with the stateless
+model intact. More speculative than §1–§3; the value is real but the couplings below are.
 
-- **Relative vs absolute:** `.to(x)` = replace/keyframe (absolute), `.by(dx)` = additive
-  layer (relative). v1's `add_timeline` is exactly the relative case.
-- Keep sugar in its own module so the core stays minimal; this is where iteration happens.
-- 🔶 Open: do sugar constructors return a `Timeline` the user assigns, or mutate an entity's
-  component in place (`entity.animate(fade_in(1.0))`)? Leaning: return a `Timeline`
-  (composable, stateless); offer the in-place form as convenience on top.
+**Layer 1 — Sugar (`Anim`): *what* changes.** `fade_in`, `move_to`, `recolor`, `pop_in`, `spin`
+are constructors of an `Anim` — a duration plus a segment that begins at the value it is handed.
+`from` is what makes `move_to` mean "from wherever I am now."
+
+```rust
+trait Anim {
+    type Value;
+    fn duration(&self) -> f32;
+    /// Segment on local time [0, duration], beginning at `from`.
+    fn segment(&self, from: Self::Value) -> Timeline<Self::Value>;
+}
+```
+
+Every constructor desugars to the keyframe builder (§3); e.g. `move_to(p, d)` is
+`keyframes(from).ease_at(d, p, …)`. Because `Keyframes` holds its last value past the end (§3),
+a finished anim leaves the component parked with no extra machinery.
+
+- **Relative vs absolute** (unchanged): `.to(x)` keyframes to an absolute value; `.by(dx)` is an
+  additive layer (the Add/Multiply combinators, §2). v1's `add_timeline` is the relative case.
+
+**Layer 2 — `splice`: *where in time*.** `.play` needs "old timeline until the cursor, then this
+segment." That is the `splice` combinator (§2), adding one branch over `shift`. The segment
+starts from `base.sample(at)`, so an interrupted `move_to` splices in mid-motion —
+**interrupt-and-redirect is a free consequence**, not special-cased. Immutable composition holds:
+`splice` builds a new timeline and consumes the old; it never mutates a shared `Signal`.
+
+**Layer 3 — `Storyboard`: the authoring clock.** Owns the cursor. `play` reads the current value
+at the cursor, splices the anim in, and advances the cursor; `wait` advances only; `par!`/`each`
+place several commits and advance by the longest.
+
+```rust
+struct Storyboard<'s> { scene: &'s mut Scene, cursor: f32 }
+impl Storyboard<'_> {
+    fn wait(&mut self, d: f32) { self.cursor += d; }
+    fn play(&mut self, action: Action) { self.cursor = action.commit(self.scene, self.cursor); }
+}
+```
+
+`entity.animate(field, anim)` yields an `Action` — a bundle of type-erased commits
+(`Box<dyn FnOnce(&mut Scene, f32)>`, one per component) so one `par!` can carry a move, a fade,
+and a recolor together. Each commit, run at absolute time `at`: reads `scene.get(entity, field)`,
+samples it at `at`, writes back `splice(base, at, anim.segment(from))`. `.delay(d)` shifts a
+commit's offset — the stagger in `row.each(|i, e| … .delay(i * dt))`.
+
+**Realism / cost.** This layers strictly on top of the existing combinators, so the *core* risk
+is low — but three couplings are load-bearing and should be decided deliberately:
+
+- **Depends on the closed component set (§4).** `scene.get(entity, field) -> &Timeline<T>` only
+  typechecks against a fixed, typed field set (Opacity→`f32`, Position→`Vec2`, Color→`Vec4`).
+  The open/`Any` store cannot give this signature without runtime downcasts. Sequencing
+  ergonomics therefore *pull §4 toward closed* — decide the two together.
+- **Commit order is authoring order, and `par` reads the pre-`par` value.** `play` commits
+  synchronously, so a later `play` sees earlier splices; but two anims on the *same* field inside
+  one `par!` both start from the value before the block. A real semantic to **document, not
+  discover**.
+- **`pop_in` overshoot needs an easing the enum lacks (§3).** Requires a `Back`/elastic variant
+  or the `Custom`/`CubicBezier` escape hatch.
+
+**Not a master timeline.** The `Storyboard` does *not* build one `Timeline<Scene>`; the scene is
+the *product* of its per-component timelines, sampled componentwise at `t`. `.build()` finalizes
+the scene and returns the total duration (the final cursor) as the default `export` range.
+
+**Decisions**
+- ✅ Resolves the old "return vs mutate" question: sugar builds a pure `Anim`/`Timeline`; `.play`
+  is the *authoring-time* mutation that splices it in. Both halves hold, at different layers.
+- ✅ `splice` is the one new combinator (catalogued in §2); interrupt-redirect falls out of it.
+- ✅ Sequencing is authoring-time; the artifact is pure independent timelines (two-clocks).
+- 🔶 Open: keep the imperative `Storyboard` clock, or expose only declarative composition
+  (`a.then(b).par(c)`) with the clock as optional sugar? Leaning: storyboard as the default
+  authoring surface, over a declarative core.
+- 🔶 Open: `par` same-field start-value semantics (pre-block read) — confirm this is the rule.
+- 🔶 Open: source of overshoot/elastic easing (`Back` variants vs `Custom`) — ties to §3.
 
 ## 7. Grouping & Positioning
 
@@ -367,7 +441,7 @@ decision.
 4. **Command-list boundary** + move GPU into `native`; port the 2D renderer to consume
    commands.
 5. **Scene/store** + transforms + grouping (multiply combinator).
-6. **Animation sugar** + positioning helpers.
+6. **Animation sugar** + **sequencing** (`splice`, `Anim`, `Storyboard`) + positioning helpers.
 7. **Simulation** solver + explicit bake — unlocks the Lague/boids story.
 8. **Export** driver (offscreen + ffmpeg pipe).
 9. **Text**, then **Math** renderers (the long pole for 3B1B).
@@ -382,7 +456,9 @@ decision.
 - Open vs closed component set (§4)
 - Append-only vs destroyable entities (§4)
 - Draw-command enum shape / text-math accommodation (§5)
-- Sugar returns timeline vs mutates entity (§6)
+- Storyboard imperative clock vs pure declarative composition (§6)
+- `par` same-field start-value semantics (§6)
+- Overshoot/elastic easing source: `Back` variants vs `Custom` (§3, §6)
 - Stored vs functional group hierarchy (§7)
 - Morph correspondence strategy (§8)
 - Explicit vs lazy simulation bake (§9)
