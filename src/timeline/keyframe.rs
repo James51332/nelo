@@ -46,6 +46,7 @@ impl Signal for Easing {
     ///
     /// Based on [easings.net](https://easings.net/)
     fn sample(&self, t: f32) -> Self::Output {
+        let t = t.clamp(0.0, 1.0);
         match self {
             Self::Step => 0.0,
             Self::Linear => t,
