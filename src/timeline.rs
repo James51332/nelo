@@ -15,22 +15,22 @@ pub mod keyframe;
 pub mod signal;
 
 pub use keyframe::{Easing, Lerp};
-pub use signal::Signal;
+pub use signal::{Signal, SignalClone};
 
 /// A sampleable value over time, either a fixed constant or a shared [`Signal`].
 pub enum Timeline<T> {
     Constant(T),
-    Dynamic(Box<dyn Signal<Output = T>>),
+    Dynamic(Box<dyn SignalClone<Output = T>>),
 }
 
-impl<T: 'static> Timeline<T> {
+impl<T: Clone + 'static> Timeline<T> {
     /// Wrap a fixed value that never changes.
     pub fn constant(s: T) -> Self {
         Self::Constant(s)
     }
 
     /// Erase a concrete signal (e.g. a closure) into a shareable timeline.
-    pub fn dynamic(s: impl Signal<Output = T> + 'static) -> Self {
+    pub fn dynamic(s: impl SignalClone<Output = T>) -> Self {
         Self::Dynamic(Box::new(s))
     }
 
@@ -68,6 +68,7 @@ impl<T: Clone + 'static> Timeline<T> {
 /// A signal adaptor that forwards sampling to `inner` but overrides its
 /// reported duration. Built by [`Timeline::with_length`] and immediately erased
 /// into a [`Timeline::Dynamic`].
+#[derive(Clone)]
 struct WithLength<T: Clone + 'static> {
     timeline: Timeline<T>,
     length: f32,
@@ -82,5 +83,14 @@ impl<T: Clone + 'static> Signal for WithLength<T> {
 
     fn length(&self) -> Option<f32> {
         Some(self.length)
+    }
+}
+
+impl<T: Clone + 'static> Clone for Timeline<T> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Constant(s) => Self::Constant(s.clone()),
+            Self::Dynamic(s) => Self::Dynamic(s.clone_box()),
+        }
     }
 }

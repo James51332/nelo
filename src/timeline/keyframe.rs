@@ -28,6 +28,7 @@ impl Lerp for Quat {
 /// map a linear time variable from [0, 1] -> [0, 1]. Only
 /// a handful are implemented right now, but all of penner's
 /// will be implemented soon.
+#[derive(Clone)]
 pub enum Easing {
     Step,
     Linear,
@@ -82,7 +83,8 @@ impl Into<Timeline<f32>> for Easing {
 /// They define state at a fixed point in time for a timeline.
 /// Anytype which wishes to be part of a keyframe must implement
 /// the `Lerp` trait.
-struct Keyframe<T: Lerp> {
+#[derive(Clone)]
+struct Keyframe<T: Lerp + Clone> {
     time: f32,
     value: T,
     easing: Easing,
@@ -91,10 +93,12 @@ struct Keyframe<T: Lerp> {
 /// Keyframes struct implements Signal trait. We require that the keyframes
 /// are sorted by their end time. This struct is a private, intermediate
 /// which implements Signal so it can be converted into a timeline.
+#[derive(Clone)]
 struct Keyframes<T: Lerp + Clone>(Vec<Keyframe<T>>);
 
 impl<T: Lerp + Clone + 'static> Signal for Keyframes<T> {
     type Output = T;
+
     fn sample(&self, t: f32) -> T {
         // Number of keyframes at or before `t`. Because the list is sorted,
         // this is also the index of the first keyframe strictly after `t`, so

@@ -3,7 +3,7 @@ use crate::timeline::Timeline;
 use glam::prelude::*;
 
 /// Closures implement signal automatically, so they can become dynamic timelines.
-impl<T: 'static, F: Fn(f32) -> T + 'static> From<F> for Timeline<T> {
+impl<T: Clone + 'static, F: Fn(f32) -> T + Clone + 'static> From<F> for Timeline<T> {
     fn from(f: F) -> Self {
         Timeline::dynamic(f)
     }

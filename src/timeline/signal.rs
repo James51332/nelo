@@ -34,13 +34,22 @@ pub trait Signal: 'static {
     }
 }
 
-/// Any closure `Fn(f32) -> T` is a signal, so no wrapper type is needed to lift
-/// ordinary functions into the animation system. A closure carries no duration,
-/// so [`length`](Signal::length) stays `None`; attach one with
-/// [`Timeline::with_length`](crate::timeline::Timeline::with_length).
-impl<T: 'static, F: Fn(f32) -> T + 'static> Signal for F {
+/// Any closure `Fn(f32) -> T + 'static` is a signal, with no length.
+impl<T: 'static, F: Fn(f32) -> T + Clone + 'static> Signal for F {
     type Output = T;
+
     fn sample(&self, t: f32) -> T {
         self(t)
+    }
+}
+
+pub trait SignalClone: Signal + 'static {
+    /// We require that Signals are cloneable into a box.
+    fn clone_box(&self) -> Box<dyn SignalClone<Output = Self::Output> + 'static>;
+}
+
+impl<T: Signal + Clone> SignalClone for T {
+    fn clone_box(&self) -> Box<dyn SignalClone<Output = Self::Output> + 'static> {
+        Box::new(self.clone())
     }
 }
