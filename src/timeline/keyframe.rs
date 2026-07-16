@@ -23,6 +23,13 @@ impl Lerp for Quat {
     }
 }
 
+impl<T: Lerp + Clone + 'static> Lerp for Timeline<T> {
+    fn interpolate(a: &Self, b: &Self, alpha: f32) -> Self {
+        let (a, b) = (a.clone(), b.clone());
+        Timeline::dynamic(move |t: f32| T::interpolate(&a.sample(t), &b.sample(t), alpha))
+    }
+}
+
 /// Easing functions are simply maps from `f32` -> `f32`
 /// Use the [`sample`](Easing::sample) method to manually
 /// map a linear time variable from [0, 1] -> [0, 1]. Only

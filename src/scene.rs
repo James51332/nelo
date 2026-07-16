@@ -56,14 +56,24 @@ impl Scene {
 
     /// A small animated scene with a ring of orbiting circles around a pulsing center.
     pub fn demo() -> Self {
+        use std::f32::consts::TAU;
+
+        const PERIOD: f32 = 3.0;
         let mut scene = Self::new();
 
         // Central pulsing circle.
         scene
             .circle()
-            .scale(|t: f32| 1.25 + 0.5 * t.sin())
+            .scale(|t: f32| 1.25 + 0.75 * ((t - 2.0) * TAU / (PERIOD * 2.0)).sin())
             .fill(Vec4::new(0.9, 0.9, 1.0, 1.0))
             .build();
+
+        // Define the path over time. Change between square and circle on repeat.
+        let path = Timeline::keyframes(path::square())
+            .ease_at(PERIOD, path::circle(), Easing::CubicInOut)
+            .ease_at(PERIOD * 2.0, path::square(), Easing::CubicInOut)
+            .build()
+            .compose(|t| t % (2.0 * PERIOD));
 
         // Orbiting square.
         const N: usize = 12;
@@ -75,10 +85,14 @@ impl Scene {
                 .circle()
                 .scale(0.5)
                 .translate(
-                    Timeline::sawtooth(4.0)
-                        .then(Easing::QuadInOut)
-                        .add(phase + 0.125)
-                        .then(path::square())
+                    path.clone()
+                        .map(move |shape| {
+                            Timeline::sawtooth(PERIOD)
+                                .then(Easing::CubicInOut)
+                                .add(phase + 0.125)
+                                .then(shape)
+                        })
+                        .flatten()
                         .multiply(3.5),
                 )
                 .fill(color)

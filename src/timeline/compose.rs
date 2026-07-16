@@ -28,6 +28,12 @@ impl Timeline<f32> {
     }
 }
 
+impl<T: Clone + 'static> Timeline<Timeline<T>> {
+    pub fn flatten(self) -> Timeline<T> {
+        Timeline::dynamic(move |t| self.sample(t).sample(t))
+    }
+}
+
 impl<T: Clone + 'static> Timeline<T> {
     /// Resamples this timeline with the inner parameter. Length is set to
     /// that of inner timeline.
