@@ -75,8 +75,7 @@ impl Scene {
                 .circle()
                 .scale(0.5)
                 .translate(
-                    Timeline::rate(0.25)
-                        .then(|t| t % 1.0)
+                    Timeline::sawtooth(4.0)
                         .then(Easing::QuadInOut)
                         .add(phase + 0.125)
                         .then(path::square())

@@ -20,6 +20,12 @@ impl Timeline<f32> {
     pub fn rate(rate: f32) -> Self {
         Self::dynamic(move |t| t * rate)
     }
+
+    /// Returns an f32 timeline which goes from zero to one with no interpolation
+    /// and given period.
+    pub fn sawtooth(period: f32) -> Self {
+        Self::dynamic(move |t: f32| (t / period).rem_euclid(1.0)).with_length(period)
+    }
 }
 
 impl<T: Clone + 'static> Timeline<T> {
@@ -55,7 +61,7 @@ impl<T: Clone + 'static> Timeline<T> {
     }
 
     /// Multiply this timeline (LHS) with other timeline (RHS). The length is the maximum
-    /// of the two lengths. This supports
+    /// of the two lengths.
     pub fn multiply<U: Clone + 'static>(
         self,
         other: impl Into<Timeline<U>>,
@@ -66,6 +72,15 @@ impl<T: Clone + 'static> Timeline<T> {
         Timeline::dynamic(Product {
             first: self,
             second: other.into(),
+        })
+    }
+
+    /// Consume this timeline and return a new timeline with a mapped output value. The length
+    /// of the timeline is unchanged.
+    pub fn map<U: Clone + 'static>(self, map: impl Fn(T) -> U + 'static) -> Timeline<U> {
+        Timeline::dynamic(Map {
+            inner: self,
+            map: Box::new(map),
         })
     }
 }
@@ -152,5 +167,23 @@ impl<T: Clone + Mul<U> + 'static, U: Clone + 'static> Signal for Product<T, U> {
             (Some(x), Some(y)) => Some(x.max(y)),
             _ => None,
         }
+    }
+}
+
+/// Type-erased struct that implements signal to support `Timeline::map`
+struct Map<T, U> {
+    inner: Timeline<T>,
+    map: Box<dyn Fn(T) -> U + 'static>,
+}
+
+impl<T: Clone + 'static, U: Clone + 'static> Signal for Map<T, U> {
+    type Output = U;
+
+    fn sample(&self, t: f32) -> Self::Output {
+        (self.map)(self.inner.sample(t))
+    }
+
+    fn length(&self) -> Option<f32> {
+        self.inner.length()
     }
 }
