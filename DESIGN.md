@@ -21,6 +21,7 @@ A stateless, timeline-driven animation engine for explorable visual animations.
         * [x] Paths
         * [ ] Curves
     * [x] Transforms
+    * [ ] Components
     * [ ] Grouping
 * [ ] Renderers
     * [x] Circle Renderer
@@ -35,4 +36,3 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [ ] Video Files (via `ffmpeg`)
     * [ ] WASM Scenes
     * [ ] Images
-

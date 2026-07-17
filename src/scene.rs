@@ -5,15 +5,17 @@
 
 pub mod entity;
 pub mod path;
+pub mod store;
 pub mod transform;
 
+pub(crate) use entity::EntityData;
 pub use entity::{EntityId, EntityRef};
-pub use transform::Transform;
+pub use transform::{Transform, Transformable};
 
-use crate::render::Renderable;
+use crate::render::{Geometry, Primitive, Renderable};
 use crate::timeline::{Easing, Timeline};
-use entity::Store;
 use glam::prelude::*;
+use store::Store;
 
 pub struct Scene {
     store: Store,
@@ -51,6 +53,22 @@ impl Scene {
             .collect()
     }
 
+    /// Returns an `EntityRef` with circle geometry attached. The default
+    /// circle is at the world origin with a radius of one.
+    pub fn circle(&mut self) -> EntityRef<'_> {
+        self.store.create(Geometry::Primitive(Primitive::Circle))
+    }
+
+    // Removes an entity from the scene, or a no-op if the entity doesn't exist.
+    pub fn delete(&mut self, entity: EntityId) {
+        self.store.delete(entity);
+    }
+
+    /// Returns an Some with a handle to the entity if it exists, or none otherwise.
+    pub fn get(&mut self, entity: EntityId) -> Option<EntityRef<'_>> {
+        self.store.get(entity)
+    }
+
     /// A small animated scene with a ring of orbiting circles around a pulsing center.
     pub fn demo() -> Self {
         use std::f32::consts::TAU;
@@ -77,7 +95,7 @@ impl Scene {
             let phase = i as f32 / N as f32;
             let color = Vec4::new(0.5 + 0.5 * phase, 0.6, 1.0 - 0.5 * phase, 1.0);
 
-            let circle = scene
+            scene
                 .circle()
                 .scale(0.5)
                 .translate(
@@ -91,15 +109,7 @@ impl Scene {
                         .flatten()
                         .multiply(3.5),
                 )
-                .fill(color)
-                .id();
-
-            scene.circle(); //.fill(Vec4::X);
-
-            scene
-                .get(circle)
-                .unwrap()
-                .scale(|t: f32| 1.0 + 0.5 * t.sin());
+                .fill(color);
         }
 
         scene
