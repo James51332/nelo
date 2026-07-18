@@ -31,11 +31,11 @@ impl Scene {
         }
     }
 
-    /// Creates an empty entity with a transform component
+    /// Creates an empty entity with a `Transform` component.
     pub fn create(&mut self) -> EntityRef<'_> {
         let id = EntityId::new(self.next_id);
         self.next_id += 1;
-        EntityRef::new(&mut self.registry, id).attach::<Vec<Transform>>(Vec::new())
+        EntityRef::new(&mut self.registry, id).attach(Transform::default())
     }
 
     /// Returns all attached data of a certain type sorted by EntityId.
@@ -58,15 +58,10 @@ impl Scene {
     }
 
     // Returns an `EntityRef` with circle geometry attached. The default
-    // circle is at the world origin with a radius of one.
+    // circle is at the world origin with a radius of one and white fill.
     pub fn circle(&mut self) -> EntityRef<'_> {
         self.create().attach(Circle).fill(Vec4::ONE)
     }
-
-    // Removes an entity from the scene, or a no-op if the entity doesn't exist.
-    // pub fn delete(&mut self, entity: EntityId) {
-    //     self.store.delete(entity);
-    // }
 
     // Returns an Some with a handle to the entity if it exists, or none otherwise.
     // pub fn get(&mut self, entity: EntityId) -> Option<EntityRef<'_>> {

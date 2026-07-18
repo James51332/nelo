@@ -43,7 +43,7 @@ impl<'a> EntityRef<'a> {
 }
 
 impl Transformable for EntityRef<'_> {
-    fn transforms(&mut self) -> &mut Vec<Transform> {
+    fn transform(&mut self) -> &mut Transform {
         self.registry.get_or_default(self.id)
     }
 }

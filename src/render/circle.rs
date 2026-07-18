@@ -111,8 +111,7 @@ impl CircleRenderer {
 
 impl Renderer for CircleRenderer {
     fn prepare(&mut self, gpu: &Gpu, scene: &Scene, t: f32) {
-        // We will rely on the renderables already being filtered.
-        let items = scene.view_triple::<&Vec<Transform>, &Circle, &Fill>();
+        let items = scene.view_triple::<Transform, Circle, Fill>();
         let capped = items.len().min(MAX_CIRCLES as usize);
         if capped < items.len() {
             log::warn!(
@@ -125,16 +124,11 @@ impl Renderer for CircleRenderer {
         let data: Vec<CircleInstance> = items[..capped]
             .iter()
             .map(|(_, transform, _, fill)| {
-                // We'll implement a more robust transform system soon,
-                let mut cur_transform = Affine2::default();
-                for step in transform.iter() {
-                    cur_transform = step.sample(t) * cur_transform;
-                }
-
+                let affine = transform.sample(t);
                 CircleInstance {
-                    fill: fill.0.sample(t),
-                    matrix2: cur_transform.matrix2,
-                    translation: cur_transform.translation,
+                    fill: fill.sample(t),
+                    matrix2: affine.matrix2,
+                    translation: affine.translation,
                     _pad: Vec2::ZERO,
                 }
             })
