@@ -1,5 +1,5 @@
+use nelo::prelude::*;
 use nelo::render::{Camera, CircleRenderer, Gpu, SceneRenderer, Target, WindowTarget};
-use nelo::scene::Scene;
 use std::sync::Arc;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
