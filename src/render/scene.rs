@@ -26,27 +26,8 @@ impl SceneRenderer {
     // Uses all renderers and supplies them the data according to their geometry
     // filter.
     pub fn render(&mut self, gpu: &Gpu, view: &wgpu::TextureView, t: f32) {
-        let data = self.scene.sample(t);
-
         for renderer in self.renderers.iter_mut() {
-            if let Some(types) = renderer.geometry() {
-                // Copy the data which matches the renderers filter into a new vec.
-                let filtered: Vec<_> = data
-                    .iter()
-                    .filter_map(|c| {
-                        if types.contains(&c.geometry) {
-                            Some(c.clone())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-
-                renderer.prepare(&gpu, &filtered);
-            } else {
-                // If we don't have anything to filter on, then we don't need to copy.
-                renderer.prepare(&gpu, &data);
-            }
+            renderer.prepare(&gpu, &self.scene, t);
         }
 
         // Update the camera data.

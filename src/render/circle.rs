@@ -1,6 +1,7 @@
 //! Circle renderer: instanced, signed-distance-field filled circles.
 
-use crate::render::{Geometry, Gpu, Primitive, Renderable, Renderer};
+use crate::render::{Gpu, Renderer};
+use crate::scene::{Circle, Fill, Scene, Transform};
 use glam::prelude::*;
 
 #[repr(C)]
@@ -109,12 +110,9 @@ impl CircleRenderer {
 }
 
 impl Renderer for CircleRenderer {
-    fn geometry(&self) -> Option<&'static [Geometry]> {
-        Some(&[Geometry::Primitive(Primitive::Circle)])
-    }
-
-    fn prepare(&mut self, gpu: &Gpu, items: &[Renderable]) {
+    fn prepare(&mut self, gpu: &Gpu, scene: &Scene, t: f32) {
         // We will rely on the renderables already being filtered.
+        let items = scene.view_triple::<&Vec<Transform>, &Circle, &Fill>();
         let capped = items.len().min(MAX_CIRCLES as usize);
         if capped < items.len() {
             log::warn!(
@@ -126,11 +124,19 @@ impl Renderer for CircleRenderer {
 
         let data: Vec<CircleInstance> = items[..capped]
             .iter()
-            .map(|c| CircleInstance {
-                fill: c.fill,
-                matrix2: c.transform.matrix2,
-                translation: c.transform.translation,
-                _pad: Vec2::ZERO,
+            .map(|(_, transform, _, fill)| {
+                // We'll implement a more robust transform system soon,
+                let mut cur_transform = Affine2::default();
+                for step in transform.iter() {
+                    cur_transform = step.sample(t) * cur_transform;
+                }
+
+                CircleInstance {
+                    fill: fill.0.sample(t),
+                    matrix2: cur_transform.matrix2,
+                    translation: cur_transform.translation,
+                    _pad: Vec2::ZERO,
+                }
             })
             .collect();
 

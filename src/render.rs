@@ -16,6 +16,6 @@ pub mod target;
 pub use camera::Camera;
 pub use circle::CircleRenderer;
 pub use context::Gpu;
-pub use renderer::{Geometry, Primitive, Renderable, Renderer};
+pub use renderer::Renderer;
 pub use scene::SceneRenderer;
 pub use target::{Frame, Target, TextureTarget, WindowTarget};

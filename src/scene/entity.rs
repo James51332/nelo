@@ -1,11 +1,11 @@
 //! An `Entity` is simple an id representing rendering data.
 
-use crate::render::renderer::Geometry;
-use crate::scene::{Transform, Transformable};
+use crate::scene::{Fill, Registry, Transform, Transformable};
 use crate::timeline::Timeline;
 use glam::prelude::*;
+use std::any::Any;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntityId(usize);
 
 impl EntityId {
@@ -14,46 +14,36 @@ impl EntityId {
     }
 }
 
-/// This struct essentially is a timeline version of renderable. It
-/// usually makes sense to keep this data packed because in rendering
-/// we are accessing all fields.
-pub(crate) struct EntityData {
-    pub transforms: Vec<Transform>,
-    pub geometry: Geometry,
-    pub fill: Option<Timeline<Vec4>>,
+/// A reference to an entities transform.
+pub struct EntityRef<'a> {
+    registry: &'a mut Registry,
+    id: EntityId,
 }
-
-impl EntityData {
-    pub fn new(geometry: Geometry) -> Self {
-        Self {
-            transforms: Vec::new(),
-            geometry,
-            fill: None,
-        }
-    }
-}
-
-/// A reference to change an entity.
-pub struct EntityRef<'a>(&'a mut EntityData, EntityId);
 
 impl<'a> EntityRef<'a> {
-    pub(crate) fn new(data: &'a mut EntityData, id: EntityId) -> Self {
-        Self(data, id)
+    pub(crate) fn new(registry: &'a mut Registry, id: EntityId) -> Self {
+        Self { registry, id }
+    }
+
+    pub(crate) fn attach<T: Any>(self, data: T) -> Self {
+        self.registry.attach(self.id, data);
+        self
     }
 
     // Sets the fill for this entity.
     pub fn fill(self, fill: impl Into<Timeline<Vec4>>) -> Self {
-        self.0.fill = Some(fill.into());
-        self
+        self.attach(Fill(fill.into()))
     }
 
+    /// Drops this reference and returns the id of this entity, converting
+    /// this mutable reference `EntityRef` to an immutable one: `EntityId`.
     pub fn id(self) -> EntityId {
-        self.1
+        self.id
     }
 }
 
 impl Transformable for EntityRef<'_> {
-    fn transforms(&mut self) -> &'_ mut Vec<Transform> {
-        &mut self.0.transforms
+    fn transforms(&mut self) -> &mut Vec<Transform> {
+        self.registry.get_or_default(self.id)
     }
 }

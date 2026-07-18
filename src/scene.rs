@@ -3,71 +3,75 @@
 //! The fundamental unit of data is the [`Entity`]. We use a standard
 //! ECS model for nelo.
 
+pub mod component;
 pub mod entity;
 pub mod path;
-pub mod store;
+mod registry;
 pub mod transform;
 
-pub(crate) use entity::EntityData;
+pub use component::{Circle, Fill};
 pub use entity::{EntityId, EntityRef};
+pub(crate) use registry::{Query, Registry};
 pub use transform::{Transform, Transformable};
 
-use crate::render::{Geometry, Primitive, Renderable};
 use crate::timeline::{Easing, Timeline};
 use glam::prelude::*;
-use store::Store;
+use std::any::Any;
 
 pub struct Scene {
-    store: Store,
+    registry: Registry,
+    next_id: usize,
 }
 
 impl Scene {
     pub fn new() -> Self {
         Self {
-            store: Store::new(),
+            registry: Registry::new(),
+            next_id: 0,
         }
     }
 
-    /// Samples all of the scene into renderable data.
-    pub fn sample(&self, t: f32) -> Vec<Renderable> {
-        self.store
-            .iter()
-            .map(|(_id, c)| {
-                // Combine all of the transforms on this entity. We'll have to adjust this logic
-                // when we support groups and hierarchy, but this is sufficient for now.
-                let mut combined = Affine2::default();
-                for transform in c.transforms.iter() {
-                    combined = transform.sample(t) * combined;
-                }
-
-                // Build a renderable.
-                Renderable {
-                    transform: combined,
-                    geometry: c.geometry,
-                    fill: match &c.fill {
-                        Some(timeline) => timeline.sample(t),
-                        None => Vec4::ONE,
-                    },
-                }
-            })
-            .collect()
+    /// Creates an empty entity with a transform component
+    pub fn create(&mut self) -> EntityRef<'_> {
+        let id = EntityId::new(self.next_id);
+        self.next_id += 1;
+        EntityRef::new(&mut self.registry, id).attach::<Vec<Transform>>(Vec::new())
     }
 
-    /// Returns an `EntityRef` with circle geometry attached. The default
-    /// circle is at the world origin with a radius of one.
+    /// Returns all attached data of a certain type sorted by EntityId.
+    pub fn view<T: Any>(&self) -> impl Iterator<Item = (EntityId, &T)> {
+        self.registry.view()
+    }
+
+    pub fn view_pair<A: Any, B: Any>(&self) -> Vec<(EntityId, &A, &B)> {
+        self.registry.view_pair()
+    }
+
+    pub fn view_triple<A: Any, B: Any, C: Any>(&self) -> Vec<(EntityId, &A, &B, &C)> {
+        self.registry.view_triple()
+    }
+
+    // Returns a Vector of entities and their attached components which have
+    // up to five types specified by the generic tuple `T`.
+    pub fn view_tuple<T: Query>(&self) -> T::Item<'_> {
+        self.registry.view_tuple::<T>()
+    }
+
+    // Returns an `EntityRef` with circle geometry attached. The default
+    // circle is at the world origin with a radius of one.
     pub fn circle(&mut self) -> EntityRef<'_> {
-        self.store.create(Geometry::Primitive(Primitive::Circle))
+        self.create().attach(Circle).fill(Vec4::ONE)
     }
 
     // Removes an entity from the scene, or a no-op if the entity doesn't exist.
-    pub fn delete(&mut self, entity: EntityId) {
-        self.store.delete(entity);
-    }
+    // pub fn delete(&mut self, entity: EntityId) {
+    //     self.store.delete(entity);
+    // }
 
-    /// Returns an Some with a handle to the entity if it exists, or none otherwise.
-    pub fn get(&mut self, entity: EntityId) -> Option<EntityRef<'_>> {
-        self.store.get(entity)
-    }
+    // Returns an Some with a handle to the entity if it exists, or none otherwise.
+    // pub fn get(&mut self, entity: EntityId) -> Option<EntityRef<'_>> {
+    //     self.regi.get(entity)
+    // }
 
     /// A small animated scene with a ring of orbiting circles around a pulsing center.
     pub fn demo() -> Self {
