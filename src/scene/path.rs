@@ -32,3 +32,9 @@ pub fn square() -> Timeline<Vec2> {
         }
     })
 }
+
+/// Returns a path from a to b over the course of one second. Continues with constant
+/// velocity if sampled out of bounds.
+pub fn line(a: Vec2, b: Vec2) -> Timeline<Vec2> {
+    Timeline::dynamic(move |t| Vec2::interpolate(&a, &b, t)).with_length(1.0)
+}

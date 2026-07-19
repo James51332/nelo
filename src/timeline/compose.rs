@@ -29,6 +29,12 @@ impl Timeline<f32> {
 }
 
 impl<T: Clone + 'static> Timeline<Timeline<T>> {
+    /// Reduces depth of timeline of timelines by one by sampling both at the time
+    /// with the same input parameter.
+    ///
+    /// To use this with a resampled outer timeline, use `.compose().flatten()`. To
+    /// resample the inner timeline, use `.map(|x| x.compose())`, and to resample both,
+    /// use `.flatten().compose()`.
     pub fn flatten(self) -> Timeline<T> {
         Timeline::dynamic(move |t| self.sample(t).sample(t))
     }

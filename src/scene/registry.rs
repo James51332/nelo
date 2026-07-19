@@ -60,6 +60,15 @@ impl Registry {
             .expect("bucket for TypeId::of<T>() only ever holds T")
     }
 
+    /// Removes all attached components for this entity, or a noop if there are none.
+    pub fn delete(&mut self, entity: EntityId) {
+        for (_, bucket) in self.component_stores.iter_mut() {
+            if let Ok(i) = bucket.binary_search_by(|pair| pair.0.cmp(&entity)) {
+                bucket.remove(i);
+            }
+        }
+    }
+
     /// Returns an iterator over all entities with a given type. Preferable
     pub fn view<T: Any>(&self) -> impl Iterator<Item = (EntityId, &T)> {
         self.component_stores
