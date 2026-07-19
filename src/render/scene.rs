@@ -1,21 +1,32 @@
 //! Scene renderer renders a scene at a given time. It must own its scene.
 
-use crate::render::{Camera, Gpu, Renderer};
+use crate::render::{CameraBuffer, CircleRenderer, Gpu, Renderer};
 use crate::scene::Scene;
 
 pub struct SceneRenderer {
-    camera: Camera,
     scene: Scene,
+    camera_buffer: CameraBuffer,
     renderers: Vec<Box<dyn Renderer>>,
 }
 
 impl SceneRenderer {
-    pub fn new(camera: Camera, scene: Scene) -> Self {
+    pub fn new(gpu: &Gpu, format: wgpu::TextureFormat, scene: Scene) -> Self {
+        let camera_buffer = CameraBuffer::new(&gpu);
+        let renderers: Vec<Box<dyn Renderer>> = vec![Box::new(CircleRenderer::new(
+            gpu,
+            &camera_buffer.layout(),
+            format,
+        ))];
+
         Self {
             scene,
-            camera,
-            renderers: Vec::new(),
+            camera_buffer,
+            renderers,
         }
+    }
+
+    pub fn camera_buffer(&self) -> &CameraBuffer {
+        &self.camera_buffer
     }
 
     pub fn add(&mut self, renderer: impl Renderer + 'static) {
@@ -30,9 +41,10 @@ impl SceneRenderer {
             renderer.prepare(&gpu, &self.scene, t);
         }
 
-        // Update the camera data.
+        // Upload the camera data into the buffer.
         let size = (view.texture().width(), view.texture().height());
-        self.camera.upload(gpu, t, size);
+        self.camera_buffer
+            .upload(gpu, size, &self.scene.camera(), t);
 
         // Get our command encoder and build our render pass.
         let mut encoder = gpu
@@ -64,10 +76,9 @@ impl SceneRenderer {
                 multiview_mask: None,
             });
 
-            // Camera is always at binding 0.
-            pass.set_bind_group(0, self.camera.bind_group(), &[]);
-
             for renderer in self.renderers.iter() {
+                // Camera is bound to group zero, but renderers are free to override.
+                pass.set_bind_group(0, self.camera_buffer.bind_group(), &[]);
                 renderer.submit(&mut pass);
             }
         }

@@ -1,11 +1,10 @@
 //! Renderers the demo scene at t=1.0 sec to a PNG file.
 
-use nelo::render::{Camera, CircleRenderer, Gpu, SceneRenderer, Target, TextureTarget};
+use nelo::render::{Gpu, SceneRenderer, Target, TextureTarget};
 use nelo::scene::Scene;
 
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 600;
-const SCENE_HEIGHT: f32 = 10.0;
 const SCENE_TIME: f32 = 1.0;
 
 fn main() {
@@ -15,15 +14,11 @@ fn main() {
 async fn run() {
     let gpu = Gpu::headless().await;
 
-    // Create a texture target for this single pass.
+    // Setup a target and renderer
     let mut target = TextureTarget::new(&gpu, WIDTH, HEIGHT);
+    let mut renderer = SceneRenderer::new(&gpu, target.format(), Scene::demo());
 
-    // Build a renderer from our scene.
-    let camera = Camera::new(&gpu, SCENE_HEIGHT);
-    let circles = CircleRenderer::new(&gpu, camera.layout(), target.format());
-    let mut renderer = SceneRenderer::new(camera, Scene::demo());
-    renderer.add(circles);
-
+    // Run the draw loop exactly once.
     let frame = target.acquire(&gpu).expect("offscreen frame");
     renderer.render(&gpu, &frame.view, SCENE_TIME);
 

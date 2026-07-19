@@ -1,11 +1,13 @@
 //! A [`Scene`] is an interface between data and rendering.
 
+pub mod camera;
 pub mod component;
 pub mod entity;
 pub mod path;
 mod registry;
 pub mod transform;
 
+pub use camera::Camera;
 pub use component::{Circle, Fill};
 pub use entity::{EntityId, EntityRef};
 pub(crate) use registry::{Query, Registry};
@@ -26,6 +28,7 @@ pub struct Scene {
     registry: Registry,
     active: Vec<EntityId>,
     next_id: usize,
+    camera: Camera,
 }
 
 impl Scene {
@@ -34,6 +37,7 @@ impl Scene {
             registry: Registry::new(),
             active: Vec::new(),
             next_id: 0,
+            camera: Camera::new(),
         }
     }
 
@@ -43,6 +47,11 @@ impl Scene {
         self.next_id += 1;
         self.active.push(id);
         EntityRef::new(&mut self.registry, id).attach(Transform::default())
+    }
+
+    /// Returns a mutable refernece to this scene's camera.
+    pub fn camera(&mut self) -> &mut Camera {
+        &mut self.camera
     }
 
     /// Returns all attached data of a certain type sorted by EntityId.
@@ -66,12 +75,6 @@ impl Scene {
     /// up to five types specified by the generic tuple `T`.
     pub fn view_tuple<T: Query>(&self) -> T::Item<'_> {
         self.registry.view_tuple::<T>()
-    }
-
-    /// Returns an `EntityRef` with circle geometry attached. The default
-    /// circle is at the world origin with a radius of one and white fill.
-    pub fn circle(&mut self) -> EntityRef<'_> {
-        self.create().attach(Circle).fill(Vec4::ONE)
     }
 
     /// Returns an Some with a handle to the entity if it exists, or none otherwise.

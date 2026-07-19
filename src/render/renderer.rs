@@ -5,7 +5,7 @@ use crate::scene::Scene;
 /// Renderers which are designed for a specific type of geometry should filter
 /// by overriding geometry method. All renderers should be mindful of the camera
 /// at bind group one.
-pub trait Renderer {
+pub trait Renderer: 'static {
     /// Prepares the renderer to draw. Copies data into buffers.
     fn prepare(&mut self, gpu: &Gpu, scene: &Scene, t: f32);
 

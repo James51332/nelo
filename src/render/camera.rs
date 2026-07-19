@@ -6,7 +6,8 @@
 //! uniform is uploaded each frame from the current time and target size.
 
 use crate::render::context::Gpu;
-use glam::Mat4;
+use crate::scene::Camera;
+use glam::prelude::*;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -16,19 +17,16 @@ struct CameraUniform {
     _pad: [f32; 3],
 }
 
-/// Camera is currently defined to be exclusively orthographic, but the
-/// future will support multiple cameras and more complex APIs without
-/// needing to make significant pipeline changes. Cameras are always
-/// set to bind group 0.
-pub struct Camera {
-    scene_height: f32,
+/// Contains the data needed to upload a CameraUniform to the GPU at bind group
+/// 0.
+pub struct CameraBuffer {
     buffer: wgpu::Buffer,
     layout: wgpu::BindGroupLayout,
     bind_group: wgpu::BindGroup,
 }
 
-impl Camera {
-    pub fn new(gpu: &Gpu, scene_height: f32) -> Self {
+impl CameraBuffer {
+    pub fn new(gpu: &Gpu) -> Self {
         let buffer = gpu.device().create_buffer(&wgpu::BufferDescriptor {
             label: Some("nelo camera uniform"),
             size: std::mem::size_of::<CameraUniform>() as u64,
@@ -62,7 +60,6 @@ impl Camera {
         });
 
         Self {
-            scene_height,
             buffer,
             layout,
             bind_group,
@@ -79,21 +76,42 @@ impl Camera {
         &self.bind_group
     }
 
-    /// Recompute and upload the view-projection for this frame.
-    pub fn upload(&self, gpu: &Gpu, time: f32, size: (u32, u32)) {
-        let (w, h) = size;
-        let aspect = if h == 0 { 1.0 } else { w as f32 / h as f32 };
-        let half_h = self.scene_height * 0.5;
-        let half_w = half_h * aspect;
+    /// Sample and upload a camera for this frame.
+    pub fn upload(&self, gpu: &Gpu, size: (u32, u32), camera: &Camera, time: f32) {
+        // Sample the camera
+        let (scene_height, transform) = camera.sample(time);
 
-        // Orthographic projection, column-major. Maps
-        let view_proj = glam::camera::lh::proj::directx::orthographic(
-            -half_w, half_w, -half_h, half_h, 0.0, 1.0,
+        // Construct the view matrix to undo the cameras transformation.
+        let inverse = transform.inverse();
+        let matrix = inverse.matrix2;
+        let translation = inverse.translation;
+        let view = Mat4::from_cols(
+            Vec4::new(matrix.x_axis.x, matrix.x_axis.y, 0.0, 0.0),
+            Vec4::new(matrix.y_axis.x, matrix.y_axis.y, 0.0, 0.0),
+            Vec4::new(0.0, 0.0, 1.0, 0.0),
+            Vec4::new(translation.x, translation.y, 0.0, 1.0),
         );
 
+        // Project the world into device space.
+        let (width, height) = size;
+        let aspect = if height != 0 {
+            width as f32 / height as f32
+        } else {
+            1.0
+        };
+        let proj = glam::camera::lh::proj::directx::orthographic(
+            -scene_height * aspect * 0.5,
+            scene_height * aspect * 0.5,
+            -scene_height * 0.5,
+            scene_height * 0.5,
+            0.0,
+            1.0,
+        );
+
+        let view_proj = proj * view;
         let uniform = CameraUniform {
             view_proj,
-            time: time,
+            time,
             _pad: [0.0; 3],
         };
         gpu.queue()

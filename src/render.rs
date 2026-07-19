@@ -13,7 +13,7 @@ pub mod renderer;
 pub mod scene;
 pub mod target;
 
-pub use camera::Camera;
+pub use camera::CameraBuffer;
 pub use circle::CircleRenderer;
 pub use context::Gpu;
 pub use renderer::Renderer;

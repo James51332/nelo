@@ -1,13 +1,11 @@
 use nelo::prelude::*;
-use nelo::render::{Camera, CircleRenderer, Gpu, SceneRenderer, Target, WindowTarget};
+use nelo::render::{Gpu, SceneRenderer, Target, WindowTarget};
 use std::sync::Arc;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowId};
-
-const SCENE_HEIGHT: f32 = 10.0;
 
 struct RenderState {
     gpu: Gpu,
@@ -54,11 +52,7 @@ impl ApplicationHandler for App {
 
         let (gpu, surface) = pollster::block_on(Gpu::with_surface(window.clone()));
         let target = WindowTarget::new(&gpu, surface, size.width, size.height);
-        let camera = Camera::new(&gpu, SCENE_HEIGHT);
-
-        let circles = CircleRenderer::new(&gpu, camera.layout(), target.format());
-        let mut renderer = SceneRenderer::new(camera, Scene::demo());
-        renderer.add(circles);
+        let renderer = SceneRenderer::new(&gpu, target.format(), Scene::demo());
 
         self.window = Some(window);
         self.render_state = Some(RenderState {
