@@ -19,9 +19,9 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [x] Geometries
         * [x] Circles
         * [x] Paths
-        * [ ] Curves
+        * [x] Curves
     * [x] Transforms
-    * [ ] Components
+    * [x] Components
     * [ ] Grouping
 * [ ] Renderers
     * [x] Circle Renderer
