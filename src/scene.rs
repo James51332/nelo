@@ -2,6 +2,7 @@
 
 pub mod camera;
 pub mod component;
+pub mod curve;
 pub mod entity;
 pub mod path;
 mod registry;
@@ -9,6 +10,7 @@ pub mod transform;
 
 pub use camera::Camera;
 pub use component::{Circle, Fill};
+pub use curve::{Along, Curve, Spline, TimelineAlong, TimelineSpline};
 pub use entity::{EntityId, EntityRef};
 pub(crate) use registry::{Query, Registry};
 pub use transform::{Transform, Transformable};
@@ -111,34 +113,40 @@ impl Scene {
             .fill(Vec4::new(0.9, 0.9, 1.0, 1.0));
 
         // Define the path over time. Change between square and circle on repeat.
-        let path = Timeline::keyframes(path::square())
-            .ease_at(PERIOD, path::circle(), Easing::CubicInOut)
-            .ease_at(PERIOD * 2.0, path::square(), Easing::CubicInOut)
+        let square = path::square().multiply(1.5);
+        let circle = path::circle().multiply(2.5);
+        let path = Timeline::keyframes(square.clone())
+            .ease_at(PERIOD, circle.clone(), Easing::CubicInOut)
+            .ease_at(PERIOD * 2.0, square.clone(), Easing::CubicInOut)
             .build()
             .compose(|t| t % (2.0 * PERIOD));
 
         // Orbiting square.
-        const N: usize = 12;
+        const N: usize = 16;
         for i in 0..N {
             let phase = i as f32 / N as f32;
             let color = Vec4::new(0.5 + 0.5 * phase, 0.6, 1.0 - 0.5 * phase, 1.0);
 
             scene
                 .circle()
-                .scale(0.5)
+                .scale(0.2)
                 .translate(
                     path.clone()
                         .map(move |shape| {
                             Timeline::sawtooth(PERIOD)
                                 .then(Easing::CubicInOut)
-                                .add(phase + 0.125)
+                                .add(phase)
                                 .then(shape)
                         })
-                        .flatten()
-                        .multiply(3.5),
+                        .flatten(),
                 )
                 .fill(color);
         }
+
+        // Test path.
+        scene.curve(|t: f32, a: f32| {
+            Vec2::new(a * 16.0 - 8.0, 4.0 + 0.6 * (16.0 * a - 4.0 * t).sin())
+        });
 
         scene
     }

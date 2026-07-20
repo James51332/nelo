@@ -1,6 +1,6 @@
 //! Scene renderer renders a scene at a given time. It must own its scene.
 
-use crate::render::{CameraBuffer, CircleRenderer, Gpu, Renderer};
+use crate::render::{CameraBuffer, CircleRenderer, CurveRenderer, Gpu, Renderer};
 use crate::scene::Scene;
 
 pub struct SceneRenderer {
@@ -12,11 +12,10 @@ pub struct SceneRenderer {
 impl SceneRenderer {
     pub fn new(gpu: &Gpu, format: wgpu::TextureFormat, scene: Scene) -> Self {
         let camera_buffer = CameraBuffer::new(&gpu);
-        let renderers: Vec<Box<dyn Renderer>> = vec![Box::new(CircleRenderer::new(
-            gpu,
-            &camera_buffer.layout(),
-            format,
-        ))];
+        let renderers: Vec<Box<dyn Renderer>> = vec![
+            Box::new(CircleRenderer::new(gpu, &camera_buffer.layout(), format)),
+            Box::new(CurveRenderer::new(gpu, &camera_buffer.layout(), format)),
+        ];
 
         Self {
             scene,
