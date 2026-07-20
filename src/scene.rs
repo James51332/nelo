@@ -51,8 +51,11 @@ impl Scene {
         EntityRef::new(&mut self.registry, id).attach(Transform::default())
     }
 
-    /// Returns a mutable refernece to this scene's camera.
-    pub fn camera(&mut self) -> &mut Camera {
+    pub fn camera(&self) -> &Camera {
+        &self.camera
+    }
+
+    pub fn camera_mut(&mut self) -> &mut Camera {
         &mut self.camera
     }
 

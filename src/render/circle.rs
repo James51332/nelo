@@ -110,7 +110,7 @@ impl CircleRenderer {
 }
 
 impl Renderer for CircleRenderer {
-    fn prepare(&mut self, gpu: &Gpu, scene: &Scene, t: f32) {
+    fn prepare(&mut self, gpu: &Gpu, _size: (u32, u32), scene: &Scene, t: f32) {
         let items = scene.view_triple::<Transform, Circle, Fill>();
         let capped = items.len().min(MAX_CIRCLES as usize);
         if capped < items.len() {

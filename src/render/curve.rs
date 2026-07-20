@@ -183,7 +183,7 @@ impl CurveRenderer {
 }
 
 impl Renderer for CurveRenderer {
-    fn prepare(&mut self, gpu: &Gpu, scene: &Scene, t: f32) {
+    fn prepare(&mut self, gpu: &Gpu, _size: (u32, u32), scene: &Scene, t: f32) {
         let items = scene.view_triple::<Transform, Curve, Fill>();
         let data: Vec<CurveSegment> = items
             .iter()

@@ -7,7 +7,7 @@ use crate::scene::Scene;
 /// at bind group one.
 pub trait Renderer: 'static {
     /// Prepares the renderer to draw. Copies data into buffers.
-    fn prepare(&mut self, gpu: &Gpu, scene: &Scene, t: f32);
+    fn prepare(&mut self, gpu: &Gpu, size: (u32, u32), scene: &Scene, t: f32);
 
     /// Submits the draw calls into a render pass.
     fn submit<'a>(&'a self, pass: &mut wgpu::RenderPass<'a>);

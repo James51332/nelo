@@ -36,14 +36,14 @@ impl SceneRenderer {
     // Uses all renderers and supplies them the data according to their geometry
     // filter.
     pub fn render(&mut self, gpu: &Gpu, view: &wgpu::TextureView, t: f32) {
+        let size = (view.texture().width(), view.texture().height());
         for renderer in self.renderers.iter_mut() {
-            renderer.prepare(&gpu, &self.scene, t);
+            renderer.prepare(&gpu, size, &self.scene, t);
         }
 
         // Upload the camera data into the buffer.
-        let size = (view.texture().width(), view.texture().height());
-        self.camera_buffer
-            .upload(gpu, size, &self.scene.camera(), t);
+        let (background, view_proj) = self.scene.camera().sample(size, t);
+        self.camera_buffer.upload(gpu, &view_proj, t);
 
         // Get our command encoder and build our render pass.
         let mut encoder = gpu
@@ -61,10 +61,10 @@ impl SceneRenderer {
                     depth_slice: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.02,
-                            g: 0.02,
-                            b: 0.04,
-                            a: 1.0,
+                            r: background.x as f64,
+                            g: background.y as f64,
+                            b: background.z as f64,
+                            a: background.w as f64,
                         }),
                         store: wgpu::StoreOp::Store,
                     },

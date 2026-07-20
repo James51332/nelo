@@ -42,6 +42,17 @@ impl Registry {
         }
     }
 
+    pub fn get_mut<T: Any>(&mut self, id: EntityId) -> Option<&mut T> {
+        let type_id = TypeId::of::<T>();
+        let store = self.component_stores.get_mut(&type_id)?;
+
+        let index = store.binary_search_by(|x| x.0.cmp(&id));
+        match index {
+            Ok(i) => store.get_mut(i).map(|x| x.1.downcast_mut()).flatten(),
+            _ => None,
+        }
+    }
+
     pub fn get_or_default<'a, T: Any + Default>(&'a mut self, id: EntityId) -> &'a mut T {
         let type_id = TypeId::of::<T>();
         let store = self.component_stores.entry(type_id).or_default();

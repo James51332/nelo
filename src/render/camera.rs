@@ -6,7 +6,6 @@
 //! uniform is uploaded each frame from the current time and target size.
 
 use crate::render::context::Gpu;
-use crate::scene::Camera;
 use glam::prelude::*;
 
 #[repr(C)]
@@ -77,38 +76,17 @@ impl CameraBuffer {
     }
 
     /// Sample and upload a camera for this frame.
-    pub fn upload(&self, gpu: &Gpu, size: (u32, u32), camera: &Camera, time: f32) {
-        // Sample the camera
-        let (scene_height, transform) = camera.sample(time);
-
-        // Construct the view matrix to undo the cameras transformation.
-        let inverse = transform.inverse();
-        let matrix = inverse.matrix2;
-        let translation = inverse.translation;
-        let view = Mat4::from_cols(
-            Vec4::new(matrix.x_axis.x, matrix.x_axis.y, 0.0, 0.0),
-            Vec4::new(matrix.y_axis.x, matrix.y_axis.y, 0.0, 0.0),
-            Vec4::new(0.0, 0.0, 1.0, 0.0),
-            Vec4::new(translation.x, translation.y, 0.0, 1.0),
+    pub fn upload(&self, gpu: &Gpu, view_proj: &Affine2, time: f32) {
+        // Do the work manually to define the camera
+        let matrix = view_proj.matrix2;
+        let trans = view_proj.translation;
+        let view_proj = Mat4::from_cols(
+            (matrix.x_axis.x, matrix.x_axis.y, 0.0, 0.0).into(),
+            (matrix.y_axis.x, matrix.y_axis.y, 0.0, 0.0).into(),
+            (0.0, 0.0, 1.0, 0.0).into(),
+            (trans.x, trans.y, 0.0, 1.0).into(),
         );
 
-        // Project the world into device space.
-        let (width, height) = size;
-        let aspect = if height != 0 {
-            width as f32 / height as f32
-        } else {
-            1.0
-        };
-        let proj = glam::camera::lh::proj::directx::orthographic(
-            -scene_height * aspect * 0.5,
-            scene_height * aspect * 0.5,
-            -scene_height * 0.5,
-            scene_height * 0.5,
-            0.0,
-            1.0,
-        );
-
-        let view_proj = proj * view;
         let uniform = CameraUniform {
             view_proj,
             time,
