@@ -20,6 +20,7 @@ struct Instance {
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec4<f32>,
+    @location(1) local_x: f32,
 };
 
 const EDGE_PAD: f32 = 0.1;
@@ -41,15 +42,22 @@ fn vs_main(@builtin(vertex_index) vid: u32, inst: Instance) -> VertexOutput {
     let normal = vec2<f32>(-dir.y, dir.x);
     let width = mix(inst.width1, inst.width2, corner.y);
     let center = mix(inst.point1, inst.point2, corner.y);
-    let world = center + normal * (corner.x * width);
+    let world = center + normal * (corner.x * (1 + EDGE_PAD) * width);
 
     var out: VertexOutput;
     out.clip_position = camera.view_proj * vec4<f32>(world, 0.0, 1.0);
     out.color = mix(inst.color1, inst.color2, corner.y);
+    out.local_x = corner.x;
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return in.color;
+    let d = abs(in.local_x) - 0.5;
+    let aa = fwidth(d);
+    let alpha = 1.0 - smoothstep(-aa, aa, d);
+    if alpha <= 0.0 {
+        discard;
+    }
+    return vec4<f32>(in.color.rgb, in.color.a * alpha);
 }
