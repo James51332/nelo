@@ -19,7 +19,7 @@ log = "0.4.33"
 wgpu = "29.0.3"
 bytemuck = { version = "1", features = ["derive"] }
 glam = { version = "0.33.2", features = ["bytemuck"] }
+pollster = "0.4.0"
 
 [dev-dependencies]
-pollster = "0.4.0"
 png = "0.17"

@@ -18,6 +18,11 @@ impl Gpu {
         Self::from_instance(instance, None).await
     }
 
+    /// Create a headless context but block until its created.
+    pub fn headless_blocking() -> Self {
+        pollster::block_on(Self::headless())
+    }
+
     /// Create a context together with a surface for `window`. The adapter is
     /// selected to be compatible with the surface. Returns the context and the
     /// raw surface, which the caller wraps in a `WindowTarget`.

@@ -29,7 +29,7 @@ to the level of any iterative simulation tool:
 
 ## example
 
-Here's an example seen availabe at `Scene::demo()`:
+Here's a small example scene:
 
 ```rust
 let mut scene = Scene::new();
@@ -38,8 +38,7 @@ let mut scene = Scene::new();
 scene
     .circle()
     .scale(|t: f32| 1.25 + 0.5 * t.sin())
-    .fill(Vec4::new(0.9, 0.9, 1.0, 1.0))
-    .build();
+    .fill(Vec4::new(0.9, 0.9, 1.0, 1.0));
 
 // Orbiting square.
 const N: usize = 12;
@@ -58,7 +57,11 @@ for i in 0..N {
                 .then(path::square())
                 .multiply(3.5),
         )
-        .fill(color)
-        .build();
+        .fill(color);
 }
 ```
+
+## dependencies
+
+Exporting uses `ffmpeg`, so make sure it's installed and avaiable in your `$PATH`.
+

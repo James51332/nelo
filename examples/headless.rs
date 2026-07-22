@@ -8,11 +8,7 @@ const HEIGHT: u32 = 600;
 const SCENE_TIME: f32 = 1.0;
 
 fn main() {
-    pollster::block_on(run());
-}
-
-async fn run() {
-    let gpu = Gpu::headless().await;
+    let gpu = Gpu::headless_blocking();
 
     // Setup a target and renderer
     let mut target = TextureTarget::new(&gpu, WIDTH, HEIGHT);
