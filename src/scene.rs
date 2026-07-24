@@ -105,7 +105,7 @@ impl Scene {
 
     /// A small animated scene with a ring of orbiting circles around a pulsing center.
     pub fn demo() -> Self {
-        use std::f32::consts::TAU;
+        use std::f32::consts::{PI, TAU};
 
         const PERIOD: f32 = 3.0;
         let mut scene = Self::new();
@@ -113,8 +113,7 @@ impl Scene {
         // Central pulsing circle.
         scene
             .circle()
-            .scale(|t: f32| 1.25 + 0.75 * ((t - 2.0) * TAU / (PERIOD * 2.0)).sin())
-            .fill(Vec4::new(0.9, 0.9, 1.0, 1.0));
+            .scale(|t: f32| 1.25 + 0.75 * ((t - 2.0) * TAU / (PERIOD * 2.0)).sin());
 
         // Define the path over time. Change between square and circle on repeat.
         let square = path::square().multiply(1.5);
@@ -123,30 +122,19 @@ impl Scene {
             .ease_at(PERIOD, circle.clone(), Easing::CubicInOut)
             .ease_at(PERIOD * 2.0, square.clone(), Easing::CubicInOut)
             .build()
-            .compose(|t| t % (2.0 * PERIOD));
+            .repeat();
 
-        // Orbiting circles
-        const N: u32 = 16;
-        scene.group().create(N, move |i, scene| {
-            let phase = i as f32 / N as f32;
-            let color = Vec4::new(0.5 + 0.5 * phase, 0.6, 1.0 - 0.5 * phase, 1.0);
-
-            scene
-                .circle()
-                .scale(0.2)
-                .translate(
-                    path.clone()
-                        .map(move |shape| {
-                            Timeline::sawtooth(PERIOD)
-                                .then(Easing::CubicInOut)
-                                .add(phase)
-                                .then(shape)
-                        })
-                        .flatten(),
-                )
-                .fill(color)
-                .id()
-        });
+        // Orbiting circles follow this path.
+        scene
+            .group()
+            .create(16, |_, s| s.circle().scale(0.2).id())
+            .arrange(path)
+            .rotate(
+                Timeline::sawtooth(2.0 * PERIOD)
+                    .multiply(2.0)
+                    .then(Easing::CubicInOut)
+                    .multiply(PI),
+            );
 
         // Wavy path.
         scene

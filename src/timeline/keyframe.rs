@@ -54,7 +54,7 @@ impl Signal for Easing {
     ///
     /// Based on [easings.net](https://easings.net/)
     fn sample(&self, t: f32) -> Self::Output {
-        let t = t.clamp(0.0, 1.0);
+        let t = t.rem_euclid(1.0);
         match self {
             Self::Step => 0.0,
             Self::Linear => t,
@@ -175,7 +175,19 @@ impl<T: Lerp + Clone + 'static> KeyframeBuilder<T> {
 
     pub fn build(mut self) -> Timeline<T> {
         self.frames.sort_by(|a, b| a.time.total_cmp(&b.time));
-        Timeline::dynamic(Keyframes(self.frames))
+
+        // The length is the time of the last keyframe.
+        let length = self.frames.last().map(|x| x.time);
+        let timeline = Timeline::dynamic(Keyframes(self.frames));
+
+        // Attach a length if we have one. Useful for repeating.
+        if let Some(len) = length {
+            if len >= 0.0 {
+                return timeline.with_length(len);
+            }
+        }
+
+        timeline
     }
 }
 

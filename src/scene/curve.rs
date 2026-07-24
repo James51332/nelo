@@ -81,7 +81,7 @@ impl<T: Clone, F: Fn(f32) -> T + Clone + 'static> From<F> for Along<T> {
 
 /// Helper type used for building curves from parametrics.
 #[derive(Clone)]
-pub struct TimelineSpline(TimelineAlong<Vec2>);
+pub struct TimelineSpline(pub(crate) TimelineAlong<Vec2>);
 
 impl From<Timeline<Vec2>> for TimelineSpline {
     /// Converts a `Timeline<Vec2>` to a constant spline.
@@ -127,7 +127,7 @@ impl<F: Fn(f32, f32) -> Vec2 + Clone + 'static> From<F> for TimelineSpline {
 // ----- TimelineAlong -----
 
 #[derive(Clone)]
-pub struct TimelineAlong<T: 'static>(Timeline<Along<T>>);
+pub struct TimelineAlong<T: 'static>(pub(crate) Timeline<Along<T>>);
 
 macro_rules! timeline_along_from {
     ($($t:ty),*) => {

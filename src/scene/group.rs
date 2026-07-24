@@ -1,5 +1,5 @@
 //! API for grouping entities by their transform
-use crate::scene::{EntityId, EntityRef, Scene, Transform, Transformable};
+use crate::scene::{EntityId, EntityRef, Scene, TimelineSpline, Transform, Transformable};
 
 /// A group is a transform that can be applied to children. Adding it
 /// to an entity will not affect rendering for that entity, but only for
@@ -63,6 +63,41 @@ impl<'a> GroupRef<'a> {
             .unwrap()
             .children
             .retain(|&x| x != id);
+
+        self
+    }
+
+    /// Spaces entities equally along path parameter alpha from [0, 1].
+    pub fn arrange(self, spline: impl Into<TimelineSpline>) -> Self {
+        let children = self
+            .scene
+            .registry
+            .get::<Group>(self.id)
+            .unwrap()
+            .children
+            .clone();
+
+        // Nothing to do for empty group.
+        if children.is_empty() {
+            return self;
+        }
+
+        // Compute the arrangment.
+        let n = children.len();
+        let step = 1.0 / n as f32;
+        let timeline = spline.into().0.0;
+
+        for (i, &child) in children.iter().enumerate() {
+            let transform = self
+                .scene
+                .registry
+                .get_or_default::<Transform>(child)
+                .clone();
+
+            let timeline = timeline.clone();
+            let a = i as f32 * step;
+            transform.translate(move |t| timeline.sample(t).sample(a));
+        }
 
         self
     }

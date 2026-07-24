@@ -13,7 +13,7 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [x] Lengths
     * [x] Mapping
     * [ ] Input Timelines
-* [ ] ECS
+* [x] ECS
     * [x] Scene
     * [x] Entities
     * [x] Geometries
@@ -22,7 +22,7 @@ A stateless, timeline-driven animation engine for explorable visual animations.
         * [x] Curves
     * [x] Transforms
     * [x] Components
-    * [ ] Grouping
+    * [x] Grouping
 * [ ] Renderers
     * [x] Circle Renderer
     * [x] Curve Renderer
