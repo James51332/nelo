@@ -183,7 +183,7 @@ impl<T: Clone + 'static, F: Fn(f32, f32) -> T + Clone + 'static> From<F> for Tim
     }
 }
 
-// ---- Curve -----
+// ----- Curve -----
 
 pub struct CurveRef<'a> {
     registry: &'a mut Registry,
@@ -191,21 +191,22 @@ pub struct CurveRef<'a> {
 }
 
 impl CurveRef<'_> {
-    pub fn weight(self, weight: impl Into<TimelineAlong<f32>>) -> Self {
-        let curve: &mut Curve = self.registry.get_mut(self.id).unwrap();
-        curve.weight = weight.into().0;
+    fn curve(&mut self) -> &mut Curve {
+        self.registry.get_mut(self.id).unwrap()
+    }
+
+    pub fn weight(mut self, weight: impl Into<TimelineAlong<f32>>) -> Self {
+        self.curve().weight = weight.into().0;
         self
     }
 
-    pub fn start_alpha(self, alpha: impl Into<Timeline<f32>>) -> Self {
-        let curve: &mut Curve = self.registry.get_mut(self.id).unwrap();
-        curve.start_alpha = alpha.into();
+    pub fn start_alpha(mut self, alpha: impl Into<Timeline<f32>>) -> Self {
+        self.curve().start_alpha = alpha.into();
         self
     }
 
-    pub fn end_alpha(self, alpha: impl Into<Timeline<f32>>) -> Self {
-        let curve: &mut Curve = self.registry.get_mut(self.id).unwrap();
-        curve.end_alpha = alpha.into();
+    pub fn end_alpha(mut self, alpha: impl Into<Timeline<f32>>) -> Self {
+        self.curve().end_alpha = alpha.into();
         self
     }
 
@@ -225,7 +226,7 @@ impl<'a> EntityRef<'a> {
     pub fn as_curve(self) -> Option<CurveRef<'a>> {
         if self.has::<Curve>() {
             Some(CurveRef {
-                registry: self.registry,
+                registry: &mut self.scene.registry,
                 id: self.id,
             })
         } else {

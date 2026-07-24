@@ -1,6 +1,6 @@
 //! An `Entity` is simple an id representing rendering data.
 
-use crate::scene::{Fill, Registry, Transform, Transformable};
+use crate::scene::{Fill, Scene, Transform, Transformable};
 use crate::timeline::Timeline;
 use glam::prelude::*;
 use std::any::Any;
@@ -16,22 +16,22 @@ impl EntityId {
 
 /// A reference to an entities transform.
 pub struct EntityRef<'a> {
-    pub(crate) registry: &'a mut Registry,
+    pub(crate) scene: &'a mut Scene,
     pub(crate) id: EntityId,
 }
 
 impl<'a> EntityRef<'a> {
-    pub(crate) fn new(registry: &'a mut Registry, id: EntityId) -> Self {
-        Self { registry, id }
+    pub(crate) fn new(scene: &'a mut Scene, id: EntityId) -> Self {
+        Self { scene, id }
     }
 
     pub(crate) fn attach<T: Any>(self, data: T) -> Self {
-        self.registry.attach(self.id, data);
+        self.scene.registry.attach(self.id, data);
         self
     }
 
     pub(crate) fn has<T: Any>(&self) -> bool {
-        self.registry.has::<T>(self.id)
+        self.scene.registry.has::<T>(self.id)
     }
 
     // Sets the fill for this entity.
@@ -48,6 +48,6 @@ impl<'a> EntityRef<'a> {
 
 impl Transformable for EntityRef<'_> {
     fn transform(&mut self) -> &mut Transform {
-        self.registry.get_or_default(self.id)
+        self.scene.registry.get_or_default(self.id)
     }
 }

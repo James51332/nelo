@@ -95,9 +95,7 @@ pub fn export(scene: Scene, config: &ExportConfig) -> Result<(), String> {
     // Wait and return.
     match process.wait() {
         Ok(_) => log::info!("FFmpeg process finished"),
-        Err(x) => {
-            return Err(x.to_string());
-        }
+        Err(x) => return Err(x.to_string()),
     };
 
     Ok(())

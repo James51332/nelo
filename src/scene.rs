@@ -4,6 +4,7 @@ pub mod camera;
 pub mod component;
 pub mod curve;
 pub mod entity;
+pub mod group;
 pub mod path;
 mod registry;
 pub mod transform;
@@ -48,7 +49,7 @@ impl Scene {
         let id = EntityId::new(self.next_id);
         self.next_id += 1;
         self.active.push(id);
-        EntityRef::new(&mut self.registry, id).attach(Transform::default())
+        EntityRef::new(self, id).attach(Transform::default())
     }
 
     pub fn camera(&self) -> &Camera {
@@ -85,7 +86,7 @@ impl Scene {
     /// Returns an Some with a handle to the entity if it exists, or none otherwise.
     pub fn get(&mut self, entity: EntityId) -> Option<EntityRef<'_>> {
         match self.active.binary_search(&entity) {
-            Ok(_) => Some(EntityRef::new(&mut self.registry, entity)),
+            Ok(_) => Some(EntityRef::new(self, entity)),
             _ => None,
         }
     }
@@ -125,8 +126,8 @@ impl Scene {
             .compose(|t| t % (2.0 * PERIOD));
 
         // Orbiting circles
-        const N: usize = 16;
-        for i in 0..N {
+        const N: u32 = 16;
+        scene.group().create(N, move |i, scene| {
             let phase = i as f32 / N as f32;
             let color = Vec4::new(0.5 + 0.5 * phase, 0.6, 1.0 - 0.5 * phase, 1.0);
 
@@ -143,8 +144,9 @@ impl Scene {
                         })
                         .flatten(),
                 )
-                .fill(color);
-        }
+                .fill(color)
+                .id()
+        });
 
         // Wavy path.
         scene
