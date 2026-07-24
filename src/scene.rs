@@ -124,7 +124,7 @@ impl Scene {
             .build()
             .compose(|t| t % (2.0 * PERIOD));
 
-        // Orbiting square.
+        // Orbiting circles
         const N: usize = 16;
         for i in 0..N {
             let phase = i as f32 / N as f32;
@@ -146,10 +146,32 @@ impl Scene {
                 .fill(color);
         }
 
-        // Test path.
-        scene.curve(|t: f32, a: f32| {
-            Vec2::new(a * 16.0 - 8.0, 4.0 + 0.6 * (16.0 * a - 4.0 * t).sin())
-        });
+        // Wavy path.
+        scene
+            .curve(|t: f32, x: f32| Vec2::new(x, 4.0 + 0.6 * (x - 4.0 * t).sin()))
+            .weight(0.05)
+            .start_alpha(-10.0)
+            .end_alpha(10.0);
+
+        // Changing circle.
+        let write = Timeline::ramp()
+            .clamp(0.0, 1.0)
+            .then(Easing::CubicInOut)
+            .with_length(2.0 * PERIOD)
+            .repeat();
+
+        let unwrite = Timeline::ramp()
+            .shift(PERIOD)
+            .clamp(0.0, 1.0)
+            .then(Easing::CubicInOut)
+            .with_length(2.0 * PERIOD)
+            .repeat();
+
+        scene
+            .curve(path::circle().multiply(3.0))
+            .end_alpha(write)
+            .start_alpha(unwrite)
+            .weight(0.05);
 
         scene
     }

@@ -16,8 +16,8 @@ impl EntityId {
 
 /// A reference to an entities transform.
 pub struct EntityRef<'a> {
-    registry: &'a mut Registry,
-    id: EntityId,
+    pub(crate) registry: &'a mut Registry,
+    pub(crate) id: EntityId,
 }
 
 impl<'a> EntityRef<'a> {
@@ -28,6 +28,10 @@ impl<'a> EntityRef<'a> {
     pub(crate) fn attach<T: Any>(self, data: T) -> Self {
         self.registry.attach(self.id, data);
         self
+    }
+
+    pub(crate) fn has<T: Any>(&self) -> bool {
+        self.registry.has::<T>(self.id)
     }
 
     // Sets the fill for this entity.

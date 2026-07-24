@@ -15,6 +15,13 @@ impl Timeline<f32> {
         })
     }
 
+    /// Returns a new timeline by that maps the sampled value of this `self` to `max`
+    /// if it is greater than `max`, and `min` if the sample is less than `min`.
+    /// Otherwise, the sampled value is unchanged.
+    pub fn clamp(self, min: f32, max: f32) -> Self {
+        self.map(move |t| t.clamp(min, max))
+    }
+
     /// Returns a f32 timeline which forwards it's input at a multiplied rate.
     /// Useful for [`Timeline<f32>::then`] API.
     pub fn rate(rate: f32) -> Self {
@@ -25,6 +32,10 @@ impl Timeline<f32> {
     /// and given period.
     pub fn sawtooth(period: f32) -> Self {
         Self::dynamic(move |t: f32| (t / period).rem_euclid(1.0)).with_length(period)
+    }
+
+    pub fn ramp() -> Self {
+        Self::dynamic(move |t: f32| if t >= 0.0 { t } else { 0.0 })
     }
 }
 

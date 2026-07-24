@@ -63,6 +63,16 @@ impl<T: Clone + 'static> Timeline<T> {
             length,
         })
     }
+
+    /// Repeats over this timelines length, or does nothing if this timeline
+    /// has no length.
+    pub fn repeat(self) -> Self {
+        let Some(length) = self.length() else {
+            return self;
+        };
+
+        self.compose(move |t: f32| t.rem_euclid(length))
+    }
 }
 
 /// A signal adaptor that forwards sampling to `inner` but overrides its

@@ -71,6 +71,18 @@ impl Registry {
             .expect("bucket for TypeId::of<T>() only ever holds T")
     }
 
+    pub fn has<T: Any>(&self, id: EntityId) -> bool {
+        let type_id = TypeId::of::<T>();
+        let Some(store) = self.component_stores.get(&type_id) else {
+            return false;
+        };
+
+        match store.binary_search_by(|x| x.0.cmp(&id)) {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+
     /// Removes all attached components for this entity, or a noop if there are none.
     pub fn delete(&mut self, entity: EntityId) {
         for (_, bucket) in self.component_stores.iter_mut() {
