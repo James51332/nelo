@@ -1,10 +1,6 @@
 # MacOS Files
 .DS_Store
 
-# Any Videos
-*.mov
-*.mp4
-
 # Cargo
 target/
 pkg/

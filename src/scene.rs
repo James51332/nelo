@@ -103,10 +103,13 @@ impl Scene {
         self.registry.delete(entity);
     }
 
-    /// A small animated scene with a ring of orbiting circles around a pulsing center.
+    /// Returns a small demo scene.
     pub fn demo() -> Self {
         const PERIOD: f32 = 3.0;
         let mut scene = Self::new();
+
+        // Set the background color.
+        scene.camera_mut().background(Vec4::new(0.4, 0.3, 0.5, 1.0));
 
         // Central pulsing circle.
         scene.circle().scale(

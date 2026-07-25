@@ -1,5 +1,7 @@
 //! Helper methods for timelines of f32.
 
+use std::f32::consts::TAU;
+
 use crate::timeline::{Easing, Timeline};
 
 impl Timeline<f32> {
@@ -28,6 +30,16 @@ impl Timeline<f32> {
             (shifted - 1.0).abs()
         })
         .with_length(period)
+    }
+
+    /// Returns a cosine wave with given `period`.
+    pub fn cos(period: f32) -> Self {
+        Self::dynamic(move |t: f32| (t / period * TAU).cos()).with_length(period)
+    }
+
+    /// Returns a sine wave with given `period`.
+    pub fn sin(period: f32) -> Self {
+        Self::dynamic(move |t: f32| (t / period * TAU).sin()).with_length(period)
     }
 
     /// Adds `Easing::CubicInOut` to this timeline

@@ -20,7 +20,7 @@ fn main() {
 
     // Read back and write PNG.
     let pixels = target.read(&gpu);
-    let file = std::fs::File::create("headless.png").expect("create headless.png");
+    let file = std::fs::File::create("demo.png").expect("create demo.png");
     let writer = std::io::BufWriter::new(file);
     let mut encoder = png::Encoder::new(writer, WIDTH, HEIGHT);
     encoder.set_color(png::ColorType::Rgba);
@@ -31,5 +31,5 @@ fn main() {
         .write_image_data(&pixels)
         .unwrap();
 
-    println!("wrote headless.png ({WIDTH}x{HEIGHT})");
+    println!("wrote demo.png ({WIDTH}x{HEIGHT})");
 }
