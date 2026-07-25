@@ -10,6 +10,7 @@
 //! constant case is purely an optimisation, not a separate API.
 
 pub mod compose;
+pub mod float;
 pub mod from;
 pub mod keyframe;
 pub mod signal;

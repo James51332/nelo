@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 ///! Implementation for creating timelines from keyframes.
 use crate::timeline::{Timeline, signal::Signal};
 use glam::{Quat, Vec2, Vec3, Vec4};
@@ -45,6 +47,9 @@ pub enum Easing {
     CubicIn,
     CubicOut,
     CubicInOut,
+    SineIn,
+    SineOut,
+    SineInOut,
 }
 
 impl Signal for Easing {
@@ -54,28 +59,32 @@ impl Signal for Easing {
     ///
     /// Based on [easings.net](https://easings.net/)
     fn sample(&self, t: f32) -> Self::Output {
-        let t = t.rem_euclid(1.0);
+        let base = t.floor();
+        let t = t - base;
         match self {
             Self::Step => 0.0,
-            Self::Linear => t,
-            Self::QuadIn => t * t,
-            Self::QuadOut => 1.0 - (1.0 - t) * (1.0 - t),
+            Self::Linear => base + t,
+            Self::QuadIn => base + t * t,
+            Self::QuadOut => base + 1.0 - (1.0 - t) * (1.0 - t),
             Self::QuadInOut => {
                 if t <= 0.5 {
-                    2.0 * t * t
+                    base + 2.0 * t * t
                 } else {
-                    1.0 - 2.0 * (1.0 - t) * (1.0 - t)
+                    base + 1.0 - 2.0 * (1.0 - t) * (1.0 - t)
                 }
             }
             Self::CubicIn => t.powi(3),
             Self::CubicOut => 1.0 - (1.0 - t).powi(3),
             Self::CubicInOut => {
                 if t <= 0.5 {
-                    4.0 * t * t * t
+                    base + 4.0 * t * t * t
                 } else {
-                    1.0 - 4.0 * (1.0 - t).powi(3)
+                    base + 1.0 - 4.0 * (1.0 - t).powi(3)
                 }
             }
+            Self::SineIn => base + (0.5 * t * PI).sin(),
+            Self::SineOut => base + 1.0 - (0.5 * t * PI).cos(),
+            Self::SineInOut => base + 1.0 - 0.5 * (t * PI).cos(),
         }
     }
 }

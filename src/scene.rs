@@ -105,63 +105,29 @@ impl Scene {
 
     /// A small animated scene with a ring of orbiting circles around a pulsing center.
     pub fn demo() -> Self {
-        use std::f32::consts::{PI, TAU};
-
         const PERIOD: f32 = 3.0;
         let mut scene = Self::new();
 
         // Central pulsing circle.
-        scene
-            .circle()
-            .scale(|t: f32| 1.25 + 0.75 * ((t - 2.0) * TAU / (PERIOD * 2.0)).sin());
+        scene.circle().scale(
+            Timeline::triangle(2.0 * PERIOD)
+                .then(Easing::SineInOut)
+                .add(0.25),
+        );
 
-        // Define the path over time. Change between square and circle on repeat.
-        let square = path::square().multiply(1.5);
-        let circle = path::circle().multiply(2.5);
-        let path = Timeline::keyframes(square.clone())
-            .ease_at(PERIOD, circle.clone(), Easing::CubicInOut)
-            .ease_at(PERIOD * 2.0, square.clone(), Easing::CubicInOut)
-            .build()
-            .repeat();
-
-        // Orbiting circles follow this path.
+        // Some circles which go back and for from spirtal to a line.
         scene
             .group()
-            .create(16, |_, s| s.circle().scale(0.2).id())
-            .arrange(path)
-            .rotate(
-                Timeline::sawtooth(2.0 * PERIOD)
-                    .multiply(2.0)
-                    .then(Easing::CubicInOut)
-                    .multiply(PI),
-            );
+            .create(16, |_, s| s.circle().scale(0.1))
+            .arrange(path::line(Vec2::X * 2.0, Vec2::X * 5.0))
+            .for_each(|i, e| e.rotate(Timeline::triangle(6.0).ease().multiply(0.2 * i as f32)));
 
         // Wavy path.
         scene
-            .curve(|t: f32, x: f32| Vec2::new(x, 4.0 + 0.6 * (x - 4.0 * t).sin()))
+            .curve(|t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()))
             .weight(0.05)
             .start_alpha(-10.0)
             .end_alpha(10.0);
-
-        // Changing circle.
-        let write = Timeline::ramp()
-            .clamp(0.0, 1.0)
-            .then(Easing::CubicInOut)
-            .with_length(2.0 * PERIOD)
-            .repeat();
-
-        let unwrite = Timeline::ramp()
-            .shift(PERIOD)
-            .clamp(0.0, 1.0)
-            .then(Easing::CubicInOut)
-            .with_length(2.0 * PERIOD)
-            .repeat();
-
-        scene
-            .curve(path::circle().multiply(3.0))
-            .end_alpha(write)
-            .start_alpha(unwrite)
-            .weight(0.05);
 
         scene
     }

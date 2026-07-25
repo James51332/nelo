@@ -12,7 +12,6 @@ use std::sync::{Arc, Mutex, Weak};
 /// Captures different transformations which could be applied to an entity.
 pub enum Step {
     Matrix(Timeline<Mat2>),
-    Affine(Timeline<Affine2>),
     Translate(Timeline<Vec2>),
 
     /// Scale is defined in one dimension. Directional scaling is done using Matrix variant.
@@ -27,7 +26,6 @@ impl Step {
     pub fn sample(&self, t: f32) -> Affine2 {
         match self {
             Self::Matrix(timeline) => Affine2::from_mat2(timeline.sample(t)),
-            Self::Affine(timeline) => timeline.sample(t),
             Self::Translate(timeline) => Affine2::from_translation(timeline.sample(t)),
             Self::Scale(timeline) => Affine2::from_scale(Vec2::splat(timeline.sample(t))),
             Self::Rotate(timeline) => Affine2::from_angle(timeline.sample(t)),
@@ -54,6 +52,21 @@ impl Transform {
     /// Adds a single step of transform to this object.
     pub fn push(&mut self, step: Step) {
         self.inner.lock().unwrap().steps.push(step)
+    }
+
+    /// Resets this to identity transform.
+    pub fn reset(&mut self) {
+        self.inner.lock().unwrap().steps.clear();
+    }
+
+    /// Translates this to `position`.
+    pub fn to(&mut self, position: impl Into<Timeline<Vec2>>) {
+        // Remove all translations.
+        let steps = &mut self.inner.lock().unwrap().steps;
+        steps.retain(|x| !matches!(x, Step::Translate(_)));
+
+        // Add our new translation.
+        steps.push(Step::Translate(position.into()));
     }
 
     /// Determines if this transform is an ancestor of `child`.
@@ -159,14 +172,6 @@ pub trait Transformable: Sized {
     /// or any combination thereof.
     fn matrix(mut self, matrix: impl Into<Timeline<Mat2>>) -> Self {
         self.transform().push(Step::Matrix(matrix.into()));
-        self
-    }
-
-    /// Applies an affine transform (matrix + translation) to this entity. Equivalent to calling
-    /// [`matrix`](EntityBuilder::matrix) and then [`translate`](EntityBuilder::translate) on this
-    /// object, But is more convenient when you already have an Affine timeline.
-    fn affine(mut self, transform: impl Into<Timeline<Affine2>>) -> Self {
-        self.transform().push(Step::Affine(transform.into()));
         self
     }
 

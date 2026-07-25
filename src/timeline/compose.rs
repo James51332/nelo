@@ -4,41 +4,6 @@ use crate::timeline::Timeline;
 use crate::timeline::signal::Signal;
 use std::ops::{Add, Mul};
 
-impl Timeline<f32> {
-    /// For f32 timelines, we can reverse the compose logic. Since multiple
-    /// composes require that we apply the innermost sampling last, we introduce
-    /// this API to reverse the logic, and apply in the natural order.
-    pub fn then<U: Clone + 'static>(self, outer: impl Into<Timeline<U>>) -> Timeline<U> {
-        Timeline::dynamic(Compose {
-            outer: outer.into(),
-            inner: self,
-        })
-    }
-
-    /// Returns a new timeline by that maps the sampled value of this `self` to `max`
-    /// if it is greater than `max`, and `min` if the sample is less than `min`.
-    /// Otherwise, the sampled value is unchanged.
-    pub fn clamp(self, min: f32, max: f32) -> Self {
-        self.map(move |t| t.clamp(min, max))
-    }
-
-    /// Returns a f32 timeline which forwards it's input at a multiplied rate.
-    /// Useful for [`Timeline<f32>::then`] API.
-    pub fn rate(rate: f32) -> Self {
-        Self::dynamic(move |t| t * rate)
-    }
-
-    /// Returns an f32 timeline which goes from zero to one with no interpolation
-    /// and given period.
-    pub fn sawtooth(period: f32) -> Self {
-        Self::dynamic(move |t: f32| (t / period).rem_euclid(1.0)).with_length(period)
-    }
-
-    pub fn ramp() -> Self {
-        Self::dynamic(move |t: f32| if t >= 0.0 { t } else { 0.0 })
-    }
-}
-
 impl<T: Clone + 'static> Timeline<Timeline<T>> {
     /// Reduces depth of timeline of timelines by one by sampling both at the time
     /// with the same input parameter.

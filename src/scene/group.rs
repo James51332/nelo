@@ -21,6 +21,12 @@ impl<'a> GroupRef<'a> {
         g.children.contains(&id)
     }
 
+    /// Returns the number of children in this group.
+    pub fn len(&self) -> usize {
+        let g: &Group = self.scene.registry.get(self.id).unwrap();
+        g.children.len()
+    }
+
     /// Adds the given entity into this group under three conditions if the given
     /// entity does not have a parent, and the given entity is not an ancestor of
     /// `self`.
@@ -69,48 +75,35 @@ impl<'a> GroupRef<'a> {
 
     /// Spaces entities equally along path parameter alpha from [0, 1].
     pub fn arrange(self, spline: impl Into<TimelineSpline>) -> Self {
-        let children = self
-            .scene
-            .registry
-            .get::<Group>(self.id)
-            .unwrap()
-            .children
-            .clone();
-
-        // Nothing to do for empty group.
-        if children.is_empty() {
+        // Make sure we have a child to go along.
+        let n = self.len();
+        if n == 0 {
             return self;
         }
 
-        // Compute the arrangment.
-        let n = children.len();
-        let step = 1.0 / n as f32;
+        // Prepare our timeline, which we move into the loop closure.
         let timeline = spline.into().0.0;
 
-        for (i, &child) in children.iter().enumerate() {
-            let transform = self
-                .scene
-                .registry
-                .get_or_default::<Transform>(child)
-                .clone();
-
+        // Transform each along the path.
+        self.for_each(move |i, mut e| {
             let timeline = timeline.clone();
-            let a = i as f32 * step;
-            transform.translate(move |t| timeline.sample(t).sample(a));
-        }
+            let a = i as f32 / n as f32;
+            e.transform().to(move |t| timeline.sample(t).sample(a));
 
-        self
+            // Return the entity to satisfy the for_each requirement.
+            e
+        })
     }
 
     /// Calls the closure `n` times passing the scene mutably. Useful for
     /// creating multiple entities within the group.
     pub fn create<T>(self, n: u32, mut generate: T) -> Self
     where
-        T: FnMut(u32, &mut Scene) -> EntityId,
+        T: for<'b> FnMut(u32, &'b mut Scene) -> EntityRef<'b>,
     {
         let mut group = self;
         for i in 0..n {
-            let id = generate(i, group.scene);
+            let id = generate(i, group.scene).id();
             group = group.add(id);
         }
         group
@@ -119,10 +112,31 @@ impl<'a> GroupRef<'a> {
     /// Create a single entity which is attached to this group.
     pub fn create_once<T>(mut self, generate: T) -> Self
     where
-        T: FnOnce(&mut Scene) -> EntityId,
+        T: for<'b> FnOnce(&'b mut Scene) -> EntityRef<'b>,
     {
-        let id = generate(&mut self.scene);
+        let id = generate(&mut self.scene).id();
         self.add(id)
+    }
+
+    /// Runs a function for each element in
+    pub fn for_each<F>(mut self, mut generate: F) -> Self
+    where
+        F: for<'b> FnMut(u32, EntityRef<'b>) -> EntityRef<'b>,
+    {
+        let children = self
+            .scene
+            .registry
+            .get::<Group>(self.id)
+            .unwrap()
+            .children
+            .clone();
+
+        for (i, &id) in children.iter().enumerate() {
+            let entity = EntityRef::new(&mut self.scene, id);
+            generate(i as u32, entity);
+        }
+
+        self
     }
 
     /// Drops this reference and returns the entity id of this group.
