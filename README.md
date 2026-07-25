@@ -62,7 +62,7 @@ pub fn demo() -> Self {
 And here's the result rendered at `t = 1.0`:
 
 <p align="center">
-  <img src="demo.png" alt="Demo scene"/>
+  <img width="400" src="demo.png" alt="Demo scene"/>
 </p>
 
 ## dependencies
