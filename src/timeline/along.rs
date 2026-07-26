@@ -1,28 +1,7 @@
-//! Types and traits for defining values which vary both w.r.t time and curve position.
+//! Types and traits for defining values which vary both w.r.t time and spline parameter.
 
-use crate::scene::{EntityId, EntityRef, Registry, Scene, Transform, Transformable};
 use crate::timeline::{Lerp, Timeline};
 use glam::prelude::*;
-
-/// A curve is a spline and some associated data. We use `Along<T>` to define data that
-/// is on the path. A spline is equivalent to `Along<Vec2>`.
-pub struct Curve {
-    pub spline: Timeline<Spline>,
-    pub weight: Timeline<Along<f32>>,
-    pub start_alpha: Timeline<f32>,
-    pub end_alpha: Timeline<f32>,
-}
-
-// ----- Spline -----
-
-pub type Spline = Along<Vec2>;
-
-impl Timeline<Vec2> {
-    /// Converts this timeline into a spline with time mapped to the spline parameter alpha.
-    pub fn spline(self) -> Spline {
-        self.along()
-    }
-}
 
 // ----- Along<T> -----
 
@@ -90,24 +69,24 @@ impl From<Timeline<Vec2>> for TimelineSpline {
     /// that a timeline defines the time dependent value (e.g. color varying
     /// with time). TimelineSpline merits the one exception.
     fn from(s: Timeline<Vec2>) -> Self {
-        Self(s.spline().into())
+        Self(s.along().into())
     }
 }
 
-impl From<Timeline<Spline>> for TimelineSpline {
-    fn from(s: Timeline<Spline>) -> Self {
+impl From<Timeline<Along<Vec2>>> for TimelineSpline {
+    fn from(s: Timeline<Along<Vec2>>) -> Self {
         Self(s.into())
     }
 }
 
 impl From<Timeline<Timeline<Vec2>>> for TimelineSpline {
     fn from(s: Timeline<Timeline<Vec2>>) -> Self {
-        Self(s.map(|p| p.spline()).into())
+        Self(s.map(|p| p.along()).into())
     }
 }
 
-impl From<Spline> for TimelineSpline {
-    fn from(s: Spline) -> Self {
+impl From<Along<Vec2>> for TimelineSpline {
+    fn from(s: Along<Vec2>) -> Self {
         Self(s.into())
     }
 }
@@ -180,72 +159,5 @@ impl<T: Clone + 'static, F: Fn(f32, f32) -> T + Clone + 'static> From<F> for Tim
             let inner = f.clone();
             Along(Timeline::dynamic(move |a| inner(t, a)))
         }))
-    }
-}
-
-// ----- Curve -----
-
-pub struct CurveRef<'a> {
-    registry: &'a mut Registry,
-    id: EntityId,
-}
-
-impl CurveRef<'_> {
-    fn curve(&mut self) -> &mut Curve {
-        self.registry.get_mut(self.id).unwrap()
-    }
-
-    pub fn weight(mut self, weight: impl Into<TimelineAlong<f32>>) -> Self {
-        self.curve().weight = weight.into().0;
-        self
-    }
-
-    pub fn start_alpha(mut self, alpha: impl Into<Timeline<f32>>) -> Self {
-        self.curve().start_alpha = alpha.into();
-        self
-    }
-
-    pub fn end_alpha(mut self, alpha: impl Into<Timeline<f32>>) -> Self {
-        self.curve().end_alpha = alpha.into();
-        self
-    }
-
-    pub fn id(self) -> EntityId {
-        self.id
-    }
-}
-
-impl Transformable for CurveRef<'_> {
-    fn transform(&mut self) -> &mut Transform {
-        self.registry.get_or_default(self.id)
-    }
-}
-
-impl<'a> EntityRef<'a> {
-    /// Returns a curve reference for this entity.
-    pub fn as_curve(self) -> Option<CurveRef<'a>> {
-        if self.has::<Curve>() {
-            Some(CurveRef {
-                registry: &mut self.scene.registry,
-                id: self.id,
-            })
-        } else {
-            None
-        }
-    }
-}
-
-impl Scene {
-    pub fn curve(&mut self, spline: impl Into<TimelineSpline>) -> CurveRef<'_> {
-        self.create()
-            .attach(Curve {
-                spline: spline.into().0.0,
-                weight: Timeline::constant(0.2).along().into(),
-                start_alpha: Timeline::constant(0.0),
-                end_alpha: Timeline::constant(1.0),
-            })
-            .fill(Vec4::ONE)
-            .as_curve()
-            .unwrap()
     }
 }

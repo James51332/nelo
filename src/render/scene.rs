@@ -1,40 +1,37 @@
 //! Renders a scene at a given time. It must own its scene.
 
+use crate::render::{Batch, BatchSet, CameraBuffer, Gpu, SplinePoint, tesselate};
+use crate::scene::{Circle, Fill, Scene, Spline, Stroke, Transform};
 use wgpu::{
     Color, CommandEncoderDescriptor, LoadOp, Operations, RenderPassColorAttachment,
     RenderPassDescriptor, StoreOp, TextureView,
 };
 
-use crate::render::{CameraBuffer, CircleRenderer, CurveRenderer, Gpu, Renderer};
-use crate::scene::Scene;
+type Renderers = Vec<Box<dyn Fn(&mut BatchSet, &Scene, f32, (u32, u32))>>;
 
 pub struct SceneRenderer {
     scene: Scene,
     camera_buffer: CameraBuffer,
-    renderers: Vec<Box<dyn Renderer>>,
+
+    // Batches are reusable geometry pipelines.
+    batches: BatchSet,
+
+    // Renderers forward the scene into batches.
+    renderers: Renderers,
 }
 
 impl SceneRenderer {
     pub fn new(gpu: &Gpu, scene: Scene) -> Self {
         let camera_buffer = CameraBuffer::new(&gpu);
-        let renderers: Vec<Box<dyn Renderer>> = vec![
-            Box::new(CircleRenderer::new(gpu, &camera_buffer.layout())),
-            Box::new(CurveRenderer::new(gpu, &camera_buffer.layout())),
-        ];
+        let batches = BatchSet::new(&gpu, camera_buffer.layout());
+        let renderers: Renderers = vec![Box::new(filled_circles), Box::new(stroked_curves)];
 
         Self {
             scene,
             camera_buffer,
+            batches,
             renderers,
         }
-    }
-
-    pub fn camera_buffer(&self) -> &CameraBuffer {
-        &self.camera_buffer
-    }
-
-    pub fn add(&mut self, renderer: impl Renderer + 'static) {
-        self.renderers.push(Box::new(renderer));
     }
 
     // Renders the scene to the assigned frame and presents the frame if possible.
@@ -42,12 +39,18 @@ impl SceneRenderer {
     // filter.
     pub fn render(&mut self, gpu: &Gpu, view: &TextureView, t: f32) {
         let size = (view.texture().width(), view.texture().height());
-        for renderer in self.renderers.iter_mut() {
-            renderer.prepare(&gpu, size, &self.scene, t);
+
+        // Populate out batches.
+        for renderer in self.renderers.iter() {
+            renderer(&mut self.batches, &self.scene, t, size);
         }
 
+        // Copy the data to the gpu.
+        self.batches.circles.prepare(&gpu);
+        self.batches.splines.prepare(&gpu);
+
         // Upload the camera data into the buffer.
-        let (background, view_proj) = self.scene.camera().sample(size, t);
+        let (background, view_proj) = self.scene.sample_camera(size, t);
         self.camera_buffer.upload(gpu, &view_proj, t);
 
         // Get our command encoder and build our render pass.
@@ -81,13 +84,58 @@ impl SceneRenderer {
             };
             let mut pass = encoder.begin_render_pass(&render_pass_desc);
 
-            for renderer in self.renderers.iter() {
-                pass.set_bind_group(0, self.camera_buffer.bind_group(), &[]);
-                renderer.submit(&mut pass);
-            }
+            // Set the camera to bind_group zero.
+            pass.set_bind_group(0, self.camera_buffer.bind_group(), &[]);
+
+            // Submit the batches.
+            self.batches.circles.submit(gpu, &mut pass);
+            self.batches.splines.submit(gpu, &mut pass);
         }
 
         // Submit the draw commands to the GPU.
         gpu.queue().submit(std::iter::once(encoder.finish()));
     }
+}
+
+// Simple closures extract data to render from the scene.
+fn filled_circles(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
+    // Get a view of all elements with the required components.
+    let items = scene.view_triple::<Transform, Circle, Fill>();
+
+    // Submit a circle for each one.
+    items.iter().for_each(|(_, transform, _, fill)| {
+        batches
+            .circles
+            .push(transform.sample(t), fill.color.sample(t));
+    });
+}
+
+fn stroked_curves(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
+    // Get a view of all curves with a stroke.
+    let items = scene.view_triple::<Transform, Spline, Stroke>();
+
+    items.iter().for_each(|(_, transform, spline, stroke)| {
+        // Subdivide the curve into a polyline.
+        let polyline = tesselate::generate_polyline(
+            &spline.spline_path.sample(t),
+            spline.start_alpha.sample(t),
+            spline.end_alpha.sample(t),
+        );
+
+        // Convert the (alpha, pos) values into renderable points.
+        let affine = transform.sample(t);
+        let spline_points = polyline
+            .into_iter()
+            .map(|(a, pos)| {
+                SplinePoint::new(
+                    affine.matrix2 * pos + affine.translation,
+                    stroke.color.sample(t).sample(a),
+                    stroke.weight.sample(t).sample(a),
+                )
+            })
+            .collect();
+
+        // Submit the curve to the batch.
+        batches.splines.push(&spline_points);
+    });
 }

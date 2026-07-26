@@ -32,16 +32,16 @@ pub fn demo() -> Self {
     let mut scene = Self::new();
 
     // Set the background color.
-    scene.camera_mut().background(Vec4::new(0.4, 0.3, 0.5, 1.0));
+    scene.camera().background(Vec4::new(0.4, 0.3, 0.5, 1.0));
 
     // Central pulsing circle.
     scene.circle().scale(
         Timeline::triangle(2.0 * PERIOD)
             .then(Easing::SineInOut)
-            .add(0.2),
+            .add(0.25),
     );
 
-    // Some circles which go back and for from spiral to a line.
+    // Some circles which go back and for from spirtal to a line.
     scene
         .group()
         .create(16, |_, s| s.circle().scale(0.1))
@@ -50,10 +50,12 @@ pub fn demo() -> Self {
 
     // Wavy path.
     scene
-        .curve(|t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()))
-        .weight(0.05)
-        .start_alpha(-10.0)
-        .end_alpha(10.0);
+        .spline_with_range(
+            |t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()),
+            -10.0,
+            10.0,
+        )
+        .stroke_weight(0.05);
 
     scene
 }

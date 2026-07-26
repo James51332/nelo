@@ -9,12 +9,14 @@
 //! Callers sample both through the same [`sample`](Timeline::sample) call; the
 //! constant case is purely an optimisation, not a separate API.
 
+pub mod along;
 pub mod compose;
 pub mod float;
 pub mod from;
 pub mod keyframe;
 pub mod signal;
 
+pub use along::{Along, TimelineAlong, TimelineSpline};
 pub use keyframe::{Easing, Lerp};
 pub use signal::{Signal, SignalClone};
 

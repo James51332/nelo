@@ -2,7 +2,6 @@
 
 pub mod camera;
 pub mod component;
-pub mod curve;
 pub mod entity;
 pub mod group;
 pub mod path;
@@ -10,8 +9,7 @@ mod registry;
 pub mod transform;
 
 pub use camera::Camera;
-pub use component::{Circle, Fill};
-pub use curve::{Along, Curve, Spline, TimelineAlong, TimelineSpline};
+pub use component::{Circle, Fill, Spline, Stroke};
 pub use entity::{EntityId, EntityRef};
 pub(crate) use registry::{Query, Registry};
 pub use transform::{Transform, Transformable};
@@ -52,11 +50,11 @@ impl Scene {
         EntityRef::new(self, id).attach(Transform::default())
     }
 
-    pub fn camera(&self) -> &Camera {
-        &self.camera
+    pub fn sample_camera(&self, size: (u32, u32), t: f32) -> (Vec4, Affine2) {
+        self.camera.sample(size, t)
     }
 
-    pub fn camera_mut(&mut self) -> &mut Camera {
+    pub fn camera(&mut self) -> &mut Camera {
         &mut self.camera
     }
 
@@ -109,7 +107,7 @@ impl Scene {
         let mut scene = Self::new();
 
         // Set the background color.
-        scene.camera_mut().background(Vec4::new(0.4, 0.3, 0.5, 1.0));
+        scene.camera().background(Vec4::new(0.4, 0.3, 0.5, 1.0));
 
         // Central pulsing circle.
         scene.circle().scale(
@@ -127,10 +125,12 @@ impl Scene {
 
         // Wavy path.
         scene
-            .curve(|t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()))
-            .weight(0.05)
-            .start_alpha(-10.0)
-            .end_alpha(10.0);
+            .spline_with_range(
+                |t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()),
+                -10.0,
+                10.0,
+            )
+            .stroke_weight(0.05);
 
         scene
     }

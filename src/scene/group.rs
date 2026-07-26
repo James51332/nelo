@@ -1,5 +1,6 @@
 //! API for grouping entities by their transform
-use crate::scene::{EntityId, EntityRef, Scene, TimelineSpline, Transform, Transformable};
+use crate::scene::{EntityId, EntityRef, Scene, Transform, Transformable};
+use crate::timeline::TimelineSpline;
 
 /// A group is a transform that can be applied to children. Adding it
 /// to an entity will not affect rendering for that entity, but only for

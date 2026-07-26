@@ -1,7 +1,7 @@
 //! An `Entity` is simple an id representing rendering data.
 
-use crate::scene::{Fill, Scene, Transform, Transformable};
-use crate::timeline::Timeline;
+use crate::scene::{Fill, Scene, Stroke, Transform, Transformable};
+use crate::timeline::{Timeline, TimelineAlong};
 use glam::prelude::*;
 use std::any::Any;
 
@@ -34,9 +34,22 @@ impl<'a> EntityRef<'a> {
         self.scene.registry.has::<T>(self.id)
     }
 
-    // Sets the fill for this entity.
-    pub fn fill(self, fill: impl Into<Timeline<Vec4>>) -> Self {
-        self.attach(Fill(fill.into()))
+    pub fn fill(self, color: impl Into<Timeline<Vec4>>) -> Self {
+        let fill = self.scene.registry.get_or_default::<Fill>(self.id);
+        fill.color = color.into();
+        self
+    }
+
+    pub fn stroke_weight(self, weight: impl Into<TimelineAlong<f32>>) -> Self {
+        let stroke = self.scene.registry.get_or_default::<Stroke>(self.id);
+        stroke.weight = weight.into().0;
+        self
+    }
+
+    pub fn stroke(self, color: impl Into<TimelineAlong<Vec4>>) -> Self {
+        let stroke = self.scene.registry.get_or_default::<Stroke>(self.id);
+        stroke.color = color.into().0;
+        self
     }
 
     /// Drops this reference and returns the id of this entity, converting

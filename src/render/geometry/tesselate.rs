@@ -1,6 +1,6 @@
 //! Utility for generating geometry.
 
-use crate::scene::Spline;
+use crate::timeline::Along;
 use glam::prelude::*;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -22,7 +22,7 @@ impl Ord for Key {
 
 type Map = BTreeMap<Key, Vec2>;
 
-pub fn generate_polyline(spline: &Spline, start: f32, end: f32) -> Vec<(f32, Vec2)> {
+pub fn generate_polyline(spline: &Along<Vec2>, start: f32, end: f32) -> Vec<(f32, Vec2)> {
     // Start by inserting the minimum number of segments.
     let mut map = Map::new();
     let step = (end - start) / MIN_SEGMENTS as f32;
@@ -42,7 +42,13 @@ pub fn generate_polyline(spline: &Spline, start: f32, end: f32) -> Vec<(f32, Vec
     map.into_iter().map(|(k, v)| (k.0, v)).collect()
 }
 
-fn subdivide_segment(spline: &Spline, map: &mut Map, start: f32, end: f32, max_subdivisions: u32) {
+fn subdivide_segment(
+    spline: &Along<Vec2>,
+    map: &mut Map,
+    start: f32,
+    end: f32,
+    max_subdivisions: u32,
+) {
     if max_subdivisions == 0 {
         return;
     }

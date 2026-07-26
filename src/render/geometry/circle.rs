@@ -1,33 +1,26 @@
-//! Circle renderer: instanced, signed-distance-field filled circles.
+//! Batch for SDF filled circles.
 
-use crate::render::{Gpu, Renderer};
-use crate::scene::{Circle, Fill, Scene, Transform};
-use bytemuck::{Pod, Zeroable};
+use crate::render::{Batch, Gpu};
+use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::prelude::*;
 use wgpu::{
     BindGroupLayout, Buffer, BufferDescriptor, BufferUsages, RenderPass, RenderPipeline,
     VertexBufferLayout, VertexStepMode, vertex_attr_array,
 };
 
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-struct CircleInstance {
-    fill: Vec4,        // 16 bytes
-    matrix2: Mat2,     // 16 bytes
-    translation: Vec2, // 8 bytes
-    _pad: Vec2,        // 8 bytes (48 total, 16-aligned)
-}
+// ----- CircleBatch -----
 
-const MAX_CIRCLES: u64 = 100_000;
-
-pub struct CircleRenderer {
+pub struct CircleBatch {
     pipeline: RenderPipeline,
-    instances: Buffer,
-    count: u32,
+    buffer: Buffer,
+    instances: Vec<CircleInstance>,
+    capacity: usize,
+    count: usize,
+    submit_count: usize, // Track the count when last submitted
 }
 
-impl CircleRenderer {
-    pub fn new(gpu: &Gpu, camera_layout: &BindGroupLayout) -> Self {
+impl CircleBatch {
+    pub fn new(gpu: &Gpu, capacity: usize, camera_layout: &BindGroupLayout) -> Self {
         // Create our render pipeline.
         let shader = include_str!("shaders/circle.wgsl");
         let vertex_layout = VertexBufferLayout {
@@ -43,59 +36,90 @@ impl CircleRenderer {
         let bind_group_layouts = &[Some(camera_layout)];
         let pipeline = gpu.create_pipeline(shader, vertex_layout, bind_group_layouts);
 
-        // Create our instance buffer.
+        // Create our gpu buffer.
         let desc = BufferDescriptor {
             label: Some("circle buffer"),
-            size: size_of::<CircleInstance>() as u64 * MAX_CIRCLES,
+            size: (size_of::<CircleInstance>() * capacity) as u64,
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         };
-        let instances = gpu.device().create_buffer(&desc);
+        let buffer = gpu.device().create_buffer(&desc);
+
+        // Create our cpu buffer.
+        let instances = vec![CircleInstance::zeroed(); capacity];
 
         Self {
             pipeline,
+            buffer,
             instances,
+            capacity,
             count: 0,
+            submit_count: 0,
         }
+    }
+
+    /// Push a new circle instance onto the batch.
+    pub fn push(&mut self, transform: Affine2, fill: Vec4) {
+        // Make sure we have room.
+        if self.count == self.capacity {
+            log::warn!(
+                "CircleBatch full ({} circles), dropping circle!",
+                self.capacity
+            );
+            return;
+        }
+
+        // Move into our buffer.
+        self.instances[self.count] = CircleInstance::new(transform, fill);
+        self.count += 1;
     }
 }
 
-impl Renderer for CircleRenderer {
-    fn prepare(&mut self, gpu: &Gpu, _size: (u32, u32), scene: &Scene, t: f32) {
-        let items = scene.view_triple::<Transform, Circle, Fill>();
-        let capped = items.len().min(MAX_CIRCLES as usize);
-        if capped < items.len() {
-            log::warn!(
-                "CircleRenderer: {} circles exceeds capacity {MAX_CIRCLES}, dropping {}",
-                items.len(),
-                items.len() - capped
-            );
-        }
+impl Batch for CircleBatch {
+    /// Copy our data buffer to the GPU.
+    fn prepare(&mut self, gpu: &Gpu) {
+        // Write the buffer.
+        let queue = gpu.queue();
+        let buffer = &self.buffer;
+        let instances = &self.instances;
+        queue.write_buffer(buffer, 0, cast_slice(instances));
 
-        let data: Vec<CircleInstance> = items[..capped]
-            .iter()
-            .map(|(_, transform, _, fill)| {
-                let affine = transform.sample(t);
-                CircleInstance {
-                    fill: fill.sample(t),
-                    matrix2: affine.matrix2,
-                    translation: affine.translation,
-                    _pad: Vec2::ZERO,
-                }
-            })
-            .collect();
-
-        gpu.queue()
-            .write_buffer(&self.instances, 0, bytemuck::cast_slice(&data));
-        self.count = capped as u32;
+        // Track how many to submit on our draw call.
+        self.submit_count = self.count;
+        self.count = 0;
     }
 
-    fn submit(&self, pass: &mut RenderPass) {
-        if self.count == 0 {
+    fn submit(&self, _gpu: &Gpu, pass: &mut RenderPass) {
+        // No-op.
+        if self.submit_count == 0 {
             return;
         }
+
+        // Encode our draw.
         pass.set_pipeline(&self.pipeline);
-        pass.set_vertex_buffer(0, self.instances.slice(..));
-        pass.draw(0..6, 0..self.count);
+        pass.set_vertex_buffer(0, self.buffer.slice(..));
+        pass.draw(0..6, 0..self.submit_count as u32);
+    }
+}
+
+// ----- CircleInstance ------
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct CircleInstance {
+    fill: Vec4,        // 16 bytes
+    matrix2: Mat2,     // 16 bytes
+    translation: Vec2, // 8 bytes
+    _pad: Vec2,        // 8 bytes (48 total, 16-aligned)
+}
+
+impl CircleInstance {
+    pub fn new(transform: Affine2, fill: Vec4) -> Self {
+        Self {
+            fill,
+            matrix2: transform.matrix2,
+            translation: transform.translation,
+            _pad: Vec2::ZERO,
+        }
     }
 }
