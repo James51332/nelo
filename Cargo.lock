@@ -918,10 +918,7 @@ dependencies = [
 name = "nelo-native"
 version = "0.1.0"
 dependencies = [
- "glam",
  "nelo",
- "pollster",
- "wgpu",
  "winit",
 ]
 

@@ -5,7 +5,4 @@ edition = "2024"
 
 [dependencies]
 nelo = { version = "0.1.0", path = ".." }
-pollster = "0.4.0"
 winit = "0.30.13"
-wgpu = "29.0.3"
-glam = "0.33.2"
