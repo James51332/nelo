@@ -1,5 +1,8 @@
+//! Trait that renderers for over scene must implement.
+
 use crate::render::Gpu;
 use crate::scene::Scene;
+use wgpu::RenderPass;
 
 /// The `Renderer` trait is required for any type that wishes to render a scene.
 /// Renderers which are designed for a specific type of geometry should filter
@@ -10,5 +13,5 @@ pub trait Renderer: 'static {
     fn prepare(&mut self, gpu: &Gpu, size: (u32, u32), scene: &Scene, t: f32);
 
     /// Submits the draw calls into a render pass.
-    fn submit<'a>(&'a self, pass: &mut wgpu::RenderPass<'a>);
+    fn submit<'a>(&'a self, pass: &mut RenderPass<'a>);
 }

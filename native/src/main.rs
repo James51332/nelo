@@ -50,9 +50,9 @@ impl ApplicationHandler for App {
         );
         let size = window.inner_size();
 
-        let (gpu, surface) = pollster::block_on(Gpu::with_surface(window.clone()));
+        let (gpu, surface) = Gpu::with_surface(window.clone());
         let target = WindowTarget::new(&gpu, surface, size.width, size.height);
-        let renderer = SceneRenderer::new(&gpu, target.format(), Scene::demo());
+        let renderer = SceneRenderer::new(&gpu, Scene::demo());
 
         self.window = Some(window);
         self.render_state = Some(RenderState {

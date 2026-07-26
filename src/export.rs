@@ -35,9 +35,9 @@ impl Default for ExportConfig {
 /// Exports a scene using the given config
 pub fn export(scene: Scene, config: &ExportConfig) -> Result<(), String> {
     // Setup the render pipeline.
-    let gpu = Gpu::headless_blocking();
+    let gpu = Gpu::headless();
     let mut target = TextureTarget::new(&gpu, config.width, config.height);
-    let mut renderer = SceneRenderer::new(&gpu, target.format(), scene);
+    let mut renderer = SceneRenderer::new(&gpu, scene);
 
     // Verify the time.
     if config.frame_rate == 0 {

@@ -4,9 +4,11 @@ pub mod camera;
 pub mod circle;
 pub mod curve;
 pub mod gpu;
+pub mod pipeline;
 pub mod renderer;
 pub mod scene;
 pub mod target;
+pub mod tesselate;
 
 pub use camera::CameraBuffer;
 pub use circle::CircleRenderer;

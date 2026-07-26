@@ -7,6 +7,11 @@
 
 use crate::render::Gpu;
 use glam::prelude::*;
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    ShaderStages,
+};
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -19,29 +24,32 @@ struct CameraUniform {
 /// Contains the data needed to upload a CameraUniform to the GPU at bind group
 /// 0.
 pub struct CameraBuffer {
-    buffer: wgpu::Buffer,
-    layout: wgpu::BindGroupLayout,
-    bind_group: wgpu::BindGroup,
+    buffer: Buffer,
+    bind_group: BindGroup,
+    layout: BindGroupLayout,
 }
 
 impl CameraBuffer {
     pub fn new(gpu: &Gpu) -> Self {
-        let buffer = gpu.device().create_buffer(&wgpu::BufferDescriptor {
+        // Create our uniform buffer.
+        let buffer_desc = BufferDescriptor {
             label: Some("nelo camera uniform"),
             size: std::mem::size_of::<CameraUniform>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
-        });
+        };
+        let buffer = gpu.device().create_buffer(&buffer_desc);
 
+        // Create our bind group.
         let layout = gpu
             .device()
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            .create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("nelo camera layout"),
-                entries: &[wgpu::BindGroupLayoutEntry {
+                entries: &[BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                    visibility: ShaderStages::VERTEX_FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -49,14 +57,15 @@ impl CameraBuffer {
                 }],
             });
 
-        let bind_group = gpu.device().create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group_desc = BindGroupDescriptor {
             label: Some("nelo camera bind group"),
             layout: &layout,
-            entries: &[wgpu::BindGroupEntry {
+            entries: &[BindGroupEntry {
                 binding: 0,
                 resource: buffer.as_entire_binding(),
             }],
-        });
+        };
+        let bind_group = gpu.device().create_bind_group(&bind_group_desc);
 
         Self {
             buffer,
@@ -65,14 +74,13 @@ impl CameraBuffer {
         }
     }
 
-    /// The bind group layout, needed when building renderer pipelines.
-    pub fn layout(&self) -> &wgpu::BindGroupLayout {
-        &self.layout
+    /// The bind group, bound at group 0 by the driver each frame.
+    pub fn bind_group(&self) -> &BindGroup {
+        &self.bind_group
     }
 
-    /// The bind group, bound at group 0 by the driver each frame.
-    pub fn bind_group(&self) -> &wgpu::BindGroup {
-        &self.bind_group
+    pub fn layout(&self) -> &BindGroupLayout {
+        &self.layout
     }
 
     /// Sample and upload a camera for this frame.

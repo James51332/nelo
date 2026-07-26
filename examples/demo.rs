@@ -8,11 +8,10 @@ const HEIGHT: u32 = 600;
 const SCENE_TIME: f32 = 1.0;
 
 fn main() {
-    let gpu = Gpu::headless_blocking();
-
-    // Setup a target and renderer
+    // Setup a target and renderer.
+    let gpu = Gpu::headless();
     let mut target = TextureTarget::new(&gpu, WIDTH, HEIGHT);
-    let mut renderer = SceneRenderer::new(&gpu, target.format(), Scene::demo());
+    let mut renderer = SceneRenderer::new(&gpu, Scene::demo());
 
     // Run the draw loop exactly once.
     let frame = target.acquire(&gpu).expect("offscreen frame");

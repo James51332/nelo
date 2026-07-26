@@ -2,10 +2,15 @@
 
 use crate::render::{Gpu, Renderer};
 use crate::scene::{Circle, Fill, Scene, Transform};
+use bytemuck::{Pod, Zeroable};
 use glam::prelude::*;
+use wgpu::{
+    BindGroupLayout, Buffer, BufferDescriptor, BufferUsages, RenderPass, RenderPipeline,
+    VertexBufferLayout, VertexStepMode, vertex_attr_array,
+};
 
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Pod, Zeroable)]
 struct CircleInstance {
     fill: Vec4,        // 16 bytes
     matrix2: Mat2,     // 16 bytes
@@ -13,93 +18,39 @@ struct CircleInstance {
     _pad: Vec2,        // 8 bytes (48 total, 16-aligned)
 }
 
-/// Maximum circles per frame (fixed-capacity instance buffer).
 const MAX_CIRCLES: u64 = 100_000;
 
 pub struct CircleRenderer {
-    pipeline: wgpu::RenderPipeline,
-    instances: wgpu::Buffer,
+    pipeline: RenderPipeline,
+    instances: Buffer,
     count: u32,
 }
 
 impl CircleRenderer {
-    pub fn new(
-        gpu: &Gpu,
-        camera_layout: &wgpu::BindGroupLayout,
-        format: wgpu::TextureFormat,
-    ) -> Self {
-        let shader = gpu
-            .device()
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("nelo circle shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/circle.wgsl").into()),
-            });
-
-        let layout = gpu
-            .device()
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("nelo circle pipeline layout"),
-                bind_group_layouts: &[Some(camera_layout)],
-                immediate_size: 0,
-            });
-
-        let instance_layout = wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<CircleInstance>() as u64,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &wgpu::vertex_attr_array![
+    pub fn new(gpu: &Gpu, camera_layout: &BindGroupLayout) -> Self {
+        // Create our render pipeline.
+        let shader = include_str!("../shaders/circle.wgsl");
+        let vertex_layout = VertexBufferLayout {
+            array_stride: size_of::<CircleInstance>() as u64,
+            step_mode: VertexStepMode::Instance,
+            attributes: &vertex_attr_array![
                 0 => Float32x4, // color       (offset 0)
                 1 => Float32x2, // matrix col1 (offset 16)
                 2 => Float32x2, // matrix col2 (offset 24)
                 3 => Float32x2, // translation (offset 32)
             ],
         };
+        let bind_group_layouts = &[Some(camera_layout)];
+        let pipeline = gpu.create_pipeline(shader, vertex_layout, bind_group_layouts);
 
-        let pipeline = gpu
-            .device()
-            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("nelo circle pipeline"),
-                layout: Some(&layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vs_main"),
-                    buffers: &[instance_layout],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: Some("fs_main"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: None,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    unclipped_depth: false,
-                    conservative: false,
-                },
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-                multiview_mask: None,
-                cache: None,
-            });
-
-        let instances = gpu.device().create_buffer(&wgpu::BufferDescriptor {
-            label: Some("nelo circle instances"),
-            size: MAX_CIRCLES * std::mem::size_of::<CircleInstance>() as u64,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        // Create our instance buffer.
+        let desc = BufferDescriptor {
+            label: Some("circle buffer"),
+            size: size_of::<CircleInstance>() as u64 * MAX_CIRCLES,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
-        });
+        };
+        let instances = gpu.device().create_buffer(&desc);
 
         Self {
             pipeline,
@@ -139,7 +90,7 @@ impl Renderer for CircleRenderer {
         self.count = capped as u32;
     }
 
-    fn submit<'a>(&'a self, pass: &mut wgpu::RenderPass<'a>) {
+    fn submit(&self, pass: &mut RenderPass) {
         if self.count == 0 {
             return;
         }
