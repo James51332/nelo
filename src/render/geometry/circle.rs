@@ -29,7 +29,7 @@ pub struct CircleRenderer {
 impl CircleRenderer {
     pub fn new(gpu: &Gpu, camera_layout: &BindGroupLayout) -> Self {
         // Create our render pipeline.
-        let shader = include_str!("../shaders/circle.wgsl");
+        let shader = include_str!("shaders/circle.wgsl");
         let vertex_layout = VertexBufferLayout {
             array_stride: size_of::<CircleInstance>() as u64,
             step_mode: VertexStepMode::Instance,

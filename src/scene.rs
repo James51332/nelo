@@ -1,4 +1,4 @@
-//! A [`Scene`] is an interface between data and rendering.
+//! A Scene is an interface between data and rendering.
 
 pub mod camera;
 pub mod component;

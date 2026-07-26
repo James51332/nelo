@@ -31,6 +31,9 @@ pub struct CameraBuffer {
 
 impl CameraBuffer {
     pub fn new(gpu: &Gpu) -> Self {
+        // Get the device to create GPU constructs.
+        let device = gpu.device();
+
         // Create our uniform buffer.
         let buffer_desc = BufferDescriptor {
             label: Some("nelo camera uniform"),
@@ -38,25 +41,25 @@ impl CameraBuffer {
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         };
-        let buffer = gpu.device().create_buffer(&buffer_desc);
+        let buffer = device.create_buffer(&buffer_desc);
 
-        // Create our bind group.
-        let layout = gpu
-            .device()
-            .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("nelo camera layout"),
-                entries: &[BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX_FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            });
+        // Create our bind group layout.
+        let layout_desc = BindGroupLayoutDescriptor {
+            label: Some("nelo camera layout"),
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX_FRAGMENT,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        };
+        let layout = device.create_bind_group_layout(&layout_desc);
 
+        // Finally, create the bind group.
         let bind_group_desc = BindGroupDescriptor {
             label: Some("nelo camera bind group"),
             layout: &layout,
@@ -65,7 +68,7 @@ impl CameraBuffer {
                 resource: buffer.as_entire_binding(),
             }],
         };
-        let bind_group = gpu.device().create_bind_group(&bind_group_desc);
+        let bind_group = device.create_bind_group(&bind_group_desc);
 
         Self {
             buffer,
@@ -79,6 +82,7 @@ impl CameraBuffer {
         &self.bind_group
     }
 
+    /// Returns the bind group layout for the camera uniform.
     pub fn layout(&self) -> &BindGroupLayout {
         &self.layout
     }

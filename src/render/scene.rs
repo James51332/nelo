@@ -1,4 +1,4 @@
-//! Scene renderer renders a scene at a given time. It must own its scene.
+//! Renders a scene at a given time. It must own its scene.
 
 use wgpu::{
     Color, CommandEncoderDescriptor, LoadOp, Operations, RenderPassColorAttachment,

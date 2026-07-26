@@ -1,5 +1,10 @@
 //! Build and configure the gpu for rendering
 
+pub mod pipeline;
+pub mod target;
+
+pub use target::{Frame, Target, TextureTarget, WindowTarget};
+
 use wgpu::{
     Device, DeviceDescriptor, ExperimentalFeatures, Features, Instance, InstanceDescriptor, Limits,
     MemoryHints, Queue, RequestAdapterOptions, Surface, SurfaceTarget, TextureFormat, Trace,

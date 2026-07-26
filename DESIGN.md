@@ -2,7 +2,7 @@
 
 A stateless, timeline-driven animation engine for explorable visual animations.
 
-## to do
+## to do (v1.0.0)
 
 * [x] Timeline
     * [x] Signal Trait
@@ -12,7 +12,6 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [x] Composition
     * [x] Lengths
     * [x] Mapping
-    * [ ] Input Timelines
 * [x] ECS
     * [x] Scene
     * [x] Entities
@@ -26,13 +25,22 @@ A stateless, timeline-driven animation engine for explorable visual animations.
 * [ ] Renderers
     * [x] Circle Renderer
     * [x] Curve Renderer
+    * [ ] Tesselation
+    * [ ] Reusable Geometries
     * [ ] Text Renderer
     * [ ] Math Renderer
 * [ ] Theming
-    * [ ] Colors
+    * [ ] Color Type
+    * [ ] Better Color Spaces
 * [ ] Storyboard
     * [ ] Actions
 * [ ] Exporting
     * [x] Video Files (via `ffmpeg`)
     * [ ] WASM Scenes
     * [ ] Images
+    * [ ] Parallel Exporting
+
+## future goals
+
+* [ ] Input Timelines
+* [ ] Hot Reload Viewer

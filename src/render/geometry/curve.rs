@@ -34,7 +34,7 @@ pub struct CurveRenderer {
 impl CurveRenderer {
     pub fn new(gpu: &Gpu, camera_layout: &BindGroupLayout) -> Self {
         // Create the render pipeline.
-        let shader = include_str!("../shaders/curve.wgsl");
+        let shader = include_str!("shaders/curve.wgsl");
         let vertex_layout = VertexBufferLayout {
             array_stride: size_of::<CurveSegment>() as u64,
             step_mode: VertexStepMode::Instance,
