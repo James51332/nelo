@@ -20,6 +20,10 @@ impl<T> Along<T> {
     {
         self.0.sample(alpha)
     }
+
+    pub fn timeline(self) -> Timeline<T> {
+        self.0
+    }
 }
 
 impl<T> Timeline<T> {

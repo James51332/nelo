@@ -1,7 +1,7 @@
 //! Renders a scene at a given time. It must own its scene.
 
 use crate::render::{Batch, BatchSet, CameraBuffer, Gpu, SplinePoint, tesselate};
-use crate::scene::{Circle, Fill, Scene, Spline, Stroke, Transform};
+use crate::scene::{Circle, Fill, Scene, Spline, Stroke, Transform, path};
 use wgpu::{
     Color, CommandEncoderDescriptor, LoadOp, Operations, RenderPassColorAttachment,
     RenderPassDescriptor, StoreOp, TextureView,
@@ -24,7 +24,11 @@ impl SceneRenderer {
     pub fn new(gpu: &Gpu, scene: Scene) -> Self {
         let camera_buffer = CameraBuffer::new(&gpu);
         let batches = BatchSet::new(&gpu, camera_buffer.layout());
-        let renderers: Renderers = vec![Box::new(filled_circles), Box::new(stroked_curves)];
+        let renderers: Renderers = vec![
+            Box::new(filled_circles),
+            Box::new(stroked_circles),
+            Box::new(stroked_curves),
+        ];
 
         Self {
             scene,
@@ -110,25 +114,57 @@ fn filled_circles(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u3
     });
 }
 
+fn stroked_circles(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
+    // Find the circles with transform and stroke.
+    let items = scene.view_triple::<Transform, Circle, Stroke>();
+
+    items.iter().for_each(|(_, transform, _, stroke)| {
+        let affine = transform.sample(t);
+        let spline = path::circle().map(move |x| affine.matrix2 * x + affine.translation);
+        let polyline = tesselate::generate_polyline(&spline.along(), 0.0, 1.0);
+        let points: Vec<SplinePoint> = polyline
+            .into_iter()
+            .map(|(a, pos)| {
+                SplinePoint::new(
+                    pos,
+                    stroke.color.sample(t).sample(a),
+                    stroke.weight.sample(t).sample(a),
+                )
+            })
+            .collect();
+
+        batches.splines.push(&points);
+    });
+}
+
 fn stroked_curves(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
     // Get a view of all curves with a stroke.
     let items = scene.view_triple::<Transform, Spline, Stroke>();
 
     items.iter().for_each(|(_, transform, spline, stroke)| {
         // Subdivide the curve into a polyline.
+        let affine = transform.sample(t);
+
+        // Apply the transformation.
+        let spline_path = spline
+            .spline_path
+            .sample(t)
+            .timeline()
+            .map(move |x| affine.matrix2 * x + affine.translation)
+            .along();
+
         let polyline = tesselate::generate_polyline(
-            &spline.spline_path.sample(t),
+            &spline_path,
             spline.start_alpha.sample(t),
             spline.end_alpha.sample(t),
         );
 
         // Convert the (alpha, pos) values into renderable points.
-        let affine = transform.sample(t);
         let spline_points = polyline
             .into_iter()
             .map(|(a, pos)| {
                 SplinePoint::new(
-                    affine.matrix2 * pos + affine.translation,
+                    pos,
                     stroke.color.sample(t).sample(a),
                     stroke.weight.sample(t).sample(a),
                 )

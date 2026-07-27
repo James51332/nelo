@@ -83,6 +83,20 @@ impl Registry {
         }
     }
 
+    pub fn remove<T: Any>(&mut self, id: EntityId) {
+        let type_id = TypeId::of::<T>();
+        let Some(store) = self.component_stores.get_mut(&type_id) else {
+            return;
+        };
+
+        match store.binary_search_by(|x| x.0.cmp(&id)) {
+            Ok(i) => {
+                store.remove(i);
+            }
+            _ => (),
+        };
+    }
+
     /// Removes all attached components for this entity, or a noop if there are none.
     pub fn delete(&mut self, entity: EntityId) {
         for (_, bucket) in self.component_stores.iter_mut() {

@@ -40,6 +40,11 @@ impl<'a> EntityRef<'a> {
         self
     }
 
+    pub fn no_fill(self) -> Self {
+        self.scene.registry.remove::<Fill>(self.id);
+        self
+    }
+
     pub fn stroke_weight(self, weight: impl Into<TimelineAlong<f32>>) -> Self {
         let stroke = self.scene.registry.get_or_default::<Stroke>(self.id);
         stroke.weight = weight.into().0;
@@ -49,6 +54,11 @@ impl<'a> EntityRef<'a> {
     pub fn stroke(self, color: impl Into<TimelineAlong<Vec4>>) -> Self {
         let stroke = self.scene.registry.get_or_default::<Stroke>(self.id);
         stroke.color = color.into().0;
+        self
+    }
+
+    pub fn no_stroke(self) -> Self {
+        self.scene.registry.remove::<Stroke>(self.id);
         self
     }
 

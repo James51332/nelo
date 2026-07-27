@@ -110,7 +110,7 @@ impl Scene {
         scene.camera().background(Vec4::new(0.4, 0.3, 0.5, 1.0));
 
         // Central pulsing circle.
-        scene.circle().scale(
+        scene.circle().no_stroke().fill(Vec4::ONE).scale(
             Timeline::triangle(2.0 * PERIOD)
                 .then(Easing::SineInOut)
                 .add(0.25),

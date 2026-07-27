@@ -4,6 +4,51 @@ use crate::scene::{EntityRef, Scene};
 use crate::timeline::{Along, Timeline, TimelineSpline};
 use glam::prelude::*;
 
+// ----- Circle -----
+
+/// A circle has no attached data. It has a radius of 1 but can
+/// be scaled using a transform.
+pub struct Circle;
+
+impl Scene {
+    /// Returns an `EntityRef` with circle geometry attached. The default
+    /// circle is at the world origin with a radius of one and white fill.
+    pub fn circle(&mut self) -> EntityRef<'_> {
+        self.create().attach(Circle).attach(Stroke::default())
+    }
+}
+
+// ----- Fill -----
+
+/// A fill is a color over time.
+pub struct Fill {
+    pub color: Timeline<Vec4>,
+}
+
+impl Default for Fill {
+    fn default() -> Self {
+        Self {
+            color: Vec4::ONE.into(),
+        }
+    }
+}
+
+// ----- Stroke -----
+
+pub struct Stroke {
+    pub color: Timeline<Along<Vec4>>,
+    pub weight: Timeline<Along<f32>>,
+}
+
+impl Default for Stroke {
+    fn default() -> Self {
+        Self {
+            weight: Timeline::constant(0.05).along().into(),
+            color: Timeline::constant(Vec4::ONE).along().into(),
+        }
+    }
+}
+
 // ----- Spline -----
 
 pub struct Spline {
@@ -33,56 +78,5 @@ impl Scene {
                 end_alpha: end.into(),
             })
             .attach(Stroke::default())
-    }
-}
-
-// ----- Circle -----
-
-/// A circle has no attached data. It has a radius of 1 but can
-/// be scaled using a transform.
-pub struct Circle;
-
-impl Scene {
-    /// Returns an `EntityRef` with circle geometry attached. The default
-    /// circle is at the world origin with a radius of one and white fill.
-    pub fn circle(&mut self) -> EntityRef<'_> {
-        self.create().attach(Circle).attach(Fill::default())
-    }
-}
-
-// ----- Fill -----
-
-/// A fill is a color over time.
-pub struct Fill {
-    pub color: Timeline<Vec4>,
-}
-
-impl Default for Fill {
-    fn default() -> Self {
-        Self {
-            color: Vec4::ONE.into(),
-        }
-    }
-}
-
-// ----- Stroke -----
-
-pub struct Stroke {
-    pub color: Timeline<Along<Vec4>>,
-    pub weight: Timeline<Along<f32>>,
-}
-
-impl Stroke {
-    pub fn sample(&self, t: f32) -> (Along<Vec4>, Along<f32>) {
-        (self.color.sample(t), self.weight.sample(t))
-    }
-}
-
-impl Default for Stroke {
-    fn default() -> Self {
-        Self {
-            weight: Timeline::constant(0.1).along().into(),
-            color: Timeline::constant(Vec4::ONE).along().into(),
-        }
     }
 }
