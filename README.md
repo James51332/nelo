@@ -1,5 +1,9 @@
 # nelo
 
+
+[![Crates.io](https://img.shields.io/crates/v/nelo.svg)](https://crates.io/crates/nelo)
+![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)
+
 A stateless, timeline-driven animation engine for explorable visual animations.
 
 ## philosophy
@@ -23,7 +27,7 @@ to animate any parameter on any entity.
 ## example
 
 Here's the code in 
-[`src/scene.rs`](https://github.com/James51332/nelo/blob/b67f6ffacc16fc340e1603ecc2ac7c029e52fdf4/src/scene.rs#L107) 
+[`src/scene.rs`](src/scene.rs)
 to create the demo:
 
 ```rust
