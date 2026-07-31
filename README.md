@@ -1,5 +1,9 @@
 # nelo
 
+>
+> *This branch has been archived. All functionality has been reimplemented in `main`. Use main branch*
+>
+
 A stateless, timeline-driven animation engine for explorable visual animations.
 
 ## philosophy
