@@ -60,7 +60,7 @@ impl Gpu {
         };
         let device_desc = DeviceDescriptor {
             label: Some("nelo render device"),
-            required_features: Features::empty(),
+            required_features: Features::default(),
             experimental_features: ExperimentalFeatures::disabled(),
             required_limits,
             memory_hints: MemoryHints::default(),

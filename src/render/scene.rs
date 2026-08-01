@@ -1,13 +1,17 @@
 //! Renders a scene at a given time. It must own its scene.
 
-use crate::render::{Batch, BatchSet, CameraBuffer, Gpu, SplinePoint, tesselate};
+use crate::render::{Batch, BatchSet, CameraBuffer, Gpu, ModelVertex, SplinePoint, tesselate};
 use crate::scene::{Circle, Fill, Scene, Spline, Stroke, Transform, path};
+use glam::prelude::*;
+use lyon::algorithms::rounded_polygon::Point;
+use lyon::tessellation::geometry_builder::simple_builder;
+use lyon::tessellation::{FillOptions, FillTessellator, VertexBuffers};
 use wgpu::{
     Color, CommandEncoderDescriptor, LoadOp, Operations, RenderPassColorAttachment,
     RenderPassDescriptor, StoreOp, TextureView,
 };
 
-type Renderers = Vec<Box<dyn Fn(&mut BatchSet, &Scene, f32, (u32, u32))>>;
+type Renderers = Vec<fn(&mut BatchSet, &Scene, f32, (u32, u32))>;
 
 pub struct SceneRenderer {
     scene: Scene,
@@ -25,9 +29,10 @@ impl SceneRenderer {
         let camera_buffer = CameraBuffer::new(&gpu);
         let batches = BatchSet::new(&gpu, camera_buffer.layout());
         let renderers: Renderers = vec![
-            Box::new(filled_circles),
-            Box::new(stroked_circles),
-            Box::new(stroked_curves),
+            filled_circles,
+            stroked_circles,
+            filled_curves,
+            stroked_curves,
         ];
 
         Self {
@@ -51,6 +56,7 @@ impl SceneRenderer {
 
         // Copy the data to the gpu.
         self.batches.circles.prepare(&gpu);
+        self.batches.models.prepare(&gpu);
         self.batches.splines.prepare(&gpu);
 
         // Upload the camera data into the buffer.
@@ -93,6 +99,7 @@ impl SceneRenderer {
 
             // Submit the batches.
             self.batches.circles.submit(gpu, &mut pass);
+            self.batches.models.submit(gpu, &mut pass);
             self.batches.splines.submit(gpu, &mut pass);
         }
 
@@ -137,15 +144,12 @@ fn stroked_circles(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u
     });
 }
 
-fn stroked_curves(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
+fn filled_curves(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
     // Get a view of all curves with a stroke.
-    let items = scene.view_triple::<Transform, Spline, Stroke>();
-
-    items.iter().for_each(|(_, transform, spline, stroke)| {
-        // Subdivide the curve into a polyline.
+    let items = scene.view_triple::<Transform, Spline, Fill>();
+    items.iter().for_each(|(_, transform, spline, fill)| {
+        // Apply the curves transformation.
         let affine = transform.sample(t);
-
-        // Apply the transformation.
         let spline_path = spline
             .spline_path
             .sample(t)
@@ -153,6 +157,72 @@ fn stroked_curves(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u3
             .map(move |x| affine.matrix2 * x + affine.translation)
             .along();
 
+        // Subdivide the curve into a polyline.
+        let polyline = tesselate::generate_polyline(
+            &spline_path,
+            spline.start_alpha.sample(t),
+            spline.end_alpha.sample(t),
+        );
+
+        // Skip this curve
+        if polyline.len() < 3 {
+            return;
+        }
+
+        // Tesselate the polyline using lyon-rs.
+        let mut buffers: VertexBuffers<Point, u16> = VertexBuffers::new();
+        let mut vertex_builder = simple_builder(&mut buffers);
+        let mut tesselator = FillTessellator::new();
+        let options = FillOptions::default();
+
+        let mut builder = tesselator.builder(&options, &mut vertex_builder);
+        let start = polyline[0].1;
+
+        builder.begin(Point::new(start.x, start.y));
+        for (_, point) in polyline[1..].iter() {
+            builder.line_to(Point::new(point.x, point.y));
+        }
+        builder.end(true);
+
+        let result = builder.build();
+        if let Err(msg) = result {
+            log::error!("Tesselation failed: {}", msg);
+            return;
+        }
+
+        // Submit our triangle data to the GPU.
+        let color = fill.color.sample(t);
+        let vertices: Vec<_> = buffers
+            .vertices
+            .into_iter()
+            .map(|point| ModelVertex::new(Vec2::new(point.x, point.y), Vec2::ZERO, color))
+            .collect();
+
+        let indices: Vec<_> = buffers
+            .indices
+            .into_iter()
+            .map(|idx: u16| idx as u32)
+            .collect();
+
+        batches.models.push(&vertices, &indices);
+    });
+}
+
+fn stroked_curves(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
+    // Get a view of all curves with a stroke.
+    let items = scene.view_triple::<Transform, Spline, Stroke>();
+
+    items.iter().for_each(|(_, transform, spline, stroke)| {
+        // Apply the transformation.
+        let affine = transform.sample(t);
+        let spline_path = spline
+            .spline_path
+            .sample(t)
+            .timeline()
+            .map(move |x| affine.matrix2 * x + affine.translation)
+            .along();
+
+        // Subdivide the curve into a polyline.
         let polyline = tesselate::generate_polyline(
             &spline_path,
             spline.start_alpha.sample(t),
@@ -160,7 +230,7 @@ fn stroked_curves(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u3
         );
 
         // Convert the (alpha, pos) values into renderable points.
-        let spline_points = polyline
+        let spline_points: Vec<_> = polyline
             .into_iter()
             .map(|(a, pos)| {
                 SplinePoint::new(

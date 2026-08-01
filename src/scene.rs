@@ -14,7 +14,7 @@ pub use entity::{EntityId, EntityRef};
 pub(crate) use registry::{Query, Registry};
 pub use transform::{Transform, Transformable};
 
-use crate::timeline::{Easing, Timeline};
+use crate::timeline::Timeline;
 use glam::prelude::*;
 use std::any::Any;
 
@@ -102,35 +102,36 @@ impl Scene {
     }
 
     /// Returns a small demo scene.
-    pub fn demo() -> Self {
-        const PERIOD: f32 = 3.0;
-        let mut scene = Self::new();
+    pub fn demo() -> Scene {
+        let mut scene = Scene::new();
 
         // Set the background color.
         scene.camera().background(Vec4::new(0.4, 0.3, 0.5, 1.0));
 
-        // Central pulsing circle.
-        scene.circle().no_stroke().fill(Vec4::ONE).scale(
-            Timeline::triangle(2.0 * PERIOD)
-                .then(Easing::SineInOut)
-                .add(0.25),
-        );
+        // Timeline to sample to repeat animations.
+        let repeat = Timeline::triangle(6.0).ease();
 
-        // Some circles which go back and for from spirtal to a line.
+        // Some circles which go back and forth from spiral to a line.
+        let line = path::line(Vec2::X * 2.5, Vec2::X * 5.0);
         scene
             .group()
-            .create(16, |_, s| s.circle().scale(0.1))
-            .arrange(path::line(Vec2::X * 2.0, Vec2::X * 5.0))
-            .for_each(|i, e| e.rotate(Timeline::triangle(6.0).ease().multiply(0.2 * i as f32)));
+            .create(15, |_, s| s.circle().scale(0.1))
+            .arrange(line)
+            .for_each(|i, e| e.rotate(repeat.clone().add(0.2).multiply(i as f32)));
+
+        // Let's create a shape using a spline.
+        let shape = Timeline::keyframes(path::square().multiply(1.8))
+            .at(1.0, path::circle())
+            .build()
+            .compose(repeat);
+        scene.spline(shape).fill(Vec4::ONE).no_stroke();
 
         // Wavy path.
-        scene
-            .spline_with_range(
-                |t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()),
-                -10.0,
-                10.0,
-            )
-            .stroke_weight(0.05);
+        scene.spline_with_range(
+            |t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()),
+            -10.0,
+            10.0,
+        );
 
         scene
     }

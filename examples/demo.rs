@@ -1,11 +1,11 @@
-//! Renderers the demo scene at t=1.0 sec to a PNG file.
+//! Renderers the demo scene at t=3.0 sec to a PNG file.
 
 use nelo::render::{Gpu, SceneRenderer, Target, TextureTarget};
 use nelo::scene::Scene;
 
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 600;
-const SCENE_TIME: f32 = 1.0;
+const SCENE_TIME: f32 = 3.0;
 
 fn main() {
     // Setup a target and renderer.

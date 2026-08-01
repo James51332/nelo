@@ -6,6 +6,8 @@ pub mod gpu;
 pub mod scene;
 
 pub use camera::CameraBuffer;
-pub use geometry::{Batch, BatchSet, CircleBatch, SplineBatch, SplinePoint, tesselate};
+pub use geometry::{
+    Batch, BatchSet, CircleBatch, ModelBatch, ModelVertex, SplineBatch, SplinePoint, tesselate,
+};
 pub use gpu::{Frame, Gpu, Target, TextureTarget, WindowTarget};
 pub use scene::SceneRenderer;

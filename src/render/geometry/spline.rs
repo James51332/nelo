@@ -60,7 +60,7 @@ impl SplineBatch {
         }
     }
 
-    pub fn push(&mut self, spline: &Vec<SplinePoint>) {
+    pub fn push(&mut self, spline: &[SplinePoint]) {
         // Make sure we have real data to render.
         let points = spline.len();
         if points < 2 {

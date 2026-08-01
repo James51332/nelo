@@ -31,44 +31,45 @@ Here's the code in
 to create the demo:
 
 ```rust
-pub fn demo() -> Self {
-    const PERIOD: f32 = 3.0;
-    let mut scene = Self::new();
+pub fn demo() -> Scene {
+    let mut scene = Scene::new();
 
     // Set the background color.
     scene.camera().background(Vec4::new(0.4, 0.3, 0.5, 1.0));
 
-    // Central pulsing circle.
-    scene.circle().scale(
-        Timeline::triangle(2.0 * PERIOD)
-            .then(Easing::SineInOut)
-            .add(0.25),
-    );
+    // Timeline to sample to repeat animations.
+    let repeat = Timeline::triangle(6.0).ease();
 
-    // Some circles which go back and for from spirtal to a line.
+    // Some circles which go back and forth from spiral to a line.
+    let line = path::line(Vec2::X * 2.5, Vec2::X * 5.0);
     scene
         .group()
-        .create(16, |_, s| s.circle().scale(0.1))
-        .arrange(path::line(Vec2::X * 2.0, Vec2::X * 5.0))
-        .for_each(|i, e| e.rotate(Timeline::triangle(6.0).ease().multiply(0.2 * i as f32)));
+        .create(15, |_, s| s.circle().scale(0.1))
+        .arrange(line)
+        .for_each(|i, e| e.rotate(repeat.clone().add(0.2).multiply(i as f32)));
+
+    // Let's create a shape using a spline.
+    let shape = Timeline::keyframes(path::square().multiply(1.8))
+        .at(1.0, path::circle())
+        .build()
+        .compose(repeat);
+    scene.spline(shape).fill(Vec4::ONE).no_stroke();
 
     // Wavy path.
-    scene
-        .spline_with_range(
-            |t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()),
-            -10.0,
-            10.0,
-        )
-        .stroke_weight(0.05);
+    scene.spline_with_range(
+        |t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()),
+        -10.0,
+        10.0,
+    );
 
     scene
 }
 ```
 
-And here's the result rendered at `t = 1.0`:
+And here's the result rendered at `t = 3.0`:
 
 <p align="center">
-  <img width="400" src="demo.png" alt="Demo scene"/>
+  <img width="400" src="https://codeberg.org/dadabo/nelo/raw/branch/main/demo.png" alt="Demo scene"/>
 </p>
 
 ## dependencies
