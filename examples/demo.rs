@@ -1,6 +1,6 @@
 //! Renderers the demo scene at t=3.0 sec to a PNG file.
 
-use nelo::render::{Gpu, SceneRenderer, Target, TextureTarget};
+use nelo::render::{Gpu, Renderer, Target, TextureTarget};
 use nelo::scene::Scene;
 
 const WIDTH: u32 = 800;
@@ -11,7 +11,7 @@ fn main() {
     // Setup a target and renderer.
     let gpu = Gpu::headless();
     let mut target = TextureTarget::new(&gpu, WIDTH, HEIGHT);
-    let mut renderer = SceneRenderer::new(&gpu, Scene::demo());
+    let mut renderer = Renderer::new(&gpu, Scene::demo());
 
     // Run the draw loop exactly once.
     let frame = target.acquire(&gpu).expect("offscreen frame");

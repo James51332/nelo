@@ -47,12 +47,11 @@ pub fn demo() -> Scene {
         .arrange(line)
         .for_each(|i, e| e.rotate(repeat.clone().add(0.2).multiply(i as f32)));
 
-    // Let's create a shape using a spline.
-    let shape = Timeline::keyframes(path::square().multiply(1.8))
-        .at(1.0, path::circle())
-        .build()
-        .compose(repeat);
-    scene.spline(shape).fill(Vec4::ONE).no_stroke();
+    // Create some text.
+    scene
+        .text("Hello, world!")
+        .scale(0.75)
+        .rotate(repeat.clone().add(-0.5).multiply(1.5));
 
     // Wavy path.
     scene.spline_with_range(

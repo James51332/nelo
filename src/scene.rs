@@ -131,7 +131,7 @@ impl Scene {
             .arrange(line)
             .for_each(|i, e| e.rotate(repeat.clone().add(0.2).multiply(i as f32)));
 
-        // Let's create a shape using a spline.
+        // Create some text.
         scene
             .text("Hello, world!")
             .scale(0.75)
