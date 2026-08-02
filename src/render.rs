@@ -10,4 +10,4 @@ pub use geometry::{
     Batch, BatchSet, CircleBatch, ModelBatch, ModelVertex, SplineBatch, SplinePoint, tesselate,
 };
 pub use gpu::{Frame, Gpu, Target, TextureTarget, WindowTarget};
-pub use renderer::Renderer;
+pub use renderer::{ComponentRenderer, Renderer};

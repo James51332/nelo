@@ -1,6 +1,7 @@
 //! Renders a scene at a given time.
 
 pub mod circle;
+pub mod glyph;
 pub mod spline;
 
 use crate::render::{Batch, BatchSet, CameraBuffer, Gpu};
@@ -10,7 +11,7 @@ use wgpu::{
     RenderPassDescriptor, StoreOp, TextureView,
 };
 
-type Renderers = Vec<Box<dyn Fn(&mut BatchSet, &Scene, f32, (u32, u32))>>;
+pub type ComponentRenderer = Box<dyn Fn(&mut BatchSet, &Scene, f32, (u32, u32))>;
 
 pub struct Renderer {
     scene: Scene,
@@ -19,19 +20,20 @@ pub struct Renderer {
     // Batches are reusable geometry pipelines.
     batches: BatchSet,
 
-    // Renderers forward the scene into batches.
-    renderers: Renderers,
+    // Component renderers forward the scene into batches.
+    renderers: Vec<ComponentRenderer>,
 }
 
 impl Renderer {
     pub fn new(gpu: &Gpu, scene: Scene) -> Self {
         let camera_buffer = CameraBuffer::new(&gpu);
         let batches = BatchSet::new(&gpu, camera_buffer.layout());
-        let renderers: Renderers = vec![
+        let renderers: Vec<ComponentRenderer> = vec![
             Box::new(circle::filled_circles),
             Box::new(circle::stroked_circles),
             Box::new(spline::filled_splines),
             Box::new(spline::stroked_splines),
+            glyph::get_filled_renderer(scene.font().clone()),
         ];
 
         Self {

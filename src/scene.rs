@@ -14,9 +14,11 @@ pub use component::{Circle, Fill, Spline, Stroke};
 pub use entity::{EntityId, EntityRef};
 pub use group::GroupRef;
 pub(crate) use registry::{Query, Registry};
+pub use text::Glyph;
 pub use transform::{Transform, Transformable};
 
 use crate::timeline::Timeline;
+use ab_glyph::{FontArc, FontRef};
 use glam::prelude::*;
 use std::any::Any;
 
@@ -32,6 +34,7 @@ pub struct Scene {
     active: Vec<EntityId>,
     next_id: usize,
     camera: Camera,
+    font: FontArc,
 }
 
 impl Scene {
@@ -41,6 +44,9 @@ impl Scene {
             active: Vec::new(),
             next_id: 0,
             camera: Camera::new(),
+            font: FontArc::new(
+                FontRef::try_from_slice(include_bytes!("fonts/cmu.serif-roman.ttf")).unwrap(),
+            ),
         }
     }
 
@@ -58,6 +64,10 @@ impl Scene {
 
     pub fn camera(&mut self) -> &mut Camera {
         &mut self.camera
+    }
+
+    pub fn font(&self) -> &FontArc {
+        &self.font
     }
 
     /// Returns all attached data of a certain type sorted by EntityId.
@@ -122,11 +132,10 @@ impl Scene {
             .for_each(|i, e| e.rotate(repeat.clone().add(0.2).multiply(i as f32)));
 
         // Let's create a shape using a spline.
-        let shape = Timeline::keyframes(path::square().multiply(1.8))
-            .at(1.0, path::circle())
-            .build()
-            .compose(repeat);
-        scene.spline(shape).fill(Vec4::ONE).no_stroke();
+        scene
+            .text("Hello, world!")
+            .scale(0.75)
+            .rotate(repeat.clone().add(-0.5).multiply(1.5));
 
         // Wavy path.
         scene.spline_with_range(
