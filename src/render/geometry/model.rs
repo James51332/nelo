@@ -114,10 +114,11 @@ impl ModelBatch {
         self.vertex_count += vertex_count;
 
         // Copy the index data into the index buffer.
+        let vertex_base = self.vertex_count - vertex_count;
         let index_range = self.index_count..(self.index_count + index_count);
         self.indices.splice(
             index_range,
-            indices.iter().map(|&idx| idx + self.index_count as u32),
+            indices.iter().map(|&idx| idx + vertex_base as u32),
         );
         self.index_count += index_count;
     }
