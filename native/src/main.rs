@@ -1,5 +1,5 @@
 use nelo::prelude::*;
-use nelo::render::{Gpu, SceneRenderer, Target, WindowTarget};
+use nelo::render::{Gpu, Renderer, Target, WindowTarget};
 use std::sync::Arc;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
@@ -10,7 +10,7 @@ use winit::window::{Window, WindowId};
 struct RenderState {
     gpu: Gpu,
     target: WindowTarget,
-    renderer: SceneRenderer,
+    renderer: Renderer,
 }
 
 #[derive(Default)]
@@ -52,7 +52,7 @@ impl ApplicationHandler for App {
 
         let (gpu, surface) = Gpu::with_surface(window.clone());
         let target = WindowTarget::new(&gpu, surface, size.width, size.height);
-        let renderer = SceneRenderer::new(&gpu, Scene::demo());
+        let renderer = Renderer::new(&gpu, Scene::demo());
 
         self.window = Some(window);
         self.render_state = Some(RenderState {

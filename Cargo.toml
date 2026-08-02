@@ -21,6 +21,8 @@ bytemuck = { version = "1", features = ["derive"] }
 glam = { version = "0.33.2", features = ["bytemuck"] }
 pollster = "0.4.0"
 lyon = "1.0.19"
+ab_glyph = "0.2.32"
+glyph_brush_layout = "0.2.4"
 
 [dev-dependencies]
 png = "0.17"

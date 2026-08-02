@@ -6,11 +6,13 @@ pub mod entity;
 pub mod group;
 pub mod path;
 mod registry;
+pub mod text;
 pub mod transform;
 
 pub use camera::Camera;
 pub use component::{Circle, Fill, Spline, Stroke};
 pub use entity::{EntityId, EntityRef};
+pub use group::GroupRef;
 pub(crate) use registry::{Query, Registry};
 pub use transform::{Transform, Transformable};
 

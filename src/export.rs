@@ -1,5 +1,5 @@
 //! Module for exporting via ffmpeg subprocess.
-use crate::render::{Gpu, SceneRenderer, Target, TextureTarget};
+use crate::render::{Gpu, Renderer, Target, TextureTarget};
 use crate::scene::Scene;
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -33,11 +33,11 @@ impl Default for ExportConfig {
 }
 
 /// Exports a scene using the given config
-pub fn export(scene: Scene, config: &ExportConfig) -> Result<(), String> {
+pub fn video(scene: Scene, config: &ExportConfig) -> Result<(), String> {
     // Setup the render pipeline.
     let gpu = Gpu::headless();
     let mut target = TextureTarget::new(&gpu, config.width, config.height);
-    let mut renderer = SceneRenderer::new(&gpu, scene);
+    let mut renderer = Renderer::new(&gpu, scene);
 
     // Verify the time.
     if config.frame_rate == 0 {

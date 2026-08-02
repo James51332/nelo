@@ -3,11 +3,11 @@
 pub mod camera;
 pub mod geometry;
 pub mod gpu;
-pub mod scene;
+pub mod renderer;
 
 pub use camera::CameraBuffer;
 pub use geometry::{
     Batch, BatchSet, CircleBatch, ModelBatch, ModelVertex, SplineBatch, SplinePoint, tesselate,
 };
 pub use gpu::{Frame, Gpu, Target, TextureTarget, WindowTarget};
-pub use scene::SceneRenderer;
+pub use renderer::Renderer;
