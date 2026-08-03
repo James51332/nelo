@@ -21,13 +21,23 @@ impl Timeline<f32> {
         Self::dynamic(move |t: f32| (t / period).rem_euclid(1.0)).with_length(period)
     }
 
-    // Returns a timeline which goes from zero to one, and then from one to zero each
-    // period.
+    /// Returns a timeline which goes from zero to one, and then from one to zero
+    /// each period.
     pub fn triangle(period: f32) -> Self {
         let half_period = 0.5 * period;
         Self::dynamic(move |t: f32| {
             let shifted = ((t + half_period) / half_period).rem_euclid(2.0);
             (shifted - 1.0).abs()
+        })
+        .with_length(period)
+    }
+
+    /// Returns a repeating timeline which jumps from 0 to 1 at period / 2.0.
+    pub fn square(period: f32) -> Self {
+        let half_period = period / 2.0;
+        Self::dynamic(move |t: f32| {
+            let t = t.rem_euclid(period);
+            if t < half_period { 0.0 } else { 1.0 }
         })
         .with_length(period)
     }

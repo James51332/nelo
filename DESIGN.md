@@ -37,7 +37,7 @@ A stateless, timeline-driven animation engine for explorable visual animations.
 * [ ] Exporting
     * [x] Video Files (via `ffmpeg`)
     * [ ] WASM Scenes
-    * [ ] Images
+    * [x] Images
     * [ ] Parallel Exporting
 
 ## future goals

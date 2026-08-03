@@ -73,7 +73,7 @@ pub fn demo() -> Scene {
 And here's the result rendered at `t = 3.0`:
 
 <p align="center">
-  <img width="400" src="https://codeberg.org/dadabo/nelo/raw/branch/main/demo.png" alt="Demo scene"/>
+  <img width="400" src="https://codeberg.org/dadabo/nelo/raw/branch/main/nelo_scene.png" alt="Demo scene"/>
 </p>
 
 ## dependencies

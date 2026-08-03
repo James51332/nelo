@@ -1,4 +1,4 @@
-use nelo::timeline::{Easing, Timeline};
+use nelo::prelude::*;
 
 fn main() {
     let t1 = Timeline::constant(5);
