@@ -21,6 +21,11 @@ use glam::prelude::*;
 pub struct Circle;
 
 impl Scene {
+    /// Returns an `EntityRef` with a solid dot attached.
+    pub fn dot(&mut self) -> EntityRef<'_> {
+        self.create().attach(Circle).attach(Fill::solid())
+    }
+
     /// Returns an `EntityRef` with circle geometry attached. The default
     /// circle is at the world origin with a radius of one and white fill.
     pub fn circle(&mut self) -> EntityRef<'_> {
