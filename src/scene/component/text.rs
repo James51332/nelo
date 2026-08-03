@@ -44,7 +44,7 @@ impl Scene {
             group = group.create_once(move |s| {
                 s.create()
                     .attach(Glyph { character })
-                    .attach(Fill::default())
+                    .attach(Fill::solid())
                     .translate(offset)
             });
         }

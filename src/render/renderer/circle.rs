@@ -1,7 +1,8 @@
 //! Helper methods to render circles
 
 use crate::render::{BatchSet, SplinePoint, tesselate};
-use crate::scene::{Circle, Fill, Scene, Stroke, Transform, path};
+use crate::scene::{Circle, Fill, Scene, Stroke, Transform};
+use crate::timeline::Path;
 
 pub fn filled_circles(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
     // Get a view of all elements with the required components.
@@ -21,8 +22,12 @@ pub fn stroked_circles(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u3
 
     items.iter().for_each(|(_, transform, _, stroke)| {
         let affine = transform.sample(t);
-        let spline = path::circle().map(move |x| affine.matrix2 * x + affine.translation);
-        let polyline = tesselate::generate_polyline(&spline.along(), 0.0, 1.0);
+        // We need to convert to timeline temporarily to map the value.
+        let spline = Path::circle()
+            .timeline()
+            .map(move |x| affine.matrix2 * x + affine.translation)
+            .along();
+        let polyline = tesselate::generate_polyline(&spline, 0.0, 1.0);
         let points: Vec<SplinePoint> = polyline
             .into_iter()
             .map(|(a, pos)| {

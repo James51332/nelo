@@ -4,7 +4,7 @@ members = ["native"]
  
 [package]
 name = "nelo"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 authors = ["James Dadabo"]
 repository = "https://github.com/James51332/nelo/tree/rust"

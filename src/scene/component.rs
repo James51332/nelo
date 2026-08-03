@@ -1,7 +1,17 @@
 //! A collection of components which are used by the renderers.
 
+pub mod group;
+pub mod spline;
+pub mod text;
+pub mod transform;
+
+pub use group::GroupRef;
+pub use spline::Spline;
+pub use text::Glyph;
+pub use transform::{Transform, Transformable};
+
 use crate::scene::{EntityRef, Scene};
-use crate::timeline::{Along, Timeline, TimelineSpline};
+use crate::timeline::{Along, Path, Timeline};
 use glam::prelude::*;
 
 // ----- Circle -----
@@ -14,7 +24,20 @@ impl Scene {
     /// Returns an `EntityRef` with circle geometry attached. The default
     /// circle is at the world origin with a radius of one and white fill.
     pub fn circle(&mut self) -> EntityRef<'_> {
-        self.create().attach(Circle).attach(Stroke::default())
+        self.create()
+            .attach(Circle)
+            .attach(Fill::default())
+            .attach(Stroke::default())
+    }
+
+    /// Returns an `EntityRef` with a square attached.
+    pub fn square(&mut self) -> EntityRef<'_> {
+        self.spline(Path::square()).attach(Fill::default())
+    }
+
+    /// Returns an `EntityRef` with a square attached.
+    pub fn triangle(&mut self) -> EntityRef<'_> {
+        self.spline(Path::triangle()).attach(Fill::default())
     }
 }
 
@@ -25,10 +48,19 @@ pub struct Fill {
     pub color: Timeline<Vec4>,
 }
 
+impl Fill {
+    // Default with with alpha = 1.0,
+    fn solid() -> Self {
+        let mut fill = Self::default();
+        fill.color = fill.color.map(|v| Vec4::new(v.x, v.y, v.z, 1.0));
+        fill
+    }
+}
+
 impl Default for Fill {
     fn default() -> Self {
         Self {
-            color: Vec4::ONE.into(),
+            color: Vec4::new(1.0, 1.0, 1.0, 0.5).into(),
         }
     }
 }
@@ -46,37 +78,5 @@ impl Default for Stroke {
             weight: Timeline::constant(0.05).along().into(),
             color: Timeline::constant(Vec4::ONE).along().into(),
         }
-    }
-}
-
-// ----- Spline -----
-
-pub struct Spline {
-    pub spline_path: Timeline<Along<Vec2>>,
-    pub start_alpha: Timeline<f32>,
-    pub end_alpha: Timeline<f32>,
-}
-
-impl Scene {
-    pub fn spline<T>(&mut self, spline_path: T) -> EntityRef<'_>
-    where
-        T: Into<TimelineSpline>,
-    {
-        self.spline_with_range(spline_path, 0.0, 1.0)
-    }
-
-    pub fn spline_with_range<T, U, V>(&mut self, spline_path: T, start: U, end: V) -> EntityRef<'_>
-    where
-        T: Into<TimelineSpline>,
-        U: Into<Timeline<f32>>,
-        V: Into<Timeline<f32>>,
-    {
-        self.create()
-            .attach(Spline {
-                spline_path: spline_path.into().0.0,
-                start_alpha: start.into(),
-                end_alpha: end.into(),
-            })
-            .attach(Stroke::default())
     }
 }

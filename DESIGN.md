@@ -25,9 +25,9 @@ A stateless, timeline-driven animation engine for explorable visual animations.
 * [ ] Renderers
     * [x] Circle Renderer
     * [x] Curve Renderer
-    * [ ] Tesselation
-    * [ ] Reusable Geometries
-    * [ ] Text Renderer
+    * [x] Tesselation
+    * [x] Reusable Geometries
+    * [x] Text Renderer
     * [ ] Math Renderer
 * [ ] Theming
     * [ ] Color Type

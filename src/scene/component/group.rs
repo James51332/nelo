@@ -1,6 +1,7 @@
 //! API for grouping entities by their transform
 use crate::scene::{EntityId, EntityRef, Scene, Transform, Transformable};
 use crate::timeline::TimelineSpline;
+use glam::Vec2;
 
 /// A group is a transform that can be applied to children. Adding it
 /// to an entity will not affect rendering for that entity, but only for
@@ -74,6 +75,40 @@ impl<'a> GroupRef<'a> {
         self
     }
 
+    /// Moves all entities in this group to the origin. Useful for resetting
+    /// local translations before calling `GroupRef::arrange()`.
+    pub fn collapse(self) -> Self {
+        self.for_each(|_, mut e| {
+            e.transform().to(Vec2::ZERO);
+            e
+        })
+    }
+
+    /// Arranges the elements of this group into a row with given `spacing`.
+    pub fn row(self, spacing: f32) -> Self {
+        self.space(Vec2::new(spacing, 0.0))
+    }
+
+    /// Arranges the elements of this group into a col with given `spacing`.
+    pub fn col(self, spacing: f32) -> Self {
+        self.space(Vec2::new(0.0, spacing))
+    }
+
+    /// Spaces elements equally using given `spacing`, keeping items centered.
+    /// Spacing is given in group space.
+    pub fn space(self, spacing: Vec2) -> Self {
+        let n = self.len();
+        if n == 0 {
+            return self;
+        }
+
+        self.for_each(move |i, e| {
+            let offset_index = i as f32 - (n - 1) as f32 / 2.0;
+            let offset = spacing * offset_index;
+            e.translate(offset)
+        })
+    }
+
     /// Spaces entities equally along path parameter alpha from [0, 1].
     pub fn arrange(self, spline: impl Into<TimelineSpline>) -> Self {
         // Make sure we have a child to go along.
@@ -86,13 +121,14 @@ impl<'a> GroupRef<'a> {
         let timeline = spline.into().0.0;
 
         // Transform each along the path.
-        self.for_each(move |i, mut e| {
+        self.for_each(move |i, e| {
             let timeline = timeline.clone();
-            let a = i as f32 / n as f32;
-            e.transform().to(move |t| timeline.sample(t).sample(a));
-
-            // Return the entity to satisfy the for_each requirement.
-            e
+            let a = if n == 1 {
+                0.5
+            } else {
+                i as f32 / (n - 1) as f32
+            };
+            e.translate(move |t| timeline.sample(t).sample(a))
         })
     }
 
@@ -138,6 +174,11 @@ impl<'a> GroupRef<'a> {
         }
 
         self
+    }
+
+    /// Converts this group into an EntityRef.
+    pub fn entity(self) -> EntityRef<'a> {
+        EntityRef::new(self.scene, self.id)
     }
 
     /// Drops this reference and returns the entity id of this group.

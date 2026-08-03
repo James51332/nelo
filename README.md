@@ -40,18 +40,24 @@ pub fn demo() -> Scene {
     let repeat = Timeline::triangle(6.0).ease();
 
     // Some circles which go back and forth from spiral to a line.
-    let line = path::line(Vec2::X * 2.5, Vec2::X * 5.0);
+    let line = Path::line(Vec2::X * 2.0, Vec2::X * 4.0);
     scene
         .group()
-        .create(15, |_, s| s.circle().scale(0.1))
+        .create(12, |_, s| s.circle().scale(0.08))
         .arrange(line)
         .for_each(|i, e| e.rotate(repeat.clone().add(0.2).multiply(i as f32)));
 
-    // Create some text.
+    // Create some elements in a group.
     scene
-        .text("Hello, world!")
-        .scale(0.75)
-        .rotate(repeat.clone().add(-0.5).multiply(1.5));
+        .group()
+        .create_once(|s| s.triangle())
+        .create_once(|s| s.square())
+        .create_once(|s| s.circle())
+        .for_each(|_, e| e.scale(0.5))
+        .row(1.25);
+
+    // Render some text.
+    scene.text("Hello, Nelo!").translate(Vec2::new(0.0, 4.0));
 
     // Wavy path.
     scene.spline_with_range(

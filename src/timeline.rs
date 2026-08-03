@@ -14,10 +14,12 @@ pub mod compose;
 pub mod float;
 pub mod from;
 pub mod keyframe;
+pub mod path;
 pub mod signal;
 
 pub use along::{Along, TimelineAlong, TimelineSpline};
 pub use keyframe::{Easing, Lerp};
+pub use path::Path;
 pub use signal::{Signal, SignalClone};
 
 /// A sampleable value over time, either a fixed constant or a shared [`Signal`].
