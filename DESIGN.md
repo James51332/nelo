@@ -29,18 +29,28 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [x] Reusable Geometries
     * [x] Text Renderer
     * [ ] Math Renderer
+    * [ ] Images
+    * [ ] Antialiasing
 * [ ] Theming
     * [ ] Color Type
     * [ ] Better Color Spaces
 * [ ] Storyboard
     * [ ] Actions
+    * [ ] Transformations
+    * [ ] Checkpoints
 * [ ] Exporting
     * [x] Video Files (via `ffmpeg`)
-    * [ ] WASM Scenes
     * [x] Images
-    * [ ] Parallel Exporting
 
 ## future goals
 
-* [ ] Input Timelines
-* [ ] Hot Reload Viewer
+* [ ] Viewer
+    * [ ] Hot Reloading
+    * [ ] WASM Viewer
+    * [ ] Slideshow Mode (via Checkpoints)
+* [ ] Input 
+    * [ ] From Timelines
+    * [ ] From Viewer
+* [ ] Parallel Exporting
+* [ ] Depth
+* [ ] 3D Scenes
