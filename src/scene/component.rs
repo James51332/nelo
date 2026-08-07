@@ -1,5 +1,6 @@
 //! A collection of components which are used by the renderers.
 
+pub mod axes;
 pub mod group;
 pub mod spline;
 pub mod text;

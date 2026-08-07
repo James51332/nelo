@@ -4,6 +4,7 @@ pub mod builder;
 pub mod circle;
 pub mod mesh;
 pub mod polyline;
+pub mod shapes;
 
 pub use builder::{FillBuilder, Segment, StrokeBuilder, StrokePoint};
 pub use circle::CircleBatch;

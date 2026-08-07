@@ -19,4 +19,4 @@ macro_rules! timeline_from {
     };
 }
 
-timeline_from!(f32, Vec2, Vec3, Vec4, Mat2, Affine2);
+timeline_from!(f32, i32, u32, usize, Vec2, Vec3, Vec4, Mat2, Affine2);
