@@ -25,13 +25,21 @@ impl<'a> EntityRef<'a> {
         Self { scene, id }
     }
 
-    pub(crate) fn attach<T: Any>(self, data: T) -> Self {
+    pub fn attach<T: Any>(self, data: T) -> Self {
         self.scene.registry.attach(self.id, data);
         self
     }
 
-    pub(crate) fn has<T: Any>(&self) -> bool {
+    pub fn has<T: Any>(&self) -> bool {
         self.scene.registry.has::<T>(self.id)
+    }
+
+    pub fn get<T: Any>(&mut self) -> Option<&mut T> {
+        self.scene.registry.get_mut(self.id)
+    }
+
+    pub fn remove<T: Any>(&mut self) -> Option<T> {
+        self.scene.registry.remove(self.id)
     }
 
     pub fn fill(self, color: impl Into<Timeline<Vec4>>) -> Self {

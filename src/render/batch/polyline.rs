@@ -33,6 +33,10 @@ pub struct Polyline {
 }
 
 impl Polyline {
+    pub fn points(&self) -> &Vec<(f32, Vec2)> {
+        &self.points
+    }
+
     /// Takes a spline and the range of alpha values for which it is rendered and
     /// returns a polyline of (alpha, point) pairs.
     pub fn flatten(spline: &Along<Vec2>, start: f32, end: f32, tolerance: f32) -> Self {

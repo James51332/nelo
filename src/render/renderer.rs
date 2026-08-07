@@ -31,6 +31,7 @@ impl Renderer {
         let renderers: Vec<ComponentRenderer> = vec![
             Box::new(circle::circles),
             Box::new(spline::splines),
+            Box::new(spline::arrows),
             Box::new(glyph::filled_glyphs),
         ];
 

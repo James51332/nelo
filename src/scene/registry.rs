@@ -83,18 +83,16 @@ impl Registry {
         }
     }
 
-    pub fn remove<T: Any>(&mut self, id: EntityId) {
+    pub fn remove<T: Any>(&mut self, id: EntityId) -> Option<T> {
         let type_id = TypeId::of::<T>();
         let Some(store) = self.component_stores.get_mut(&type_id) else {
-            return;
+            return None;
         };
 
         match store.binary_search_by(|x| x.0.cmp(&id)) {
-            Ok(i) => {
-                store.remove(i);
-            }
-            _ => (),
-        };
+            Ok(i) => store.remove(i).1.downcast::<T>().ok().map(|x| *x),
+            _ => None,
+        }
     }
 
     /// Removes all attached components for this entity, or a noop if there are none.

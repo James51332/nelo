@@ -7,7 +7,7 @@ pub mod text;
 pub mod transform;
 
 pub use group::GroupRef;
-pub use spline::Spline;
+pub use spline::{Arrow, Spline};
 pub use text::Glyph;
 pub use transform::{Transform, Transformable};
 
