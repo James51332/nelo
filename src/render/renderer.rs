@@ -7,8 +7,9 @@ pub mod spline;
 use crate::render::{Batch, CameraBuffer, Gpu};
 use crate::scene::Scene;
 use wgpu::{
-    Color, CommandEncoderDescriptor, LoadOp, Operations, RenderPassColorAttachment,
-    RenderPassDescriptor, StoreOp, TextureView,
+    Color, CommandEncoderDescriptor, Extent3d, LoadOp, Operations, RenderPassColorAttachment,
+    RenderPassDescriptor, StoreOp, Texture, TextureDescriptor, TextureDimension, TextureUsages,
+    TextureView, TextureViewDescriptor,
 };
 
 pub type ComponentRenderer = Box<dyn Fn(&mut Batch, &Scene, f32, (u32, u32))>;
@@ -16,17 +17,17 @@ pub type ComponentRenderer = Box<dyn Fn(&mut Batch, &Scene, f32, (u32, u32))>;
 pub struct Renderer {
     scene: Scene,
     camera_buffer: CameraBuffer,
+    msaa_texture: Texture,
 
-    // Geometry primitives
+    // Primitive render and methods that load scene into it.
     batch: Batch,
-
-    // Component renderers forward the scene into the batch.
     renderers: Vec<ComponentRenderer>,
 }
 
 impl Renderer {
     pub fn new(gpu: &Gpu, scene: Scene) -> Self {
         let camera_buffer = CameraBuffer::new(&gpu);
+        let msaa_texture = Self::create_msaa_texture(&gpu, (800, 600));
         let batch = Batch::new(&gpu, camera_buffer.layout());
         let renderers: Vec<ComponentRenderer> = vec![
             Box::new(circle::circles),
@@ -37,6 +38,7 @@ impl Renderer {
 
         Self {
             scene,
+            msaa_texture,
             camera_buffer,
             batch,
             renderers,
@@ -48,6 +50,15 @@ impl Renderer {
     // filter.
     pub fn render(&mut self, gpu: &Gpu, view: &TextureView, t: f32) {
         let size = (view.texture().width(), view.texture().height());
+
+        // Get a valid view over our MSAA texture.
+        let msaa_size = (self.msaa_texture.width(), self.msaa_texture.height());
+        if size != msaa_size {
+            self.msaa_texture = Self::create_msaa_texture(&gpu, size);
+        }
+        let msaa_view = self
+            .msaa_texture
+            .create_view(&TextureViewDescriptor::default());
 
         // Populate out batch.
         for renderer in self.renderers.iter() {
@@ -72,8 +83,8 @@ impl Renderer {
             let render_pass_desc = RenderPassDescriptor {
                 label: Some("nelo pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
+                    view: &msaa_view,
+                    resolve_target: Some(&view),
                     depth_slice: None,
                     ops: Operations {
                         load: LoadOp::Clear(Color {
@@ -101,5 +112,24 @@ impl Renderer {
 
         // Submit the draw commands to the GPU.
         gpu.queue().submit(std::iter::once(encoder.finish()));
+    }
+
+    fn create_msaa_texture(gpu: &Gpu, size: (u32, u32)) -> Texture {
+        let (width, height) = size;
+        let texture_desc = TextureDescriptor {
+            label: Some("nelo scene renderer msaa"),
+            size: Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 4,
+            dimension: TextureDimension::D2,
+            format: gpu.format(),
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC,
+            view_formats: &[],
+        };
+        gpu.device().create_texture(&texture_desc)
     }
 }

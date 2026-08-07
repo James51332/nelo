@@ -30,7 +30,10 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [x] Text Renderer
     * [ ] Math Renderer
     * [ ] Images
-    * [ ] Antialiasing
+    * [x] Antialiasing
+* Component Renderers
+    * [x] Axes
+    * [x] Arrows
 * [ ] Theming
     * [ ] Color Type
     * [ ] Better Color Spaces

@@ -27,7 +27,7 @@ pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
             };
 
             // Compute how many points we have.
-            const POINTS_PER_UNIT: f32 = 60.0;
+            const POINTS_PER_UNIT: f32 = 75.0;
             let scale = affine.matrix2.determinant().abs().sqrt();
             let points = POINTS_PER_UNIT * scale;
             let step = 1.0 / points;

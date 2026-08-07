@@ -6,7 +6,9 @@ pub mod entity;
 mod registry;
 
 pub use camera::Camera;
-pub use component::{Circle, Fill, Glyph, GroupRef, Spline, Stroke, Transform, Transformable};
+pub use component::{
+    Arrow, Circle, Fill, Glyph, GroupRef, Spline, Stroke, Transform, Transformable,
+};
 pub use entity::{EntityId, EntityRef};
 pub(crate) use registry::{Query, Registry};
 
