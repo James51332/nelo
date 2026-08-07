@@ -1,7 +1,7 @@
 //! Helper methods to render circles
 
 use crate::render::{Batch, StrokePoint};
-use crate::scene::{Circle, Fill, Scene, Stroke, Transform};
+use crate::scene::{Circle, Fill, Scene, Stroke, Transform, Visibility};
 use glam::prelude::*;
 use std::f32::consts::TAU;
 
@@ -12,8 +12,16 @@ pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
     items.into_iter().for_each(|(id, transform, _)| {
         let affine = transform.sample(t);
 
+        // Visibility changes opacity for background and stroke length.
+        let visibility = scene
+            .component::<Visibility>(id)
+            .map_or(1.0, |v| v.amount.sample(t).clamp(0.0, 1.0));
+
         if let Some(fill) = scene.component::<Fill>(id) {
-            batch.add_circle(affine, fill.color.sample(t));
+            let mut color = fill.color.sample(t);
+            // Apply a quad easing. This just looks better.
+            color.w *= visibility * visibility * visibility;
+            batch.add_circle(affine, color);
         }
 
         if let Some(stroke) = scene.component::<Stroke>(id) {
@@ -34,13 +42,13 @@ pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
 
             // The scale of stroke builder is world space, which is normal here.
             let mut builder = batch.stroke_builder(convert(0.0), 1.0);
-            for i in 1..(points.ceil() as usize) {
+            for i in 1..((points * visibility) as usize) {
                 let a = step * i as f32;
                 builder.line_to(convert(a));
             }
 
-            // We should succeed.
-            let res = builder.finish(true);
+            // Only close the curve if visibility is high.
+            let res = builder.finish(visibility >= 0.99);
             if let Err(e) = res {
                 log::info!("Error adding stroke to circle: {e}");
             }

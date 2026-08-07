@@ -1,6 +1,6 @@
 //! An `Entity` is simple an id representing rendering data.
 
-use crate::scene::{Fill, Scene, Stroke, Transform, Transformable};
+use crate::scene::{Fill, Scene, Stroke, Transform, Transformable, Visibility};
 use crate::timeline::{Timeline, TimelineAlong};
 use glam::prelude::*;
 use std::any::Any;
@@ -68,6 +68,12 @@ impl<'a> EntityRef<'a> {
     pub fn no_stroke(self) -> Self {
         self.scene.registry.remove::<Stroke>(self.id);
         self
+    }
+
+    pub fn visibility(self, amount: impl Into<Timeline<f32>>) -> Self {
+        self.attach(Visibility {
+            amount: amount.into(),
+        })
     }
 
     /// Drops this reference and returns the id of this entity, converting

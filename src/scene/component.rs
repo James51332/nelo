@@ -86,3 +86,14 @@ impl Default for Stroke {
         }
     }
 }
+
+// ----- Visibility -----
+
+/// Struct that renderers can opt into. Commonly animated by story
+/// system to introduce an object.
+pub struct Visibility {
+    /// Ranges from zero to one based on how visible the object is. Often the
+    /// alpha is proportional to the cube of this value, even though this time
+    /// line is applied, so that fill comes after stroke.
+    pub amount: Timeline<f32>,
+}
