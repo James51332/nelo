@@ -1,6 +1,6 @@
-//! A model is a set of vertex data and index data.
+//! A mesh is a set of vertex data and index data.
 
-use crate::render::{Batch, Gpu};
+use crate::render::{BatchComponent, Gpu};
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::prelude::*;
 use wgpu::{
@@ -8,15 +8,15 @@ use wgpu::{
     RenderPipeline, VertexBufferLayout, VertexStepMode, vertex_attr_array,
 };
 
-// ----- ModelBatch -----
+// ----- MeshBatch -----
 
-pub struct ModelBatch {
+pub struct MeshBatch {
     // Render Pipeline
     pipeline: RenderPipeline,
 
     // Vertex Data
     vertex_buffer: Buffer,
-    vertices: Vec<ModelVertex>,
+    vertices: Vec<MeshVertex>,
     vertex_capacity: usize,
     vertex_count: usize,
     vertex_submit_count: usize,
@@ -29,7 +29,7 @@ pub struct ModelBatch {
     index_submit_count: usize,
 }
 
-impl ModelBatch {
+impl MeshBatch {
     pub fn new(
         gpu: &Gpu,
         vertex_capacity: usize,
@@ -39,7 +39,7 @@ impl ModelBatch {
         // Create the render pipeline.
         let shader = include_str!("shaders/model.wgsl");
         let vertex_layout = VertexBufferLayout {
-            array_stride: size_of::<ModelVertex>() as u64,
+            array_stride: size_of::<MeshVertex>() as u64,
             step_mode: VertexStepMode::Vertex,
             attributes: &vertex_attr_array![
                 0 => Float32x2, // pos
@@ -53,12 +53,12 @@ impl ModelBatch {
         // Create our vertex GPU and CPU buffers
         let vertex_buffer_desc = BufferDescriptor {
             label: Some("nelo model vertices"),
-            size: (size_of::<ModelVertex>() * vertex_capacity) as u64,
+            size: (size_of::<MeshVertex>() * vertex_capacity) as u64,
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         };
         let vertex_buffer = gpu.device().create_buffer(&vertex_buffer_desc);
-        let vertices = vec![ModelVertex::zeroed(); vertex_capacity];
+        let vertices = vec![MeshVertex::zeroed(); vertex_capacity];
 
         // Create our index GPU and CPU buffers
         let index_buffer_desc = BufferDescriptor {
@@ -85,7 +85,7 @@ impl ModelBatch {
         }
     }
 
-    pub fn push(&mut self, vertices: &[ModelVertex], indices: &[u32]) {
+    pub fn push(&mut self, vertices: &[MeshVertex], indices: &[u32]) {
         // Make sure that we have appropriate data to submit.
         let vertex_count = vertices.len();
         if self.vertex_count + vertex_count > self.vertex_capacity {
@@ -124,7 +124,7 @@ impl ModelBatch {
     }
 }
 
-impl Batch for ModelBatch {
+impl BatchComponent for MeshBatch {
     fn prepare(&mut self, gpu: &Gpu) {
         // Copy vertex data to the GPU.
         let queue = gpu.queue();
@@ -162,17 +162,17 @@ impl Batch for ModelBatch {
     }
 }
 
-// ----- ModelVertex -----
+// ----- MeshVertex -----
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub struct ModelVertex {
-    position: Vec2,
-    uv: Vec2,
-    color: Vec4,
+#[derive(Debug, Default, Clone, Copy, Pod, Zeroable)]
+pub struct MeshVertex {
+    pub position: Vec2,
+    pub uv: Vec2,
+    pub color: Vec4,
 }
 
-impl ModelVertex {
+impl MeshVertex {
     pub fn new(position: Vec2, uv: Vec2, color: Vec4) -> Self {
         Self {
             position,

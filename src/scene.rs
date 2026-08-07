@@ -94,6 +94,10 @@ impl Scene {
         }
     }
 
+    pub fn component<T: Any>(&self, entity: EntityId) -> Option<&T> {
+        self.registry.get::<T>(entity)
+    }
+
     /// Deletes an entity from the scene, or a no-op if the entity doesn't exist.
     pub fn delete(&mut self, entity: EntityId) {
         // Remove the entity from the active list.
@@ -120,7 +124,7 @@ impl Scene {
         let line = Path::line(Vec2::X * 2.0, Vec2::X * 4.0);
         scene
             .group()
-            .create(12, |_, s| s.circle().scale(0.08))
+            .create(12, |_, s| s.dot().scale(0.08))
             .arrange(line)
             .for_each(|i, e| e.rotate(repeat.clone().add(0.2).multiply(i as f32)));
 

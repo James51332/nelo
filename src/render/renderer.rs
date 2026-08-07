@@ -4,42 +4,40 @@ pub mod circle;
 pub mod glyph;
 pub mod spline;
 
-use crate::render::{Batch, BatchSet, CameraBuffer, Gpu};
+use crate::render::{Batch, CameraBuffer, Gpu};
 use crate::scene::Scene;
 use wgpu::{
     Color, CommandEncoderDescriptor, LoadOp, Operations, RenderPassColorAttachment,
     RenderPassDescriptor, StoreOp, TextureView,
 };
 
-pub type ComponentRenderer = Box<dyn Fn(&mut BatchSet, &Scene, f32, (u32, u32))>;
+pub type ComponentRenderer = Box<dyn Fn(&mut Batch, &Scene, f32, (u32, u32))>;
 
 pub struct Renderer {
     scene: Scene,
     camera_buffer: CameraBuffer,
 
-    // Batches are reusable geometry pipelines.
-    batches: BatchSet,
+    // Geometry primitives
+    batch: Batch,
 
-    // Component renderers forward the scene into batches.
+    // Component renderers forward the scene into the batch.
     renderers: Vec<ComponentRenderer>,
 }
 
 impl Renderer {
     pub fn new(gpu: &Gpu, scene: Scene) -> Self {
         let camera_buffer = CameraBuffer::new(&gpu);
-        let batches = BatchSet::new(&gpu, camera_buffer.layout());
+        let batch = Batch::new(&gpu, camera_buffer.layout());
         let renderers: Vec<ComponentRenderer> = vec![
-            Box::new(circle::filled_circles),
-            Box::new(circle::stroked_circles),
-            Box::new(spline::filled_splines),
-            Box::new(spline::stroked_splines),
-            glyph::get_filled_renderer(scene.font().clone()),
+            Box::new(circle::circles),
+            Box::new(spline::splines),
+            Box::new(glyph::filled_glyphs),
         ];
 
         Self {
             scene,
             camera_buffer,
-            batches,
+            batch,
             renderers,
         }
     }
@@ -50,15 +48,13 @@ impl Renderer {
     pub fn render(&mut self, gpu: &Gpu, view: &TextureView, t: f32) {
         let size = (view.texture().width(), view.texture().height());
 
-        // Populate out batches.
+        // Populate out batch.
         for renderer in self.renderers.iter() {
-            renderer(&mut self.batches, &self.scene, t, size);
+            renderer(&mut self.batch, &self.scene, t, size);
         }
 
         // Copy the data to the gpu.
-        self.batches.circles.prepare(&gpu);
-        self.batches.models.prepare(&gpu);
-        self.batches.splines.prepare(&gpu);
+        self.batch.prepare(&gpu);
 
         // Upload the camera data into the buffer.
         let (background, view_proj) = self.scene.sample_camera(size, t);
@@ -98,10 +94,8 @@ impl Renderer {
             // Set the camera to bind_group zero.
             pass.set_bind_group(0, self.camera_buffer.bind_group(), &[]);
 
-            // Submit the batches.
-            self.batches.circles.submit(gpu, &mut pass);
-            self.batches.models.submit(gpu, &mut pass);
-            self.batches.splines.submit(gpu, &mut pass);
+            // Submit the batch.
+            self.batch.submit(gpu, &mut pass);
         }
 
         // Submit the draw commands to the GPU.

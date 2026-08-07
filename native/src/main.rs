@@ -84,6 +84,10 @@ impl ApplicationHandler for App {
 }
 
 fn main() {
+    env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+
     let event_loop = EventLoop::new().expect("Failed to create event loop!");
     let mut app = App::default();
 

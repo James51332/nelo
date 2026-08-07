@@ -1,6 +1,6 @@
 //! Batch for SDF filled circles.
 
-use crate::render::{Batch, Gpu};
+use crate::render::{BatchComponent, Gpu};
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::prelude::*;
 use wgpu::{
@@ -75,7 +75,7 @@ impl CircleBatch {
     }
 }
 
-impl Batch for CircleBatch {
+impl BatchComponent for CircleBatch {
     /// Copy our data buffer to the GPU.
     fn prepare(&mut self, gpu: &Gpu) {
         // Write the buffer.

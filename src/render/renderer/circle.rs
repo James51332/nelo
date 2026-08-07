@@ -1,44 +1,49 @@
 //! Helper methods to render circles
 
-use crate::render::{BatchSet, SplinePoint, tesselate};
+use crate::render::{Batch, StrokePoint};
 use crate::scene::{Circle, Fill, Scene, Stroke, Transform};
-use crate::timeline::Path;
+use glam::prelude::*;
+use std::f32::consts::TAU;
 
-pub fn filled_circles(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
+/// Renders all circles from the scene into the batch.
+pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
     // Get a view of all elements with the required components.
-    let items = scene.view_triple::<Transform, Circle, Fill>();
-
-    // Submit a circle for each one.
-    items.iter().for_each(|(_, transform, _, fill)| {
-        batches
-            .circles
-            .push(transform.sample(t), fill.color.sample(t));
-    });
-}
-
-pub fn stroked_circles(batches: &mut BatchSet, scene: &Scene, t: f32, _size: (u32, u32)) {
-    // Find the circles with transform and stroke.
-    let items = scene.view_triple::<Transform, Circle, Stroke>();
-
-    items.iter().for_each(|(_, transform, _, stroke)| {
+    let items = scene.view_pair::<Transform, Circle>();
+    items.into_iter().for_each(|(id, transform, _)| {
         let affine = transform.sample(t);
-        // We need to convert to timeline temporarily to map the value.
-        let spline = Path::circle()
-            .timeline()
-            .map(move |x| affine.matrix2 * x + affine.translation)
-            .along();
-        let polyline = tesselate::generate_polyline(&spline, 0.0, 1.0);
-        let points: Vec<SplinePoint> = polyline
-            .into_iter()
-            .map(|(a, pos)| {
-                SplinePoint::new(
-                    pos,
-                    stroke.color.sample(t).sample(a),
-                    stroke.weight.sample(t).sample(a),
-                )
-            })
-            .collect();
 
-        batches.splines.push(&points);
+        if let Some(fill) = scene.component::<Fill>(id) {
+            batch.add_circle(affine, fill.color.sample(t));
+        }
+
+        if let Some(stroke) = scene.component::<Stroke>(id) {
+            // Utility to convert alpha to a StrokePoint.
+            let color = stroke.color.sample(t);
+            let weight = stroke.weight.sample(t);
+            let convert = move |a: f32| {
+                let theta = TAU * a;
+                let pos = affine.matrix2 * Vec2::new(theta.cos(), theta.sin()) + affine.translation;
+                StrokePoint::new(pos, color.sample(a), weight.sample(a))
+            };
+
+            // Compute how many points we have.
+            const POINTS_PER_UNIT: f32 = 60.0;
+            let scale = affine.matrix2.determinant().abs().sqrt();
+            let points = POINTS_PER_UNIT * scale;
+            let step = 1.0 / points;
+
+            // The scale of stroke builder is world space, which is normal here.
+            let mut builder = batch.stroke_builder(convert(0.0), 1.0);
+            for i in 1..(points.ceil() as usize) {
+                let a = step * i as f32;
+                builder.line_to(convert(a));
+            }
+
+            // We should succeed.
+            let res = builder.finish(true);
+            if let Err(e) = res {
+                log::info!("Error adding stroke to circle: {e}");
+            }
+        }
     });
 }

@@ -80,7 +80,7 @@ pub struct Stroke {
 impl Default for Stroke {
     fn default() -> Self {
         Self {
-            weight: Timeline::constant(0.05).along().into(),
+            weight: Timeline::constant(0.025).along().into(),
             color: Timeline::constant(Vec4::ONE).along().into(),
         }
     }
