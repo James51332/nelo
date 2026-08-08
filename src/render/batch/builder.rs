@@ -1,6 +1,6 @@
 //! Geometry builder for tesselation.
 
-use crate::render::{MeshBatch, MeshVertex};
+use crate::render::{MeshVertex, batch::RenderCommand};
 use glam::prelude::*;
 use lyon::{
     math::Point,
@@ -30,17 +30,15 @@ impl Segment {
 
 // ----- FillBuilder -----
 
-pub struct FillBuilder<'a> {
-    batch: &'a mut MeshBatch,
+pub struct FillBuilder {
     builder: BuilderWithAttributes,
     last_point: Option<MeshVertex>,
     tolerance: f32,
 }
 
-impl<'a> FillBuilder<'a> {
-    pub fn new(batch: &'a mut MeshBatch, tolerance: f32) -> Self {
+impl FillBuilder {
+    pub fn new(tolerance: f32) -> Self {
         Self {
-            batch,
             builder: Path::builder_with_attributes(4),
             last_point: None,
             tolerance,
@@ -49,7 +47,7 @@ impl<'a> FillBuilder<'a> {
 
     /// Performs a tesselation of this path and adds to the batch if successful.
     /// Closes any open, subpath with looping if open.
-    pub fn finish(mut self) -> Result<(), TessellationError> {
+    pub fn finish(mut self) -> Result<RenderCommand, TessellationError> {
         // Close if open.
         if self.last_point.is_some() {
             self.builder.end(true);
@@ -76,13 +74,10 @@ impl<'a> FillBuilder<'a> {
         );
 
         // Handle success and failure.
-        match result {
-            Ok(_) => {
-                self.batch.push(&buffers.vertices, &buffers.indices);
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+        result.map(|_| RenderCommand::Mesh {
+            vertices: buffers.vertices,
+            indices: buffers.indices,
+        })
     }
 
     /// Add a segment to this geometry. If the segment doesn't align with the
@@ -164,25 +159,20 @@ impl<'a> FillBuilder<'a> {
 
 // ----- StrokeBuilder -----
 
-pub struct StrokeBuilder<'a> {
-    batch: &'a mut MeshBatch,
+pub struct StrokeBuilder {
     builder: BuilderWithAttributes,
     tolerance: f32,
 }
 
-impl<'a> StrokeBuilder<'a> {
-    pub fn new(batch: &'a mut MeshBatch, start: StrokePoint, tolerance: f32) -> Self {
+impl StrokeBuilder {
+    pub fn new(start: StrokePoint, tolerance: f32) -> Self {
         let mut builder = Path::builder_with_attributes(5);
         builder.begin(point(start.position), &stroke(start));
-        Self {
-            batch,
-            builder,
-            tolerance,
-        }
+        Self { builder, tolerance }
     }
 
     /// Performs a tesselation of this path and adds to the batch if successful.
-    pub fn finish(mut self, close: bool) -> Result<(), TessellationError> {
+    pub fn finish(mut self, close: bool) -> Result<RenderCommand, TessellationError> {
         // End the spline, but don't close the loop.
         self.builder.end(close);
 
@@ -210,14 +200,11 @@ impl<'a> StrokeBuilder<'a> {
             &mut geometry,
         );
 
-        // Handle success and failure.
-        match result {
-            Ok(_) => {
-                self.batch.push(&buffers.vertices, &buffers.indices);
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+        // Return our render command.
+        result.map(|_| RenderCommand::Mesh {
+            vertices: buffers.vertices,
+            indices: buffers.indices,
+        })
     }
 
     pub fn line_to(&mut self, end: StrokePoint) {

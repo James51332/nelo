@@ -1,7 +1,7 @@
 //! A sequence of lines. Allows user to specify the vertex type.
 
-use crate::render::batch::StrokePoint;
-use crate::render::{Batch, MeshVertex};
+use crate::render::MeshVertex;
+use crate::render::batch::{RenderCommand, StrokePoint};
 use crate::timeline::Along;
 use glam::prelude::*;
 use std::cmp::Ordering;
@@ -33,10 +33,6 @@ pub struct Polyline {
 }
 
 impl Polyline {
-    pub fn points(&self) -> &Vec<(f32, Vec2)> {
-        &self.points
-    }
-
     /// Takes a spline and the range of alpha values for which it is rendered and
     /// returns a polyline of (alpha, point) pairs.
     pub fn flatten(spline: &Along<Vec2>, start: f32, end: f32, tolerance: f32) -> Self {
@@ -67,6 +63,41 @@ impl Polyline {
         Self {
             points: map.into_iter().map(|(k, v)| (k.0, v)).collect(),
         }
+    }
+
+    pub fn points(&self) -> &Vec<(f32, Vec2)> {
+        &self.points
+    }
+
+    /// Consumes this polyline and generates a Stroke render command.
+    pub fn to_stroke<T>(self, map: T, close: bool) -> RenderCommand
+    where
+        T: Fn(f32) -> (Vec4, f32),
+    {
+        let vertices = self
+            .points
+            .into_iter()
+            .map(|(a, pos)| {
+                let (color, weight) = map(a);
+                StrokePoint::new(pos, color, weight)
+            })
+            .collect();
+
+        RenderCommand::Stroke { vertices, close }
+    }
+
+    /// Consumes this polyline and generates a fill render command.
+    pub fn to_fill<T>(self, map: T) -> RenderCommand
+    where
+        T: Fn(f32) -> Vec4,
+    {
+        let vertices = self
+            .points
+            .into_iter()
+            .map(|(a, pos)| MeshVertex::new(pos, Vec2::ZERO, map(a)))
+            .collect();
+
+        RenderCommand::Polygon { vertices }
     }
 
     fn subdivide_segment(
@@ -115,63 +146,5 @@ impl Polyline {
                 );
             }
         }
-    }
-}
-
-// ----- Batch -----
-
-impl Batch {
-    /// Method to subdivide and render filled spline.
-    pub fn fill<T>(&mut self, polyline: Polyline, color: T)
-    where
-        T: Fn(f32) -> Vec4,
-    {
-        // Helper to convert polyline points into MeshVertex.
-        let convert = |(a, pos)| MeshVertex::new(pos, Vec2::ZERO, color(a));
-
-        // Create a builder from the first point.
-        let mut iter = polyline.points.into_iter();
-        let Some(start) = iter.next() else {
-            log::info!("Skipping empty polyline!");
-            return;
-        };
-
-        let mut builder = self.fill_builder(1.0);
-        builder.begin_subpath(convert(start));
-
-        // Iterate over the rest to build the spline.
-        iter.for_each(|x| builder.line_to(convert(x)));
-        builder.end_subpath(true);
-        let result = builder.finish();
-        if let Err(e) = result {
-            log::info!("Failed to fill polyline: {e}");
-        };
-    }
-
-    /// Method to subdivide and render stroked spline.
-    pub fn stroke<T>(&mut self, polyline: Polyline, color_weight: T)
-    where
-        T: Fn(f32) -> (Vec4, f32),
-    {
-        // Helper to convert polyline points into MeshVertex.
-        let convert = |(a, pos)| {
-            let (color, weight) = color_weight(a);
-            StrokePoint::new(pos, color, weight)
-        };
-
-        // Create a builder from the first point.
-        let mut iter = polyline.points.into_iter();
-        let Some(start) = iter.next() else {
-            log::info!("Skipping empty polyline!");
-            return;
-        };
-        let mut builder = self.stroke_builder(convert(start), 1.0);
-
-        // Iterate over the rest to build the spline.
-        iter.for_each(|x| builder.line_to(convert(x)));
-        let result = builder.finish(false);
-        if let Err(e) = result {
-            log::info!("Failed to stroke polyline: {e}");
-        };
     }
 }

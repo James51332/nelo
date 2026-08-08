@@ -1,6 +1,8 @@
 //! A mesh is a set of vertex data and index data.
 
-use crate::render::{BatchComponent, Gpu};
+use std::ops::Range;
+
+use crate::render::Gpu;
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::prelude::*;
 use wgpu::{
@@ -19,14 +21,16 @@ pub struct MeshBatch {
     vertices: Vec<MeshVertex>,
     vertex_capacity: usize,
     vertex_count: usize,
-    vertex_submit_count: usize,
 
     // Index Data
     index_buffer: Buffer,
     indices: Vec<u32>,
     index_capacity: usize,
     index_count: usize,
-    index_submit_count: usize,
+
+    // Submission Data
+    submit_count: usize,
+    submissions: Vec<Range<usize>>,
 }
 
 impl MeshBatch {
@@ -37,7 +41,7 @@ impl MeshBatch {
         camera_layout: &BindGroupLayout,
     ) -> Self {
         // Create the render pipeline.
-        let shader = include_str!("shaders/model.wgsl");
+        let shader = include_str!("shaders/mesh.wgsl");
         let vertex_layout = VertexBufferLayout {
             array_stride: size_of::<MeshVertex>() as u64,
             step_mode: VertexStepMode::Vertex,
@@ -76,27 +80,27 @@ impl MeshBatch {
             vertices,
             vertex_capacity,
             vertex_count: 0,
-            vertex_submit_count: 0,
             index_buffer,
             indices,
             index_capacity,
             index_count: 0,
-            index_submit_count: 0,
+            submit_count: 0,
+            submissions: Vec::new(),
         }
     }
 
-    pub fn push(&mut self, vertices: &[MeshVertex], indices: &[u32]) {
+    pub fn push(&mut self, vertices: &[MeshVertex], indices: &[u32]) -> Option<usize> {
         // Make sure that we have appropriate data to submit.
         let vertex_count = vertices.len();
         if self.vertex_count + vertex_count > self.vertex_capacity {
             log::warn!("Not enough vertex space left!");
-            return;
+            return None;
         }
 
         let index_count = indices.len();
         if self.index_count + index_count > self.index_capacity {
             log::warn!("Not enough index space left!");
-            return;
+            return None;
         }
 
         // Index data should be in groups of three.
@@ -105,7 +109,7 @@ impl MeshBatch {
                 "Model index count {} is not divisible by three!",
                 index_count
             );
-            return;
+            return None;
         }
 
         // Copy the vertex data into the vertex buffer.
@@ -117,16 +121,28 @@ impl MeshBatch {
         let vertex_base = self.vertex_count - vertex_count;
         let index_range = self.index_count..(self.index_count + index_count);
         self.indices.splice(
-            index_range,
+            index_range.clone(),
             indices.iter().map(|&idx| idx + vertex_base as u32),
         );
         self.index_count += index_count;
-    }
-}
 
-impl BatchComponent for MeshBatch {
-    fn prepare(&mut self, gpu: &Gpu) {
-        // Copy vertex data to the GPU.
+        // Encode the range into our submission
+        let index = self.submissions.len();
+        self.submissions.push(index_range);
+        Some(index)
+    }
+
+    pub fn clear(&mut self) {
+        self.index_count = 0;
+        self.vertex_count = 0;
+        self.submissions.clear();
+    }
+
+    /// Copies mesh data to the GPU.
+    pub fn prepare(&mut self, gpu: &Gpu) {
+        self.submit_count = self.submissions.len();
+
+        // Copy index data
         let queue = gpu.queue();
         queue.write_buffer(
             &self.vertex_buffer,
@@ -140,25 +156,29 @@ impl BatchComponent for MeshBatch {
             0,
             cast_slice(&self.indices[..self.index_count]),
         );
-
-        // Track submission values.
-        self.vertex_submit_count = self.vertex_count;
-        self.index_submit_count = self.index_count;
-        self.vertex_count = 0;
-        self.index_count = 0;
     }
 
-    fn submit(&self, _gpu: &Gpu, pass: &mut RenderPass) {
+    pub fn submit(&self, _gpu: &Gpu, pass: &mut RenderPass, index: usize) {
         // No-op.
-        if self.vertex_submit_count == 0 || self.index_submit_count == 0 {
+        if self.vertex_count == 0 || self.index_count == 0 {
             return;
         }
 
-        // Submit the draw call.
+        if index >= self.submit_count {
+            log::warn!("Invalid submission index");
+            return;
+        }
+
+        // Set the pipeline state.
         pass.set_pipeline(&self.pipeline);
-        pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        let vertex_bytes = (self.vertex_count * size_of::<MeshVertex>()) as u64;
+        pass.set_vertex_buffer(0, self.vertex_buffer.slice(0..vertex_bytes));
         pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
-        pass.draw_indexed(0..self.index_submit_count as u32, 0, 0..1);
+
+        // Submit the draw call.
+        let range = &self.submissions[index];
+        let range = (range.start as u32)..(range.end as u32);
+        pass.draw_indexed(range, 0, 0..1);
     }
 }
 

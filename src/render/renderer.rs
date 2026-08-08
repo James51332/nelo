@@ -60,13 +60,11 @@ impl Renderer {
             .msaa_texture
             .create_view(&TextureViewDescriptor::default());
 
-        // Populate out batch.
+        // Populate our batch with appropriate render commands.
+        self.batch.begin(gpu);
         for renderer in self.renderers.iter() {
             renderer(&mut self.batch, &self.scene, t, size);
         }
-
-        // Copy the data to the gpu.
-        self.batch.prepare(&gpu);
 
         // Upload the camera data into the buffer.
         let (background, view_proj) = self.scene.sample_camera(size, t);

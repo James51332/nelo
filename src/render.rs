@@ -6,7 +6,7 @@ pub mod gpu;
 pub mod renderer;
 
 pub use batch::{
-    Batch, BatchComponent, CircleBatch, FillBuilder, MeshBatch, MeshVertex, Polyline, Segment,
+    Batch, CircleBatch, FillBuilder, MeshBatch, MeshVertex, Polyline, RenderCommand, Segment,
     StrokePoint,
 };
 pub use camera::CameraBuffer;

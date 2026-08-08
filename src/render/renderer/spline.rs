@@ -1,6 +1,6 @@
 //! Helper methods to render splines
 
-use crate::render::{Batch, MeshVertex, Polyline};
+use crate::render::{Batch, MeshVertex, Polyline, RenderCommand};
 use crate::scene::{Arrow, Fill, Scene, Spline, Stroke, Transform, Visibility};
 use glam::{Mat2, Vec2};
 
@@ -14,6 +14,13 @@ pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
             .map_or(1.0, |v| v.amount.sample(time));
 
         if visibility <= 0.005 {
+            return;
+        }
+
+        // Check if we have a fill or stroke.
+        let fill = scene.component::<Fill>(id);
+        let stroke = scene.component::<Stroke>(id);
+        if fill.is_none() && stroke.is_none() {
             return;
         }
 
@@ -35,18 +42,7 @@ pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
             batch.tolerance(),
         );
 
-        // Render fill and stroke appropriately.
-        if let Some(fill) = scene.component::<Fill>(id) {
-            let mut color = fill.color.sample(time);
-            color.w *= visibility * visibility * visibility;
-            batch.fill(polyline.clone(), |_| color);
-        };
-
-        if let Some(stroke) = scene.component::<Stroke>(id) {
-            let color = stroke.color.sample(time);
-            let weight = stroke.weight.sample(time);
-            batch.stroke(polyline, move |a| (color.sample(a), weight.sample(a)));
-        };
+        handle_polyline(batch, polyline, visibility, fill, stroke, time);
     });
 }
 
@@ -104,9 +100,60 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
             ];
             let size = SCALE * weight.sample(end);
             let map = |v| MeshVertex::new(rotate * size * v + last, Vec2::ZERO, color.sample(end));
-            batch.traingle(map(VERTICES[0]), map(VERTICES[1]), map(VERTICES[2]));
+            batch.add_command(
+                RenderCommand::Polygon {
+                    vertices: VERTICES.into_iter().map(map).collect(),
+                },
+                0.0,
+            );
 
-            // Add the spline to the render.
-            batch.stroke(polyline, move |a| (color.sample(a), weight.sample(a)));
+            // Render our polyline.
+            handle_polyline(batch, polyline, visibility, None, Some(stroke), time);
         });
+}
+
+/// Render fill and stroke appropriately for spline.
+fn handle_polyline(
+    batch: &mut Batch,
+    polyline: Polyline,
+    visibility: f32,
+    fill: Option<&Fill>,
+    stroke: Option<&Stroke>,
+    time: f32,
+) {
+    match (fill, stroke) {
+        // We have both and need to clone the polyline.
+        (Some(fill), Some(stroke)) => {
+            let mut color = fill.color.sample(time);
+            color.w *= visibility * visibility * visibility;
+            batch.add_command(polyline.clone().to_fill(|_| color), 0.0);
+
+            let color = stroke.color.sample(time);
+            let weight = stroke.weight.sample(time);
+            batch.add_command(
+                polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), false),
+                0.0,
+            );
+        }
+
+        // We just have fill
+        (Some(fill), None) => {
+            let mut color = fill.color.sample(time);
+            color.w *= visibility * visibility * visibility;
+            batch.add_command(polyline.to_fill(|_| color), 0.0);
+        }
+
+        // We just have stroke.
+        (None, Some(stroke)) => {
+            let color = stroke.color.sample(time);
+            let weight = stroke.weight.sample(time);
+            batch.add_command(
+                polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), false),
+                0.0,
+            );
+        }
+
+        // We don't have either.
+        (None, None) => (),
+    };
 }

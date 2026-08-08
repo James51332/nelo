@@ -1,6 +1,6 @@
 //! Batch for SDF filled circles.
 
-use crate::render::{BatchComponent, Gpu};
+use crate::render::Gpu;
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::prelude::*;
 use wgpu::{
@@ -58,47 +58,51 @@ impl CircleBatch {
         }
     }
 
-    /// Push a new circle instance onto the batch.
-    pub fn push(&mut self, transform: Affine2, fill: Vec4) {
+    /// Clears the range of the index batch.
+    pub fn clear(&mut self) {
+        self.count = 0;
+    }
+
+    /// Push a new circle instance onto the batch. Returns the index of the circle
+    /// for submission.
+    pub fn push(&mut self, transform: Affine2, fill: Vec4) -> Option<usize> {
         // Make sure we have room.
         if self.count == self.capacity {
             log::warn!(
                 "CircleBatch full ({} circles), dropping circle!",
                 self.capacity
             );
-            return;
+            return None;
         }
 
         // Move into our buffer.
-        self.instances[self.count] = CircleInstance::new(transform, fill);
+        let index = self.count;
+        self.instances[index] = CircleInstance::new(transform, fill);
         self.count += 1;
+        Some(index)
     }
-}
 
-impl BatchComponent for CircleBatch {
-    /// Copy our data buffer to the GPU.
-    fn prepare(&mut self, gpu: &Gpu) {
+    /// Copies the data for this batch to the GPU.
+    pub fn prepare(&mut self, gpu: &Gpu) {
+        self.submit_count = self.count;
+
         // Write the buffer.
         let queue = gpu.queue();
         let buffer = &self.buffer;
-        let instances = &self.instances;
+        let instances = &self.instances[..self.submit_count];
         queue.write_buffer(buffer, 0, cast_slice(instances));
-
-        // Track how many to submit on our draw call.
-        self.submit_count = self.count;
-        self.count = 0;
     }
 
-    fn submit(&self, _gpu: &Gpu, pass: &mut RenderPass) {
-        // No-op.
-        if self.submit_count == 0 {
-            return;
-        }
-
+    /// Submit a single circle to the batch. We can also support ranged submissions
+    /// in the future.
+    pub fn submit(&mut self, _gpu: &Gpu, pass: &mut RenderPass, index: usize) {
         // Encode our draw.
         pass.set_pipeline(&self.pipeline);
         pass.set_vertex_buffer(0, self.buffer.slice(..));
-        pass.draw(0..6, 0..self.submit_count as u32);
+
+        // Submit the single instance.
+        let index = index as u32;
+        pass.draw(0..6, index..index + 1);
     }
 }
 

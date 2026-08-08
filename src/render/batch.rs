@@ -1,19 +1,22 @@
-//! A set of geometry (polygons, splines, and sdf shapes) generated from scene
+//! A batch is a tool to encode render commands.
 
 pub mod builder;
 pub mod circle;
+pub mod command;
 pub mod mesh;
 pub mod polyline;
-pub mod shapes;
 
 pub use builder::{FillBuilder, Segment, StrokeBuilder, StrokePoint};
 pub use circle::CircleBatch;
+pub use command::RenderCommand;
 pub use mesh::{MeshBatch, MeshVertex};
 pub use polyline::Polyline;
 
 use crate::render::Gpu;
-use glam::prelude::*;
+use std::mem;
 use wgpu::{BindGroupLayout, RenderPass};
+
+// ----- Batch -----
 
 const MAX_CIRCLES: usize = 100_000;
 const MAX_VERTICES: usize = 100_000;
@@ -24,6 +27,12 @@ const BUILDER_TOLERANCE: f32 = 0.001;
 pub struct Batch {
     circles: CircleBatch,
     meshes: MeshBatch,
+
+    /// Encodes commands and their z_indices.
+    commands: Vec<(f32, RenderCommand)>,
+
+    /// Encodes the batches.
+    submissions: Vec<Submission>,
 }
 
 impl Batch {
@@ -31,34 +40,114 @@ impl Batch {
         Self {
             circles: CircleBatch::new(gpu, MAX_CIRCLES, camera_layout),
             meshes: MeshBatch::new(gpu, MAX_VERTICES, MAX_INDICES, camera_layout),
+            commands: Vec::new(),
+            submissions: Vec::new(),
         }
     }
 
-    pub fn prepare(&mut self, gpu: &Gpu) {
-        self.circles.prepare(gpu);
-        self.meshes.prepare(gpu);
+    /// Encode a command with an optional z_index. No z_index means that an object
+    /// strictly follows painter's algorithm.
+    pub fn add_command(&mut self, command: RenderCommand, z_index: f32) {
+        self.commands.push((z_index, command));
+    }
+
+    /// Begins a new batch by clearing the current batch. Require GPU handle to restrict
+    /// this to top-level renderer, not individual batch submissions.
+    pub fn begin(&mut self, _gpu: &Gpu) {
+        self.commands.clear();
     }
 
     pub fn submit(&mut self, gpu: &Gpu, pass: &mut RenderPass) {
-        self.circles.submit(gpu, pass);
-        self.meshes.submit(gpu, pass);
-    }
+        // Clear the batches.
+        self.circles.clear();
+        self.meshes.clear();
 
-    /// Push a new circle instance onto the batch.
-    pub fn add_circle(&mut self, transform: Affine2, fill: Vec4) {
-        self.circles.push(transform, fill);
-    }
+        // Sort the commands from lowest depth to highest.
+        let mut commands = mem::take(&mut self.commands);
+        commands.sort_by(|m, n| m.0.total_cmp(&n.0));
 
-    pub fn add_mesh(&mut self, vertices: &[MeshVertex], indices: &[u32]) {
-        self.meshes.push(vertices, indices);
-    }
+        // Map non-primitive commands into primitives.
+        let commands = commands.into_iter().flat_map(|(_, command)| match command {
+            // Stroke commands get mapped into mesh commands.
+            RenderCommand::Stroke { vertices, close } => {
+                let mut iter = vertices.into_iter();
+                iter.next()
+                    .map(|start| {
+                        // Convert the stroke into a filled mesh.
+                        let mut builder = StrokeBuilder::new(start, BUILDER_TOLERANCE);
+                        iter.for_each(|v| builder.line_to(v));
+                        let res = builder.finish(close);
 
-    pub fn fill_builder(&mut self, scale: f32) -> FillBuilder<'_> {
-        FillBuilder::new(&mut self.meshes, scale * BUILDER_TOLERANCE)
-    }
+                        // Return the mesh primitive command.
+                        match res {
+                            Ok(command) => Some(command),
+                            Err(e) => {
+                                log::warn!("Failed to tesselate stroke: {e}");
+                                None
+                            }
+                        }
+                    })
+                    .flatten()
+            }
 
-    pub fn stroke_builder(&mut self, start: StrokePoint, scale: f32) -> StrokeBuilder<'_> {
-        StrokeBuilder::new(&mut self.meshes, start, scale * BUILDER_TOLERANCE)
+            // Some goes for polygon commands.
+            RenderCommand::Polygon { vertices } => {
+                let mut iter = vertices.into_iter();
+                iter.next()
+                    .map(|start| {
+                        // Encode the points into a builder.
+                        let mut builder = FillBuilder::new(BUILDER_TOLERANCE);
+                        builder.begin_subpath(start);
+                        iter.for_each(|v| builder.line_to(v));
+                        let res = builder.finish();
+
+                        // Return the mesh primitive command.
+                        match res {
+                            Ok(command) => Some(command),
+                            Err(e) => {
+                                log::warn!("Failed to tesselate polygon: {e}");
+                                None
+                            }
+                        }
+                    })
+                    .flatten()
+            }
+            command => Some(command),
+        });
+
+        // Clear and track our submissions.
+        self.submissions.clear();
+
+        // Encode the primitive commands. Currently we aren't batching at all.
+        for command in commands {
+            match command {
+                RenderCommand::Circle { transform, fill } => {
+                    let index = self.circles.push(transform, fill);
+                    if let Some(index) = index {
+                        self.submissions.push(Submission::Circle(index));
+                    }
+                }
+
+                RenderCommand::Mesh { vertices, indices } => {
+                    let index = self.meshes.push(&vertices, &indices);
+                    if let Some(index) = index {
+                        self.submissions.push(Submission::Mesh(index));
+                    }
+                }
+
+                _ => (),
+            }
+        }
+
+        // Upload data to GPU and execute submissions.
+        self.circles.prepare(gpu);
+        self.meshes.prepare(gpu);
+        for submission in self.submissions.iter() {
+            match *submission {
+                Submission::Circle(idx) => self.circles.submit(gpu, pass, idx),
+                Submission::Mesh(idx) => self.meshes.submit(gpu, pass, idx),
+            }
+        }
     }
 
     pub fn tolerance(&self) -> f32 {
@@ -66,10 +155,7 @@ impl Batch {
     }
 }
 
-pub trait BatchComponent {
-    /// Prepares the renderer to draw. Copies data into buffers.
-    fn prepare(&mut self, gpu: &Gpu);
-
-    /// Submits the draw calls into a render pass. Clears the batch.
-    fn submit(&self, gpu: &Gpu, pass: &mut RenderPass);
+enum Submission {
+    Circle(usize),
+    Mesh(usize),
 }

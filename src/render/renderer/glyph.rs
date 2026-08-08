@@ -1,6 +1,6 @@
 //! Tool for rendering glyphs.
 
-use crate::render::{Batch, MeshVertex, Segment};
+use crate::render::{Batch, FillBuilder, MeshVertex, Segment};
 use crate::scene::{Fill, Glyph, Scene, Transform};
 use ab_glyph::{Font, OutlineCurve, Point};
 use glam::prelude::*;
@@ -26,7 +26,7 @@ pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
         };
 
         // Run our tesselation. We are scaling to world space first, so scale is one.
-        let mut builder = batch.fill_builder(1.0);
+        let mut builder = FillBuilder::new(batch.tolerance());
         outline
             .curves
             .into_iter()
@@ -34,8 +34,9 @@ pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
         let result = builder.finish();
 
         // Print if we fail.
-        if let Err(e) = result {
-            log::info!("Failed to triangulate glyph: {e}");
+        match result {
+            Ok(command) => batch.add_command(command, 0.0),
+            Err(e) => log::info!("Failed to triangulate glyph: {e}"),
         };
     });
 }
