@@ -22,9 +22,7 @@ pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
         let spline_path = spline
             .spline_path
             .sample(time)
-            .timeline()
-            .map(move |x| affine.matrix2 * x + affine.translation)
-            .along();
+            .map(move |x| affine.matrix2 * x + affine.translation);
 
         // Subdivide the curve into a polyline of at least three points.
         let start = spline.start_alpha.sample(time);
@@ -78,9 +76,7 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
             let spline_path = spline
                 .spline_path
                 .sample(time)
-                .timeline()
-                .map(move |x| affine.matrix2 * x + affine.translation)
-                .along();
+                .map(move |x| affine.matrix2 * x + affine.translation);
 
             // Subdivide the curve into a polyline of at least three points.
             let delta = end - start;

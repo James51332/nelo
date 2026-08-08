@@ -4,7 +4,8 @@ use crate::timeline::{Along, Lerp, Timeline};
 use glam::prelude::*;
 
 /// A path is a parameter which varies w/ respect to alpha. It can convert to a
-/// `Timeline<Vec2>` using `Path::timeline()` or `Timeline::from()`.
+/// `Timeline<Vec2>` using `Path::timeline()` or `Timeline::from()`. We also
+/// add a few convenience methods so that we can interface with paths.
 pub type Path = Along<Vec2>;
 
 impl Timeline<Vec2> {
@@ -67,5 +68,20 @@ impl Path {
         Timeline::dynamic(move |t| Vec2::interpolate(&a, &b, t))
             .with_length(1.0)
             .path()
+    }
+
+    pub fn add(self, path: impl Into<Path>) -> Self {
+        self.timeline().add(path.into().timeline()).path()
+    }
+
+    pub fn multiply(self, scale: impl Into<Along<f32>>) -> Self {
+        self.timeline().multiply(scale.into().timeline()).path()
+    }
+
+    pub fn map<T: Clone + 'static, U: Clone + 'static>(self, map: T) -> Along<U>
+    where
+        T: Fn(Vec2) -> U,
+    {
+        self.timeline().map(map).along()
     }
 }
