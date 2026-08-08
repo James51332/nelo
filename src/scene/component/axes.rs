@@ -25,12 +25,12 @@ impl Scene {
             .create(y_steps, |i, s| {
                 let y = y_min + i as f32;
                 let line = Path::line(Vec2::new(x_min, y), Vec2::new(x_max, y));
-                s.spline(line)
+                s.spline(line).stroke_weight(0.01)
             })
             .create(x_steps, |i, s| {
                 let x = x_min + i as f32;
                 let line = Path::line(Vec2::new(x, y_min), Vec2::new(x, y_max));
-                s.spline(line)
+                s.spline(line).stroke_weight(0.01)
             })
     }
 }

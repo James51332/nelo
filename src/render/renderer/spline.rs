@@ -27,10 +27,13 @@ pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
             .along();
 
         // Subdivide the curve into a polyline of at least three points.
+        let start = spline.start_alpha.sample(time);
+        let end = spline.end_alpha.sample(time);
+        let delta = end - start;
         let polyline = Polyline::flatten(
             &spline_path,
-            spline.start_alpha.sample(time),
-            spline.end_alpha.sample(time) * visibility,
+            start,
+            start + delta * visibility,
             batch.tolerance(),
         );
 
@@ -80,7 +83,9 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
                 .along();
 
             // Subdivide the curve into a polyline of at least three points.
-            let polyline = Polyline::flatten(&spline_path, start, end, batch.tolerance());
+            let delta = end - start;
+            let new_end = start + delta * visibility;
+            let polyline = Polyline::flatten(&spline_path, start, new_end, batch.tolerance());
 
             // Compute how we move our triangle. Triangle isn't affected by transform.
             let points = polyline.points();
