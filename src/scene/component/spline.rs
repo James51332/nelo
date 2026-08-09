@@ -28,7 +28,7 @@ impl Scene {
     {
         self.create()
             .attach(Spline {
-                spline_path: spline_path.into().0.0,
+                spline_path: spline_path.into().inner(),
                 start_alpha: start.into(),
                 end_alpha: end.into(),
             })
@@ -60,7 +60,7 @@ impl Scene {
         self.create()
             .attach(Arrow {
                 spline: Spline {
-                    spline_path: spline_path.into().0.0,
+                    spline_path: spline_path.into().inner(),
                     start_alpha: start.into(),
                     end_alpha: end.into(),
                 },

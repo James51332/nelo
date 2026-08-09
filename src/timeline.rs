@@ -11,6 +11,7 @@
 
 pub mod along;
 pub mod compose;
+pub mod easing;
 pub mod float;
 pub mod from;
 pub mod keyframe;
@@ -18,7 +19,8 @@ pub mod path;
 pub mod signal;
 
 pub use along::{Along, TimelineAlong, TimelineSpline};
-pub use keyframe::{Easing, Lerp};
+pub use easing::Easing;
+pub use keyframe::Lerp;
 pub use path::Path;
 pub use signal::{Signal, SignalClone};
 

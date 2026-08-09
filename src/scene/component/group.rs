@@ -118,7 +118,7 @@ impl<'a> GroupRef<'a> {
         }
 
         // Prepare our timeline, which we move into the loop closure.
-        let timeline = spline.into().0.0;
+        let timeline = spline.into().inner();
 
         // Transform each along the path.
         self.for_each(move |i, e| {

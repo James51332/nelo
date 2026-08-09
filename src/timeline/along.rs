@@ -1,9 +1,9 @@
 //! Types and traits for defining values which vary both w.r.t time and spline parameter.
 
-use crate::timeline::{Lerp, Timeline};
+use crate::timeline::Timeline;
 use glam::prelude::*;
 
-// ----- Along<T> -----
+// ----- Along -----
 
 /// Along defines a value "along" a parametric curve. It's sampled over alpha, which
 /// usually varies from zero to one.
@@ -31,35 +31,6 @@ impl<T: Clone> Along<T> {
     }
 }
 
-impl<T: Clone + Lerp> Lerp for Along<T> {
-    fn interpolate(a: &Self, b: &Self, t: f32) -> Self {
-        Self(Timeline::interpolate(&a.0, &b.0, t))
-    }
-}
-
-// ----- TimelineSpline -----
-
-/// Helper type used for building curves from parametrics.
-#[derive(Clone)]
-pub struct TimelineSpline(pub(crate) TimelineAlong<Vec2>);
-
-impl Lerp for TimelineSpline {
-    fn interpolate(a: &Self, b: &Self, t: f32) -> Self {
-        Self(TimelineAlong::interpolate(&a.0, &b.0, t))
-    }
-}
-
-// ----- TimelineAlong -----
-
-#[derive(Clone)]
-pub struct TimelineAlong<T: Clone + 'static>(pub(crate) Timeline<Along<T>>);
-
-impl<T: Clone + Lerp> Lerp for TimelineAlong<T> {
-    fn interpolate(a: &Self, b: &Self, t: f32) -> Self {
-        Self(Timeline::interpolate(&a.0, &b.0, t))
-    }
-}
-
 // ----- Conversion -----
 
 impl<T: Clone> Along<T> {
@@ -72,5 +43,40 @@ impl<T: Clone> Timeline<T> {
     /// Converts this timeline into an `Along`. This maps t to alpha.
     pub fn along(self) -> Along<T> {
         Along(self)
+    }
+}
+
+// ----- TimelineAlong -----
+
+#[derive(Clone)]
+pub struct TimelineAlong<T: Clone + 'static> {
+    inner: Timeline<Along<T>>,
+}
+
+impl<T: Clone> TimelineAlong<T> {
+    pub fn new(inner: Timeline<Along<T>>) -> Self {
+        Self { inner }
+    }
+
+    pub fn inner(self) -> Timeline<Along<T>> {
+        self.inner
+    }
+}
+
+// ----- TimelineSpline -----
+
+/// Helper type used for building curves from parametrics.
+#[derive(Clone)]
+pub struct TimelineSpline {
+    inner: TimelineAlong<Vec2>,
+}
+
+impl TimelineSpline {
+    pub fn new(inner: TimelineAlong<Vec2>) -> Self {
+        Self { inner }
+    }
+
+    pub fn inner(self) -> Timeline<Along<Vec2>> {
+        self.inner.inner()
     }
 }
