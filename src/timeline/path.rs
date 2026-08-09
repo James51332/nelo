@@ -1,5 +1,7 @@
 //! A path is a Along<Vec2> in the interval [0, 1].
 
+use std::f32::consts::TAU;
+
 use crate::timeline::{Along, Lerp, Timeline};
 use glam::prelude::*;
 
@@ -62,8 +64,28 @@ impl Path {
             .path()
     }
 
+    /// Returns a star path with the specified number of `points` and optional
+    /// `inner_radius`. Uses standard five-point star radius if `inner_radius`
+    /// is `None`.
+    pub fn star(points: u32, inner_radius: Option<f32>) -> Self {
+        const STAR_INNER_RADIUS: f32 = 0.38196601125;
+        let inner = inner_radius.unwrap_or(STAR_INNER_RADIUS);
+        let vertices = (points as f32 * 2.0).max(1.0);
+
+        let mut builder = Timeline::keyframes(Vec2::X);
+        for i in 1..(vertices as u32) {
+            let radius = if i % 2 == 1 { inner } else { 1.0 };
+            let i = i as f32;
+            let angle = i / vertices * TAU;
+            builder = builder.at(i / vertices, radius * Vec2::from_angle(angle));
+        }
+        builder = builder.at(1.0, Vec2::X);
+
+        builder.build().repeat().path()
+    }
+
     /// Returns a path from a to b over the course of one second. Continues with constant
-    /// velocity if sampled out of bounds.
+    /// velocity if sampled out of bounds. Call `repeat` to loop.
     pub fn line(a: Vec2, b: Vec2) -> Self {
         Timeline::dynamic(move |t| Vec2::interpolate(&a, &b, t))
             .with_length(1.0)
@@ -78,10 +100,8 @@ impl Path {
         self.timeline().multiply(scale.into().timeline()).path()
     }
 
-    pub fn map<T: Clone + 'static, U: Clone + 'static>(self, map: T) -> Along<U>
-    where
-        T: Fn(Vec2) -> U,
-    {
-        self.timeline().map(map).along()
+    pub fn rotate(self, angle: impl Into<Along<f32>>) -> Self {
+        let angle = angle.into();
+        Timeline::dynamic(move |t| Vec2::from_angle(angle.sample(t)).rotate(self.sample(t))).path()
     }
 }

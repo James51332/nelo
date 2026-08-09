@@ -1,7 +1,7 @@
 //! Tool for rendering glyphs.
 
 use crate::render::{Batch, FillBuilder, MeshVertex, Segment};
-use crate::scene::{Fill, Glyph, Scene, Transform};
+use crate::scene::{Fill, Glyph, Scene, Transform, Visibility};
 use ab_glyph::{Font, OutlineCurve, Point};
 use glam::prelude::*;
 
@@ -13,12 +13,18 @@ pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
 
     // Let's get a view of all glyphs to rasterize.
     let items = scene.view_triple::<Transform, Glyph, Fill>();
-    items.iter().for_each(|(_, transform, glyph, fill)| {
+    items.into_iter().for_each(|(id, transform, glyph, fill)| {
+        // Visibility
+        let visibility = scene.component::<Visibility>(id);
+        let vis_amount = visibility.map_or(1.0, |v| v.amount.sample(time));
+        let z_index = visibility.map_or(0.0, |v| v.amount.sample(time));
+
         // Get the basic info about our glyph.
         let glyph_id = font.glyph_id(glyph.character);
         let mut transform = transform.sample(time);
         transform.matrix2 /= scale;
-        let color = fill.color.sample(time);
+        let mut color = fill.color.sample(time);
+        color.w = vis_amount * vis_amount * vis_amount;
 
         // Get the outline for our character. Skip spaces or other unsupported.
         let Some(outline) = font.outline(glyph_id) else {
@@ -35,7 +41,7 @@ pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
 
         // Print if we fail.
         match result {
-            Ok(command) => batch.add_command(command, 0.0),
+            Ok(command) => batch.add_command(command, z_index),
             Err(e) => log::info!("Failed to triangulate glyph: {e}"),
         };
     });

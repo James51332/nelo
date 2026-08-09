@@ -9,11 +9,10 @@ pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
     let items = scene.view_pair::<Transform, Spline>();
     items.into_iter().for_each(|(id, transform, spline)| {
         // Visibility short circuit.
-        let visibility = scene
-            .component::<Visibility>(id)
-            .map_or(1.0, |v| v.amount.sample(time));
-
-        if visibility <= 0.005 {
+        let visibility = scene.component::<Visibility>(id);
+        let vis_amount = visibility.map_or(1.0, |v| v.amount.sample(time).clamp(0.0, 1.0));
+        let z_index = visibility.map_or(0.0, |v| v.z_index.sample(time));
+        if vis_amount <= 0.005 {
             return;
         }
 
@@ -38,11 +37,11 @@ pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
         let polyline = Polyline::flatten(
             &spline_path,
             start,
-            start + delta * visibility,
+            start + delta * vis_amount,
             batch.tolerance(),
         );
 
-        handle_polyline(batch, polyline, visibility, fill, stroke, time);
+        handle_polyline(batch, polyline, vis_amount, z_index, fill, stroke, time);
     });
 }
 
@@ -54,11 +53,10 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
         .into_iter()
         .for_each(|(id, transform, arrow, stroke)| {
             // Visibility short circuit.
-            let visibility = scene
-                .component::<Visibility>(id)
-                .map_or(1.0, |v| v.amount.sample(time));
-
-            if visibility <= 0.005 {
+            let visibility = scene.component::<Visibility>(id);
+            let vis_amount = visibility.map_or(1.0, |v| v.amount.sample(time).clamp(0.0, 1.0));
+            let z_index = visibility.map_or(0.0, |v| v.z_index.sample(time));
+            if vis_amount <= 0.005 {
                 return;
             }
 
@@ -66,7 +64,7 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
             let affine = transform.sample(time);
             let spline = &arrow.spline;
             let start = spline.start_alpha.sample(time);
-            let end = spline.end_alpha.sample(time) * visibility;
+            let end = spline.end_alpha.sample(time) * vis_amount;
             let color = stroke.color.sample(time);
             let weight = stroke.weight.sample(time);
             let spline_path = spline
@@ -76,7 +74,7 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
 
             // Subdivide the curve into a polyline of at least three points.
             let delta = end - start;
-            let new_end = start + delta * visibility;
+            let new_end = start + delta * vis_amount;
             let polyline = Polyline::flatten(&spline_path, start, new_end, batch.tolerance());
 
             // Compute how we move our triangle. Triangle isn't affected by transform.
@@ -104,11 +102,19 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
                 RenderCommand::Polygon {
                     vertices: VERTICES.into_iter().map(map).collect(),
                 },
-                0.0,
+                z_index,
             );
 
             // Render our polyline.
-            handle_polyline(batch, polyline, visibility, None, Some(stroke), time);
+            handle_polyline(
+                batch,
+                polyline,
+                vis_amount,
+                z_index,
+                None,
+                Some(stroke),
+                time,
+            );
         });
 }
 
@@ -117,6 +123,7 @@ fn handle_polyline(
     batch: &mut Batch,
     polyline: Polyline,
     visibility: f32,
+    z_index: f32,
     fill: Option<&Fill>,
     stroke: Option<&Stroke>,
     time: f32,
@@ -132,7 +139,7 @@ fn handle_polyline(
             let weight = stroke.weight.sample(time);
             batch.add_command(
                 polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), false),
-                0.0,
+                z_index,
             );
         }
 
@@ -149,7 +156,7 @@ fn handle_polyline(
             let weight = stroke.weight.sample(time);
             batch.add_command(
                 polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), false),
-                0.0,
+                z_index,
             );
         }
 

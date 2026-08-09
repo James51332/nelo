@@ -1,10 +1,9 @@
 //! Helper methods to render circles
 
 use crate::render::batch::RenderCommand;
-use crate::render::{Batch, StrokePoint};
+use crate::render::{Batch, Polyline};
 use crate::scene::{Circle, Fill, Scene, Stroke, Transform, Visibility};
-use glam::prelude::*;
-use std::f32::consts::TAU;
+use crate::timeline::Path;
 
 /// Renders all circles from the scene into the batch.
 pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
@@ -14,48 +13,36 @@ pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
         let affine = transform.sample(t);
 
         // Visibility changes opacity for background and stroke length.
-        let visibility = scene
-            .component::<Visibility>(id)
-            .map_or(1.0, |v| v.amount.sample(t).clamp(0.0, 1.0));
+        let visibility = scene.component::<Visibility>(id);
+        let vis_amount = visibility.map_or(1.0, |v| v.amount.sample(t).clamp(0.0, 1.0));
+        let z_index = visibility.map_or(0.0, |v| v.z_index.sample(t));
+        if vis_amount < 0.005 {
+            return;
+        }
 
         if let Some(fill) = scene.component::<Fill>(id) {
             let mut color = fill.color.sample(t);
             // Apply a quad easing. This just looks better.
-            color.w *= visibility * visibility * visibility;
+            color.w *= vis_amount * vis_amount * vis_amount;
             let command = RenderCommand::Circle {
                 transform: affine.clone(),
                 fill: color,
             };
 
-            batch.add_command(command, 0.0);
+            batch.add_command(command, z_index);
         }
 
         if let Some(stroke) = scene.component::<Stroke>(id) {
-            // Utility to convert alpha to a StrokePoint.
+            // Generate the path and flatten it.
+            let path = Path::circle().map(move |v| affine.matrix2 * v + affine.translation);
+            let polyline = Polyline::flatten(&path, 0.0, vis_amount, batch.tolerance());
+
+            // Generate the render command and submit.
             let color = stroke.color.sample(t);
             let weight = stroke.weight.sample(t);
-
-            // Compute how many points we have.
-            const POINTS_PER_UNIT: f32 = 75.0;
-            let scale = affine.matrix2.determinant().abs().sqrt();
-            let points = POINTS_PER_UNIT * scale;
-            let step = 1.0 / points;
-
-            // The scale of stroke builder is world space, which is normal here.
-            let mut vertices = Vec::new();
-            for i in 0..((points * visibility) as usize) {
-                let a = step * i as f32;
-                let theta = TAU * a;
-                let pos = affine.matrix2 * Vec2::new(theta.cos(), theta.sin()) + affine.translation;
-                vertices.push(StrokePoint::new(pos, color.sample(a), weight.sample(a)));
-            }
-
-            // Submit the command. Close the stroke when we are roughly complete.
-            let command = RenderCommand::Stroke {
-                vertices,
-                close: visibility > 0.995,
-            };
-            batch.add_command(command, 0.0);
+            let map = |a| (color.sample(a), weight.sample(a));
+            let command = polyline.to_stroke(map, vis_amount >= 0.995);
+            batch.add_command(command, z_index);
         }
     });
 }

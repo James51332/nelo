@@ -6,6 +6,8 @@ pub mod spline;
 pub mod text;
 pub mod transform;
 
+use std::f32::consts::PI;
+
 pub use group::GroupRef;
 pub use spline::{Arrow, Spline};
 pub use text::Glyph;
@@ -44,6 +46,12 @@ impl Scene {
     /// Returns an `EntityRef` with a square attached.
     pub fn triangle(&mut self) -> EntityRef<'_> {
         self.spline(Path::triangle()).attach(Fill::default())
+    }
+
+    /// Returns an `EntityRef` with a star attached.
+    pub fn star(&mut self) -> EntityRef<'_> {
+        self.spline(Path::star(5, None).rotate(PI / 2.0))
+            .attach(Fill::default())
     }
 }
 
@@ -96,4 +104,17 @@ pub struct Visibility {
     /// alpha is proportional to the cube of this value, even though this time
     /// line is applied, so that fill comes after stroke.
     pub amount: Timeline<f32>,
+
+    /// Z_index is the depth of an object. Higher z_index means higher view
+    /// priority.
+    pub z_index: Timeline<f32>,
+}
+
+impl Default for Visibility {
+    fn default() -> Self {
+        Self {
+            amount: 1.0.into(),
+            z_index: 0.0.into(),
+        }
+    }
 }

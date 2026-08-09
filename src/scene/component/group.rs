@@ -123,11 +123,7 @@ impl<'a> GroupRef<'a> {
         // Transform each along the path.
         self.for_each(move |i, e| {
             let timeline = timeline.clone();
-            let a = if n == 1 {
-                0.5
-            } else {
-                i as f32 / (n - 1) as f32
-            };
+            let a = if n == 1 { 0.5 } else { i as f32 / n as f32 };
             e.translate(move |t| timeline.sample(t).sample(a))
         })
     }

@@ -71,9 +71,15 @@ impl<'a> EntityRef<'a> {
     }
 
     pub fn visibility(self, amount: impl Into<Timeline<f32>>) -> Self {
-        self.attach(Visibility {
-            amount: amount.into(),
-        })
+        let vis = self.scene.registry.get_or_default::<Visibility>(self.id);
+        vis.amount = amount.into();
+        self
+    }
+
+    pub fn z_index(self, z_index: impl Into<Timeline<f32>>) -> Self {
+        let vis = self.scene.registry.get_or_default::<Visibility>(self.id);
+        vis.z_index = z_index.into();
+        self
     }
 
     /// Drops this reference and returns the id of this entity, converting
