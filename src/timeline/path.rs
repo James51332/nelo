@@ -92,14 +92,6 @@ impl Path {
             .path()
     }
 
-    pub fn add(self, path: impl Into<Path>) -> Self {
-        self.timeline().add(path.into().timeline()).path()
-    }
-
-    pub fn multiply(self, scale: impl Into<Along<f32>>) -> Self {
-        self.timeline().multiply(scale.into().timeline()).path()
-    }
-
     pub fn rotate(self, angle: impl Into<Along<f32>>) -> Self {
         let angle = angle.into();
         Timeline::dynamic(move |t| Vec2::from_angle(angle.sample(t)).rotate(self.sample(t))).path()

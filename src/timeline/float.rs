@@ -62,13 +62,13 @@ impl Timeline<f32> {
         self.then(Easing::CubicInOut)
     }
 
-    /// Mirror of composition. Evaluates `self` and uses output as time for `outer`.
-    pub fn then<U: Clone + 'static>(self, outer: impl Into<Timeline<U>>) -> Timeline<U> {
-        outer.into().compose(self)
-    }
-
     /// Returns an f32 timeline that clamps the value of `self` to [min, max].
     pub fn clamp(self, min: f32, max: f32) -> Self {
         self.map(move |t| t.clamp(min, max))
+    }
+
+    /// Mirror of composition. Evaluates `self` and uses output as time for `outer`.
+    pub fn then<U: Clone + 'static>(self, outer: impl Into<Timeline<U>>) -> Timeline<U> {
+        outer.into().compose(self)
     }
 }

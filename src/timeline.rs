@@ -22,13 +22,15 @@ pub use keyframe::{Easing, Lerp};
 pub use path::Path;
 pub use signal::{Signal, SignalClone};
 
+// ----- Timeline -----
+
 /// A sampleable value over time, either a fixed constant or a shared [`Signal`].
-pub enum Timeline<T> {
+pub enum Timeline<T: Clone + 'static> {
     Constant(T),
     Dynamic(Box<dyn SignalClone<Output = T>>),
 }
 
-impl<T: Clone + 'static> Timeline<T> {
+impl<T: Clone> Timeline<T> {
     /// Wrap a fixed value that never changes.
     pub fn constant(s: T) -> Self {
         Self::Constant(s)
@@ -47,9 +49,7 @@ impl<T: Clone + 'static> Timeline<T> {
             Self::Dynamic(s) => s.length(),
         }
     }
-}
 
-impl<T: Clone + 'static> Timeline<T> {
     /// The value at time `t`. A constant clones its held value; a dynamic one
     /// samples the underlying signal. (Sampling needs `Clone` so the constant
     /// case can hand back an owned value.)
@@ -80,6 +80,27 @@ impl<T: Clone + 'static> Timeline<T> {
     }
 }
 
+impl<T: Clone + 'static> Clone for Timeline<T> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Constant(s) => Self::Constant(s.clone()),
+            Self::Dynamic(s) => Self::Dynamic(s.clone_box()),
+        }
+    }
+}
+
+impl<T: Clone + 'static> Timeline<Timeline<T>> {
+    /// Reduces depth of timeline of timelines by one by sampling both at the time
+    /// with the same input parameter.
+    ///
+    /// To use this with a resampled outer timeline, use `.compose().flatten()`. To
+    /// resample the inner timeline, use `.map(|x| x.compose())`, and to resample both,
+    /// use `.flatten().compose()`.
+    pub fn flatten(self) -> Timeline<T> {
+        Timeline::dynamic(move |t| self.sample(t).sample(t))
+    }
+}
+
 /// A signal adaptor that forwards sampling to `inner` but overrides its
 /// reported duration. Built by [`Timeline::with_length`] and immediately erased
 /// into a [`Timeline::Dynamic`].
@@ -98,14 +119,5 @@ impl<T: Clone + 'static> Signal for WithLength<T> {
 
     fn length(&self) -> Option<f32> {
         Some(self.length)
-    }
-}
-
-impl<T: Clone + 'static> Clone for Timeline<T> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Constant(s) => Self::Constant(s.clone()),
-            Self::Dynamic(s) => Self::Dynamic(s.clone_box()),
-        }
     }
 }
