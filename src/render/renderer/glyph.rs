@@ -41,7 +41,7 @@ pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
 
         // Print if we fail.
         match result {
-            Ok(command) => batch.add_command(command, z_index),
+            Ok(command) => batch.add_command(command, id, z_index),
             Err(e) => log::info!("Failed to triangulate glyph: {e}"),
         };
     });

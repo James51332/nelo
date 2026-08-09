@@ -12,7 +12,7 @@ pub use command::RenderCommand;
 pub use mesh::{MeshBatch, MeshVertex};
 pub use polyline::Polyline;
 
-use crate::render::Gpu;
+use crate::{render::Gpu, scene::EntityId};
 use std::mem;
 use wgpu::{BindGroupLayout, RenderPass};
 
@@ -29,7 +29,7 @@ pub struct Batch {
     meshes: MeshBatch,
 
     /// Encodes commands and their z_indices.
-    commands: Vec<(f32, RenderCommand)>,
+    commands: Vec<(EntityId, f32, RenderCommand)>,
 
     /// Encodes the batches.
     submissions: Vec<Submission>,
@@ -45,10 +45,10 @@ impl Batch {
         }
     }
 
-    /// Encode a command with an optional z_index. No z_index means that an object
+    /// Encode a command for an entty.with an optional z_index. No z_index means that an object
     /// strictly follows painter's algorithm.
-    pub fn add_command(&mut self, command: RenderCommand, z_index: f32) {
-        self.commands.push((z_index, command));
+    pub fn add_command(&mut self, command: RenderCommand, id: EntityId, z_index: f32) {
+        self.commands.push((id, z_index, command));
     }
 
     /// Begins a new batch by clearing the current batch. Require GPU handle to restrict
@@ -62,58 +62,61 @@ impl Batch {
         self.circles.clear();
         self.meshes.clear();
 
-        // Sort the commands from lowest depth to highest.
+        // First sort by entity id (high to low), then sort by z-index.
         let mut commands = mem::take(&mut self.commands);
-        commands.sort_by(|m, n| m.0.total_cmp(&n.0));
+        commands.sort_by(|m, n| n.0.cmp(&m.0));
+        commands.sort_by(|m, n| m.1.total_cmp(&n.1));
 
         // Map non-primitive commands into primitives.
-        let commands = commands.into_iter().flat_map(|(_, command)| match command {
-            // Stroke commands get mapped into mesh commands.
-            RenderCommand::Stroke { vertices, close } => {
-                let mut iter = vertices.into_iter();
-                iter.next()
-                    .map(|start| {
-                        // Convert the stroke into a filled mesh.
-                        let mut builder = StrokeBuilder::new(start, BUILDER_TOLERANCE);
-                        iter.for_each(|v| builder.line_to(v));
-                        let res = builder.finish(close);
+        let commands = commands
+            .into_iter()
+            .flat_map(|(_, _, command)| match command {
+                // Stroke commands get mapped into mesh commands.
+                RenderCommand::Stroke { vertices, close } => {
+                    let mut iter = vertices.into_iter();
+                    iter.next()
+                        .map(|start| {
+                            // Convert the stroke into a filled mesh.
+                            let mut builder = StrokeBuilder::new(start, BUILDER_TOLERANCE);
+                            iter.for_each(|v| builder.line_to(v));
+                            let res = builder.finish(close);
 
-                        // Return the mesh primitive command.
-                        match res {
-                            Ok(command) => Some(command),
-                            Err(e) => {
-                                log::warn!("Failed to tesselate stroke: {e}");
-                                None
+                            // Return the mesh primitive command.
+                            match res {
+                                Ok(command) => Some(command),
+                                Err(e) => {
+                                    log::warn!("Failed to tesselate stroke: {e}");
+                                    None
+                                }
                             }
-                        }
-                    })
-                    .flatten()
-            }
+                        })
+                        .flatten()
+                }
 
-            // Some goes for polygon commands.
-            RenderCommand::Polygon { vertices } => {
-                let mut iter = vertices.into_iter();
-                iter.next()
-                    .map(|start| {
-                        // Encode the points into a builder.
-                        let mut builder = FillBuilder::new(BUILDER_TOLERANCE);
-                        builder.begin_subpath(start);
-                        iter.for_each(|v| builder.line_to(v));
-                        let res = builder.finish();
+                // Some goes for polygon commands.
+                RenderCommand::Polygon { vertices } => {
+                    let mut iter = vertices.into_iter();
+                    iter.next()
+                        .map(|start| {
+                            // Encode the points into a builder.
+                            let mut builder = FillBuilder::new(BUILDER_TOLERANCE);
+                            builder.begin_subpath(start);
+                            iter.for_each(|v| builder.line_to(v));
+                            let res = builder.finish();
 
-                        // Return the mesh primitive command.
-                        match res {
-                            Ok(command) => Some(command),
-                            Err(e) => {
-                                log::warn!("Failed to tesselate polygon: {e}");
-                                None
+                            // Return the mesh primitive command.
+                            match res {
+                                Ok(command) => Some(command),
+                                Err(e) => {
+                                    log::warn!("Failed to tesselate polygon: {e}");
+                                    None
+                                }
                             }
-                        }
-                    })
-                    .flatten()
-            }
-            command => Some(command),
-        });
+                        })
+                        .flatten()
+                }
+                command => Some(command),
+            });
 
         // Clear and track our submissions.
         self.submissions.clear();

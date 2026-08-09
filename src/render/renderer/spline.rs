@@ -1,7 +1,7 @@
 //! Helper methods to render splines
 
 use crate::render::{Batch, MeshVertex, Polyline, RenderCommand};
-use crate::scene::{Arrow, Fill, Scene, Spline, Stroke, Transform, Visibility};
+use crate::scene::{Arrow, EntityId, Fill, Scene, Spline, Stroke, Transform, Visibility};
 use glam::{Mat2, Vec2};
 
 pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
@@ -41,7 +41,7 @@ pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
             batch.tolerance(),
         );
 
-        handle_polyline(batch, polyline, vis_amount, z_index, fill, stroke, time);
+        handle_polyline(batch, id, polyline, vis_amount, z_index, fill, stroke, time);
     });
 }
 
@@ -102,12 +102,14 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
                 RenderCommand::Polygon {
                     vertices: VERTICES.into_iter().map(map).collect(),
                 },
+                id,
                 z_index,
             );
 
             // Render our polyline.
             handle_polyline(
                 batch,
+                id,
                 polyline,
                 vis_amount,
                 z_index,
@@ -121,6 +123,7 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
 /// Render fill and stroke appropriately for spline.
 fn handle_polyline(
     batch: &mut Batch,
+    id: EntityId,
     polyline: Polyline,
     visibility: f32,
     z_index: f32,
@@ -133,12 +136,13 @@ fn handle_polyline(
         (Some(fill), Some(stroke)) => {
             let mut color = fill.color.sample(time);
             color.w *= visibility * visibility * visibility;
-            batch.add_command(polyline.clone().to_fill(|_| color), 0.0);
+            batch.add_command(polyline.clone().to_fill(|_| color), id, z_index);
 
             let color = stroke.color.sample(time);
             let weight = stroke.weight.sample(time);
             batch.add_command(
                 polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), false),
+                id,
                 z_index,
             );
         }
@@ -147,7 +151,7 @@ fn handle_polyline(
         (Some(fill), None) => {
             let mut color = fill.color.sample(time);
             color.w *= visibility * visibility * visibility;
-            batch.add_command(polyline.to_fill(|_| color), 0.0);
+            batch.add_command(polyline.to_fill(|_| color), id, 0.0);
         }
 
         // We just have stroke.
@@ -156,6 +160,7 @@ fn handle_polyline(
             let weight = stroke.weight.sample(time);
             batch.add_command(
                 polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), false),
+                id,
                 z_index,
             );
         }

@@ -29,7 +29,7 @@ pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
                 fill: color,
             };
 
-            batch.add_command(command, z_index);
+            batch.add_command(command, id, z_index);
         }
 
         if let Some(stroke) = scene.component::<Stroke>(id) {
@@ -42,7 +42,7 @@ pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
             let weight = stroke.weight.sample(t);
             let map = |a| (color.sample(a), weight.sample(a));
             let command = polyline.to_stroke(map, vis_amount >= 0.995);
-            batch.add_command(command, z_index);
+            batch.add_command(command, id, z_index);
         }
     });
 }
