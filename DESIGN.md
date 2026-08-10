@@ -8,45 +8,56 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [x] Signal Trait
     * [x] Constants
     * [x] Closures
+    * [x] Length
     * [x] Keyframes
     * [x] Composition
-    * [x] Lengths
-    * [x] Mapping
+    * [x] Along
+    * [x] Easing
+    * [x] Into Wrappers
 * [x] ECS
     * [x] Scene
     * [x] Entities
-    * [x] Geometries
-        * [x] Circles
-        * [x] Paths
-        * [x] Curves
     * [x] Transforms
     * [x] Components
+        * [x] Circles
+        * [x] Splines
+        * [x] Arrows
+        * [x] Glyph
+    * [x] Shorthands
+        * [x] Triangles
+        * [x] Square
+        * [x] Star
+        * [x] Axes
     * [x] Grouping
-* [ ] Renderers
-    * [x] Circle Renderer
-    * [x] Curve Renderer
-    * [x] Tesselation
-    * [x] Reusable Geometries
-    * [x] Text Renderer
-    * [ ] Math Renderer
-    * [ ] Images
+        * [x] Creation
+        * [x] Arrangement
+* [ ] Rendering
+    * [x] Circle Batch
+    * [x] Mesh Batch
+    * [x] Batch
+    * [x] Stroke Builder
+    * [x] Fill Builder
+    * [x] Render Command
+    * [x] Z-Indexing
+    * [x] Batched Submissions
     * [x] Antialiasing
-* Component Renderers
-    * [x] Axes
-    * [x] Arrows
-* [ ] Theming
-    * [ ] Color Type
-    * [ ] Better Color Spaces
+    * [x] Visiblity
+    * [x] Color
+    * [ ] SVG Builder
+    * [ ] Geometry Cache
+    * [ ] Math Renderer
+    * [ ] Textures
+* [x] Exporting
+    * [x] Video Files (via `ffmpeg`)
+    * [x] Images
 * [ ] Storyboard
     * [ ] Actions
     * [ ] Transformations
     * [ ] Checkpoints
-* [ ] Exporting
-    * [x] Video Files (via `ffmpeg`)
-    * [x] Images
 
 ## future goals
 
+* [ ] Theming
 * [ ] Viewer
     * [ ] Hot Reloading
     * [ ] WASM Viewer

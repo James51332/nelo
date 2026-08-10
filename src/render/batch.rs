@@ -124,8 +124,8 @@ impl Batch {
         // Encode the primitive commands. Currently we aren't batching at all.
         for command in commands {
             match command {
-                RenderCommand::Circle { transform, fill } => {
-                    let index = self.circles.push(transform, fill);
+                RenderCommand::Circle { transform, color } => {
+                    let index = self.circles.push(transform, color);
                     if let Some(index) = index {
                         self.submissions.push(Submission::Circle(index));
                     }

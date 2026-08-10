@@ -1,6 +1,6 @@
 //! Geometry builder for tesselation.
 
-use crate::render::{MeshVertex, batch::RenderCommand};
+use crate::render::{Color, MeshVertex, batch::RenderCommand};
 use glam::prelude::*;
 use lyon::{
     math::Point,
@@ -58,7 +58,7 @@ impl FillBuilder {
         let mut buffers: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
         let mut geometry = BuffersBuilder::new(&mut buffers, |mut vertex: FillVertex| {
             let position = vertex.position().to_array().into();
-            let color = Vec4::from_slice(vertex.interpolated_attributes());
+            let color = Color::from_slice(vertex.interpolated_attributes());
             MeshVertex::new(position, Vec2::ZERO, color)
         });
 
@@ -89,12 +89,10 @@ impl FillBuilder {
         match self.last_point {
             Some(end) if end.position != start.position => {
                 self.builder.end(true);
-                self.builder
-                    .begin(point(start.position), &start.color.to_array());
+                self.builder.begin(point(start.position), &start.color);
             }
             None => {
-                self.builder
-                    .begin(point(start.position), &start.color.to_array());
+                self.builder.begin(point(start.position), &start.color);
             }
             _ => (),
         };
@@ -102,25 +100,17 @@ impl FillBuilder {
         // Emit the segment.
         let end = match segment {
             Segment::Line(_, end) => {
-                self.builder
-                    .line_to(point(end.position), &end.color.to_array());
+                self.builder.line_to(point(end.position), &end.color);
                 end
             }
             Segment::Quad(_, c1, end) => {
-                self.builder.quadratic_bezier_to(
-                    point(c1),
-                    point(end.position),
-                    &end.color.to_array(),
-                );
+                self.builder
+                    .quadratic_bezier_to(point(c1), point(end.position), &end.color);
                 end
             }
             Segment::Cubic(_, c1, c2, end) => {
-                self.builder.cubic_bezier_to(
-                    point(c1),
-                    point(c2),
-                    point(end.position),
-                    &end.color.to_array(),
-                );
+                self.builder
+                    .cubic_bezier_to(point(c1), point(c2), point(end.position), &end.color);
                 end
             }
         };
@@ -134,16 +124,14 @@ impl FillBuilder {
             self.builder.end(true);
         }
 
-        self.builder
-            .begin(point(start.position), &start.color.to_array());
+        self.builder.begin(point(start.position), &start.color);
         self.last_point = Some(start);
     }
 
     /// Adds a line segment to the current subpath, or no-op.
     pub fn line_to(&mut self, end: MeshVertex) {
         if self.last_point.is_some() {
-            self.builder
-                .line_to(point(end.position), &end.color.to_array());
+            self.builder.line_to(point(end.position), &end.color);
             self.last_point = Some(end);
         }
     }
@@ -181,7 +169,7 @@ impl StrokeBuilder {
         let mut buffers: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
         let mut geometry = BuffersBuilder::new(&mut buffers, |mut vertex: StrokeVertex| {
             let position = vertex.position().to_array().into();
-            let color = Vec4::from_slice(vertex.interpolated_attributes());
+            let color = Color::from_slice(vertex.interpolated_attributes().into());
             MeshVertex::new(position, Vec2::ZERO, color)
         });
 
@@ -217,15 +205,15 @@ impl StrokeBuilder {
 #[derive(Debug, Clone)]
 pub struct StrokePoint {
     pub position: Vec2,
-    pub color: Vec4,
+    pub color: [f32; 4],
     pub width: f32,
 }
 
 impl StrokePoint {
-    pub fn new(position: Vec2, color: Vec4, width: f32) -> Self {
+    pub fn new(position: Vec2, color: Color, width: f32) -> Self {
         Self {
             position,
-            color,
+            color: color.to_array(),
             width,
         }
     }
@@ -240,10 +228,10 @@ fn point(pos: Vec2) -> Point {
 /// Returns the stroke attributes. Width is index 4.
 fn stroke(point: StrokePoint) -> [f32; 5] {
     [
-        point.color.x,
-        point.color.y,
-        point.color.z,
-        point.color.w,
+        point.color[0],
+        point.color[1],
+        point.color[2],
+        point.color[3],
         point.width,
     ]
 }

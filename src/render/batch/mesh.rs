@@ -2,7 +2,7 @@
 
 use std::ops::Range;
 
-use crate::render::Gpu;
+use crate::render::{Color, Gpu};
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::prelude::*;
 use wgpu::{
@@ -189,15 +189,15 @@ impl MeshBatch {
 pub struct MeshVertex {
     pub position: Vec2,
     pub uv: Vec2,
-    pub color: Vec4,
+    pub color: [f32; 4],
 }
 
 impl MeshVertex {
-    pub fn new(position: Vec2, uv: Vec2, color: Vec4) -> Self {
+    pub fn new(position: Vec2, uv: Vec2, color: Color) -> Self {
         Self {
             position,
             uv,
-            color,
+            color: color.to_array(),
         }
     }
 }

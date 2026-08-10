@@ -135,7 +135,7 @@ fn handle_polyline(
         // We have both and need to clone the polyline.
         (Some(fill), Some(stroke)) => {
             let mut color = fill.color.sample(time);
-            color.w *= visibility * visibility * visibility;
+            color.alpha *= visibility * visibility * visibility;
             batch.add_command(polyline.clone().to_fill(|_| color), id, z_index);
 
             let color = stroke.color.sample(time);
@@ -150,7 +150,7 @@ fn handle_polyline(
         // We just have fill
         (Some(fill), None) => {
             let mut color = fill.color.sample(time);
-            color.w *= visibility * visibility * visibility;
+            color.alpha *= visibility * visibility * visibility;
             batch.add_command(polyline.to_fill(|_| color), id, 0.0);
         }
 

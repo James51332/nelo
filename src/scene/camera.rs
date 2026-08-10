@@ -1,5 +1,6 @@
 //! Each scene has exactly one camera. It defines a height and a transform.
 
+use crate::render::Color;
 use crate::scene::{Transform, Transformable};
 use crate::timeline::Timeline;
 use glam::prelude::*;
@@ -7,7 +8,7 @@ use glam::prelude::*;
 pub struct Camera {
     height: Timeline<f32>,
     transform: Transform,
-    background: Timeline<Vec4>,
+    background: Timeline<Color>,
 }
 
 impl Camera {
@@ -17,12 +18,12 @@ impl Camera {
         Self {
             height: Timeline::constant(10.0),
             transform: Transform::default(),
-            background: Vec4::new(0.02, 0.02, 0.04, 1.0).into(),
+            background: Color::srgb(0.02, 0.02, 0.04).into(),
         }
     }
 
     /// Returns the cameras background color, view projection at time `t`.
-    pub fn sample(&self, size: (u32, u32), t: f32) -> (Vec4, Affine2) {
+    pub fn sample(&self, size: (u32, u32), t: f32) -> (Color, Affine2) {
         let (width, height) = (size.0 as f32, size.1 as f32);
         let aspect = if width == 0.0 {
             1.0
@@ -42,7 +43,7 @@ impl Camera {
         self
     }
 
-    pub fn background(&mut self, bg: impl Into<Timeline<Vec4>>) -> &mut Self {
+    pub fn background(&mut self, bg: impl Into<Timeline<Color>>) -> &mut Self {
         self.background = bg.into();
         self
     }

@@ -6,16 +6,15 @@ pub mod spline;
 pub mod text;
 pub mod transform;
 
-use std::f32::consts::PI;
-
 pub use group::GroupRef;
 pub use spline::{Arrow, Spline};
 pub use text::Glyph;
 pub use transform::{Transform, Transformable};
 
+use crate::render::Color;
 use crate::scene::{EntityRef, Scene};
 use crate::timeline::{Along, Path, Timeline};
-use glam::prelude::*;
+use std::f32::consts::PI;
 
 // ----- Circle -----
 
@@ -59,22 +58,21 @@ impl Scene {
 
 /// A fill is a color over time.
 pub struct Fill {
-    pub color: Timeline<Vec4>,
+    pub color: Timeline<Color>,
 }
 
 impl Fill {
-    // Default with with alpha = 1.0,
     fn solid() -> Self {
-        let mut fill = Self::default();
-        fill.color = fill.color.map(|v| Vec4::new(v.x, v.y, v.z, 1.0));
-        fill
+        Self {
+            color: Color::WHITE.into(),
+        }
     }
 }
 
 impl Default for Fill {
     fn default() -> Self {
         Self {
-            color: Vec4::new(1.0, 1.0, 1.0, 0.5).into(),
+            color: Color::WHITE.with_alpha(0.5).into(),
         }
     }
 }
@@ -82,7 +80,7 @@ impl Default for Fill {
 // ----- Stroke -----
 
 pub struct Stroke {
-    pub color: Timeline<Along<Vec4>>,
+    pub color: Timeline<Along<Color>>,
     pub weight: Timeline<Along<f32>>,
 }
 
@@ -90,7 +88,7 @@ impl Default for Stroke {
     fn default() -> Self {
         Self {
             weight: Timeline::constant(0.025).along().into(),
-            color: Timeline::constant(Vec4::ONE).along().into(),
+            color: Timeline::constant(Color::WHITE).along().into(),
         }
     }
 }

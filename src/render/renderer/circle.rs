@@ -23,10 +23,10 @@ pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
         if let Some(fill) = scene.component::<Fill>(id) {
             let mut color = fill.color.sample(t);
             // Apply a quad easing. This just looks better.
-            color.w *= vis_amount * vis_amount * vis_amount;
+            color.alpha *= vis_amount * vis_amount * vis_amount;
             let command = RenderCommand::Circle {
                 transform: affine.clone(),
-                fill: color,
+                color,
             };
 
             batch.add_command(command, id, z_index);

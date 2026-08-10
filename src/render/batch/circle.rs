@@ -1,6 +1,6 @@
 //! Batch for SDF filled circles.
 
-use crate::render::Gpu;
+use crate::render::{Color, Gpu};
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::prelude::*;
 use wgpu::{
@@ -65,7 +65,7 @@ impl CircleBatch {
 
     /// Push a new circle instance onto the batch. Returns the index of the circle
     /// for submission.
-    pub fn push(&mut self, transform: Affine2, fill: Vec4) -> Option<usize> {
+    pub fn push(&mut self, transform: Affine2, fill: Color) -> Option<usize> {
         // Make sure we have room.
         if self.count == self.capacity {
             log::warn!(
@@ -111,16 +111,16 @@ impl CircleBatch {
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct CircleInstance {
-    fill: Vec4,        // 16 bytes
+    fill: [f32; 4],    // 16 bytes
     matrix2: Mat2,     // 16 bytes
     translation: Vec2, // 8 bytes
     _pad: Vec2,        // 8 bytes (48 total, 16-aligned)
 }
 
 impl CircleInstance {
-    pub fn new(transform: Affine2, fill: Vec4) -> Self {
+    pub fn new(transform: Affine2, fill: Color) -> Self {
         Self {
-            fill,
+            fill: fill.to_array(),
             matrix2: transform.matrix2,
             translation: transform.translation,
             _pad: Vec2::ZERO,

@@ -1,6 +1,6 @@
 //! Tool for rendering glyphs.
 
-use crate::render::{Batch, FillBuilder, MeshVertex, Segment};
+use crate::render::{Batch, Color, FillBuilder, MeshVertex, Segment};
 use crate::scene::{Fill, Glyph, Scene, Transform, Visibility};
 use ab_glyph::{Font, OutlineCurve, Point};
 use glam::prelude::*;
@@ -24,7 +24,7 @@ pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
         let mut transform = transform.sample(time);
         transform.matrix2 /= scale;
         let mut color = fill.color.sample(time);
-        color.w = vis_amount * vis_amount * vis_amount;
+        color.alpha = vis_amount * vis_amount * vis_amount;
 
         // Get the outline for our character. Skip spaces or other unsupported.
         let Some(outline) = font.outline(glyph_id) else {
@@ -48,7 +48,7 @@ pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
 }
 
 /// Converts an OutlineCurve to a FillBuilder Segment.
-fn convert_outline(outline: OutlineCurve, transform: Affine2, color: Vec4) -> Segment {
+fn convert_outline(outline: OutlineCurve, transform: Affine2, color: Color) -> Segment {
     let point = |p: Point| transform.matrix2 * Vec2::new(p.x, p.y) + transform.translation;
     let vertex = |p: Point| MeshVertex::new(point(p), Vec2::ZERO, color);
     match outline {

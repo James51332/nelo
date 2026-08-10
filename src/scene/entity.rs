@@ -1,8 +1,8 @@
 //! An `Entity` is simple an id representing rendering data.
 
+use crate::render::Color;
 use crate::scene::{Fill, Scene, Stroke, Transform, Transformable, Visibility};
 use crate::timeline::{Timeline, TimelineAlong};
-use glam::prelude::*;
 use std::any::Any;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -42,7 +42,7 @@ impl<'a> EntityRef<'a> {
         self.scene.registry.remove(self.id)
     }
 
-    pub fn fill(self, color: impl Into<Timeline<Vec4>>) -> Self {
+    pub fn fill(self, color: impl Into<Timeline<Color>>) -> Self {
         let fill = self.scene.registry.get_or_default::<Fill>(self.id);
         fill.color = color.into();
         self
@@ -59,7 +59,7 @@ impl<'a> EntityRef<'a> {
         self
     }
 
-    pub fn stroke(self, color: impl Into<TimelineAlong<Vec4>>) -> Self {
+    pub fn stroke(self, color: impl Into<TimelineAlong<Color>>) -> Self {
         let stroke = self.scene.registry.get_or_default::<Stroke>(self.id);
         stroke.color = color.into().inner();
         self

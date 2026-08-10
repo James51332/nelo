@@ -1,7 +1,7 @@
 //! A sequence of lines. Allows user to specify the vertex type.
 
-use crate::render::MeshVertex;
 use crate::render::batch::{RenderCommand, StrokePoint};
+use crate::render::{Color, MeshVertex};
 use crate::timeline::Along;
 use glam::prelude::*;
 use std::cmp::Ordering;
@@ -72,7 +72,7 @@ impl Polyline {
     /// Consumes this polyline and generates a Stroke render command.
     pub fn to_stroke<T>(self, map: T, close: bool) -> RenderCommand
     where
-        T: Fn(f32) -> (Vec4, f32),
+        T: Fn(f32) -> (Color, f32),
     {
         let vertices = self
             .points
@@ -89,7 +89,7 @@ impl Polyline {
     /// Consumes this polyline and generates a fill render command.
     pub fn to_fill<T>(self, map: T) -> RenderCommand
     where
-        T: Fn(f32) -> Vec4,
+        T: Fn(f32) -> Color,
     {
         let vertices = self
             .points

@@ -78,6 +78,7 @@ impl Renderer {
 
         // Build our render pass from each of the renderers.
         {
+            let [r, g, b, a] = background.to_array();
             let render_pass_desc = RenderPassDescriptor {
                 label: Some("nelo pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
@@ -86,10 +87,10 @@ impl Renderer {
                     depth_slice: None,
                     ops: Operations {
                         load: LoadOp::Clear(Color {
-                            r: background.x as f64,
-                            g: background.y as f64,
-                            b: background.z as f64,
-                            a: background.w as f64,
+                            r: r as f64,
+                            g: g as f64,
+                            b: b as f64,
+                            a: a as f64,
                         }),
                         store: StoreOp::Store,
                     },

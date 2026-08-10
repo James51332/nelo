@@ -12,7 +12,10 @@ pub use component::{
 pub use entity::{EntityId, EntityRef};
 pub(crate) use registry::{Query, Registry};
 
-use crate::timeline::{Path, Timeline};
+use crate::{
+    render::Color,
+    timeline::{Path, Timeline},
+};
 use ab_glyph::{FontArc, FontRef};
 use glam::prelude::*;
 use std::any::Any;
@@ -53,7 +56,7 @@ impl Scene {
         EntityRef::new(self, id).attach(Transform::default())
     }
 
-    pub fn sample_camera(&self, size: (u32, u32), t: f32) -> (Vec4, Affine2) {
+    pub fn sample_camera(&self, size: (u32, u32), t: f32) -> (Color, Affine2) {
         self.camera.sample(size, t)
     }
 
@@ -117,7 +120,7 @@ impl Scene {
         let mut scene = Scene::new();
 
         // Set the background color.
-        scene.camera().background(Vec4::new(0.4, 0.3, 0.5, 1.0));
+        scene.camera().background(Color::srgb(0.4, 0.3, 0.5));
 
         // Timeline to sample to repeat animations.
         let repeat = Timeline::triangle(6.0).ease();
