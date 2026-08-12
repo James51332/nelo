@@ -2,6 +2,7 @@
 
 pub mod axes;
 pub mod group;
+pub mod latex;
 pub mod spline;
 pub mod text;
 pub mod transform;

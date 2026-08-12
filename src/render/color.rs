@@ -1,6 +1,6 @@
 //! Colors are stored as sRgb values, but interpolation is in oklch.
 
-use crate::timeline::{Lerp, Timeline};
+use crate::timeline::{Lerp, Timeline, TimelineAlong};
 use palette::{IntoColor, Mix, Oklcha, Srgba};
 use std::ops::{Deref, DerefMut};
 
@@ -80,6 +80,12 @@ impl<T: IntoColor<Srgba>> From<T> for Color {
 impl Into<Timeline<Color>> for Color {
     fn into(self) -> Timeline<Color> {
         Timeline::constant(self)
+    }
+}
+
+impl Into<TimelineAlong<Color>> for Color {
+    fn into(self) -> TimelineAlong<Color> {
+        TimelineAlong::new(Timeline::constant(Timeline::constant(self).along()))
     }
 }
 
