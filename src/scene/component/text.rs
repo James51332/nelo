@@ -1,6 +1,6 @@
 //! Text is a group of glyphs.
 
-use crate::scene::{Fill, GroupRef, Scene, Transformable};
+use crate::scene::{Fill, Font, GroupRef, Scene, Transformable};
 use glam::prelude::*;
 use glyph_brush_layout::{
     BuiltInLineBreaker, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText,
@@ -13,6 +13,7 @@ const PADDING: f32 = 0.12;
 
 pub struct Glyph {
     pub character: char,
+    pub font: Font,
 }
 
 impl Scene {
@@ -29,7 +30,7 @@ impl Scene {
             v_align: VerticalAlign::Bottom, // Note vertical align isn't currently supported.
         };
         let geometry = SectionGeometry::default();
-        let arrangement = layout.calculate_glyphs(&[self.font()], &geometry, &[section]);
+        let arrangement = layout.calculate_glyphs(&[self.default_font()], &geometry, &[section]);
 
         // Create the text glyphs.
         let mut group = self.group();
@@ -43,7 +44,10 @@ impl Scene {
             );
             group = group.create_once(move |s| {
                 s.create()
-                    .attach(Glyph { character })
+                    .attach(Glyph {
+                        character,
+                        font: Font::default(),
+                    })
                     .attach(Fill::solid())
                     .translate(offset)
             });

@@ -16,9 +16,9 @@ use crate::{
     render::Color,
     timeline::{Path, Timeline},
 };
-use ab_glyph::{FontArc, FontRef};
+use ab_glyph::FontArc;
 use glam::prelude::*;
-use std::any::Any;
+use std::{any::Any, collections::HashMap};
 
 /// A Scene is the way that data is stored. All render data is attached to
 /// entities, and renderers operate on entities which meet their criteria.
@@ -32,7 +32,7 @@ pub struct Scene {
     active: Vec<EntityId>,
     next_id: usize,
     camera: Camera,
-    font: FontArc,
+    fonts: HashMap<Font, FontArc>,
 }
 
 impl Scene {
@@ -42,9 +42,21 @@ impl Scene {
             active: Vec::new(),
             next_id: 0,
             camera: Camera::new(),
-            font: FontArc::new(
-                FontRef::try_from_slice(include_bytes!("fonts/cmu.serif-roman.ttf")).unwrap(),
-            ),
+            fonts: HashMap::from([
+                (
+                    Font::CmuSerifRoman,
+                    FontArc::try_from_slice(include_bytes!("fonts/cmu.serif-roman.ttf")).unwrap(),
+                ),
+                (
+                    Font::MathItalic,
+                    FontArc::try_from_slice(include_bytes!("fonts/KaTeX_Math-Italic.ttf")).unwrap(),
+                ),
+                (
+                    Font::MainRegular,
+                    FontArc::try_from_slice(include_bytes!("fonts/KaTeX_Main-Regular.ttf"))
+                        .unwrap(),
+                ),
+            ]),
         }
     }
 
@@ -64,8 +76,15 @@ impl Scene {
         &mut self.camera
     }
 
-    pub fn font(&self) -> &FontArc {
-        &self.font
+    pub fn font(&self, font: Font) -> &FontArc {
+        &self.fonts.get(&font).expect("Font not found in font map")
+    }
+
+    pub fn default_font(&self) -> &FontArc {
+        &self
+            .fonts
+            .get(&Font::default())
+            .expect("Font not found in font map")
     }
 
     /// Returns all attached data of a certain type sorted by EntityId.
@@ -153,5 +172,26 @@ impl Scene {
         );
 
         scene
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+pub enum Font {
+    #[default]
+    CmuSerifRoman,
+    MathItalic,
+    MainRegular,
+}
+
+impl TryFrom<String> for Font {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "CmuSerifRoman" => Ok(Self::CmuSerifRoman),
+            "Math-Italic" => Ok(Self::MathItalic),
+            "Main-Regular" => Ok(Self::MainRegular),
+            _ => Err(format!("Unknown font: {value}")),
+        }
     }
 }

@@ -6,11 +6,6 @@ use ab_glyph::{Font, OutlineCurve, Point};
 use glam::prelude::*;
 
 pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
-    // Font outlines are in design units; normalize to em space (~0..1) so a
-    // glyph is a sane size relative to the rest of the scene.
-    let font = scene.font();
-    let scale = font.units_per_em().unwrap_or(1000.0);
-
     // Let's get a view of all glyphs to rasterize.
     let items = scene.view_triple::<Transform, Glyph, Fill>();
     items.into_iter().for_each(|(id, transform, glyph, fill)| {
@@ -18,6 +13,10 @@ pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
         let visibility = scene.component::<Visibility>(id);
         let vis_amount = visibility.map_or(1.0, |v| v.amount.sample(time));
         let z_index = visibility.map_or(0.0, |v| v.amount.sample(time));
+
+        // Font scale is used to normalize the glyph before rendering.
+        let font = scene.font(glyph.font);
+        let scale = font.units_per_em().unwrap_or(1000.0);
 
         // Get the basic info about our glyph.
         let glyph_id = font.glyph_id(glyph.character);
