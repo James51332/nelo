@@ -13,6 +13,7 @@ pub use entity::{EntityId, EntityRef};
 pub(crate) use registry::{Query, Registry};
 
 use crate::{
+    fonts::Font,
     render::Color,
     timeline::{Path, Timeline},
 };
@@ -42,21 +43,7 @@ impl Scene {
             active: Vec::new(),
             next_id: 0,
             camera: Camera::new(),
-            fonts: HashMap::from([
-                (
-                    Font::CmuSerifRoman,
-                    FontArc::try_from_slice(include_bytes!("fonts/cmu.serif-roman.ttf")).unwrap(),
-                ),
-                (
-                    Font::MathItalic,
-                    FontArc::try_from_slice(include_bytes!("fonts/KaTeX_Math-Italic.ttf")).unwrap(),
-                ),
-                (
-                    Font::MainRegular,
-                    FontArc::try_from_slice(include_bytes!("fonts/KaTeX_Main-Regular.ttf"))
-                        .unwrap(),
-                ),
-            ]),
+            fonts: Font::map(),
         }
     }
 
@@ -172,26 +159,5 @@ impl Scene {
         );
 
         scene
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
-pub enum Font {
-    #[default]
-    CmuSerifRoman,
-    MathItalic,
-    MainRegular,
-}
-
-impl TryFrom<String> for Font {
-    type Error = String;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.as_str() {
-            "CmuSerifRoman" => Ok(Self::CmuSerifRoman),
-            "Math-Italic" => Ok(Self::MathItalic),
-            "Main-Regular" => Ok(Self::MainRegular),
-            _ => Err(format!("Unknown font: {value}")),
-        }
     }
 }
