@@ -41,7 +41,17 @@ pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
             batch.tolerance(),
         );
 
-        handle_polyline(batch, id, polyline, vis_amount, z_index, fill, stroke, time);
+        handle_polyline(
+            batch,
+            id,
+            polyline,
+            spline.close,
+            vis_amount,
+            z_index,
+            fill,
+            stroke,
+            time,
+        );
     });
 }
 
@@ -111,6 +121,7 @@ pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
                 batch,
                 id,
                 polyline,
+                spline.close,
                 vis_amount,
                 z_index,
                 None,
@@ -125,6 +136,7 @@ fn handle_polyline(
     batch: &mut Batch,
     id: EntityId,
     polyline: Polyline,
+    close: bool,
     visibility: f32,
     z_index: f32,
     fill: Option<&Fill>,
@@ -141,7 +153,7 @@ fn handle_polyline(
             let color = stroke.color.sample(time);
             let weight = stroke.weight.sample(time);
             batch.add_command(
-                polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), false),
+                polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), close),
                 id,
                 z_index,
             );
@@ -159,7 +171,7 @@ fn handle_polyline(
             let color = stroke.color.sample(time);
             let weight = stroke.weight.sample(time);
             batch.add_command(
-                polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), false),
+                polyline.to_stroke(move |a| (color.sample(a), weight.sample(a)), close),
                 id,
                 z_index,
             );
