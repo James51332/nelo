@@ -9,18 +9,29 @@ impl<T: Clone> Timeline<T> {
     /// Resamples this timeline with the inner parameter. Length is set to
     /// that of inner timeline.
     pub fn compose(self, inner: impl Into<Timeline<f32>>) -> Self {
-        Self::dynamic(Compose {
-            outer: self,
-            inner: inner.into(),
-        })
+        let inner = inner.into();
+        if self.is_constant() {
+            self
+        } else if inner.is_constant() {
+            Self::constant(self.sample(inner.sample(0.0)))
+        } else {
+            Self::dynamic(Compose {
+                outer: self,
+                inner: inner,
+            })
+        }
     }
 
     /// Delays this timeline by `delay` seconds and creates a new timeline.
     pub fn shift(self, delay: f32) -> Self {
-        Self::dynamic(Shift {
-            timeline: self,
-            delay,
-        })
+        if self.is_constant() {
+            self
+        } else {
+            Self::dynamic(Shift {
+                timeline: self,
+                delay,
+            })
+        }
     }
 
     /// Adds this timeline to the timeline. The length is the maximum of the two.
@@ -32,10 +43,15 @@ impl<T: Clone> Timeline<T> {
         T: Add<U>,
         <T as Add<U>>::Output: Clone,
     {
-        Timeline::dynamic(Sum {
-            first: self,
-            second: rhs.into(),
-        })
+        let rhs = rhs.into();
+        if self.is_constant() && rhs.is_constant() {
+            Timeline::constant(self.sample(0.0) + rhs.sample(0.0))
+        } else {
+            Timeline::dynamic(Sum {
+                first: self,
+                second: rhs,
+            })
+        }
     }
 
     /// Multiply this timeline (LHS) with other timeline (RHS). The length is the maximum
@@ -48,19 +64,28 @@ impl<T: Clone> Timeline<T> {
         T: Mul<U>,
         <T as Mul<U>>::Output: Clone,
     {
-        Timeline::dynamic(Product {
-            first: self,
-            second: rhs.into(),
-        })
+        let rhs = rhs.into();
+        if self.is_constant() && rhs.is_constant() {
+            Timeline::constant(self.sample(0.0) * rhs.sample(0.0))
+        } else {
+            Timeline::dynamic(Product {
+                first: self,
+                second: rhs,
+            })
+        }
     }
 
     /// Consume this timeline and return a new timeline with a mapped output value. The length
     /// of the timeline is unchanged.
     pub fn map<U: Clone + 'static>(self, map: impl Fn(T) -> U + Clone + 'static) -> Timeline<U> {
-        Timeline::dynamic(Map {
-            inner: self,
-            map: Box::new(map),
-        })
+        if self.is_constant() {
+            Timeline::constant(map(self.sample(0.0)))
+        } else {
+            Timeline::dynamic(Map {
+                inner: self,
+                map: Box::new(map),
+            })
+        }
     }
 }
 

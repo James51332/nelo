@@ -71,6 +71,11 @@ impl<T: Clone> Timeline<T> {
         })
     }
 
+    /// Returns true iff this timeline is constant wrt time.
+    pub fn is_constant(&self) -> bool {
+        matches!(self, Self::Constant(..))
+    }
+
     /// Repeats over this timelines length, or does nothing if this timeline
     /// has no length.
     pub fn repeat(self) -> Self {

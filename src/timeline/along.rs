@@ -26,6 +26,10 @@ impl<T: Clone> Along<T> {
         Along(self.0.with_length(length))
     }
 
+    pub fn is_constant(&self) -> bool {
+        self.0.is_constant()
+    }
+
     pub fn repeat(self) -> Self {
         Along(self.0.repeat())
     }
