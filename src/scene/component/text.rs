@@ -11,8 +11,6 @@ use glyph_brush_layout::{
     VerticalAlign,
 };
 
-const PADDING: f32 = 0.12;
-
 impl Scene {
     /// Create a group of characters from a string slice.
     pub fn text(&mut self, text: &str) -> GroupRef<'_> {
@@ -29,18 +27,26 @@ impl Scene {
         let geometry = SectionGeometry::default();
         let arrangement = layout.calculate_glyphs(&[self.default_font()], &geometry, &[section]);
 
+        // Get the scaling values.
+        let font = crate::scene::Font::default();
+        let font_ref = self.font(font);
+        let k = font_ref.height_unscaled() / font_ref.units_per_em().unwrap_or(1000.0);
+
         // Create the text glyphs.
         let mut group = self.group();
-        let num_chars = arrangement.len();
-        for (i, sg) in arrangement.iter().enumerate() {
+        for sg in arrangement.iter() {
             let character = text[sg.byte_index..].chars().next().unwrap();
-            let padding_offset = (i as f32 - (num_chars - 1) as f32 / 2.0) * PADDING;
+            if character == ' ' {
+                continue;
+            }
+
             let offset = Vec2::new(
-                sg.glyph.position.x / sg.glyph.scale.x + padding_offset,
-                sg.glyph.position.y / sg.glyph.scale.y,
+                sg.glyph.position.x / sg.glyph.scale.x * k,
+                -sg.glyph.position.y / sg.glyph.scale.y * k,
             );
+
             group = group.create_once(move |s| {
-                let letter = letter(s, character, crate::scene::Font::default());
+                let letter = letter(s, character, font);
                 s.create()
                     .attach(letter)
                     .attach(Fill::solid())
