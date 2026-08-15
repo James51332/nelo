@@ -100,19 +100,24 @@ fn main() {
 fn build_scene() -> Scene {
     let mut scene = Scene::new();
 
+    // scene.text("Hello, nelo!");
+    // scene
+    //     .latex(r"\text{Hello, nelo!}")
+    //     .translate(Vec2::Y * -2.0);
+
     // Render some Latex which goes on screen.
-    scene
-        .latex(r"\frac{\sin^2(x)+\cos^2(x)}{2}=0.5")
-        .for_each(|i, e| {
-            e.visibility(
-                Timeline::ramp()
-                    .shift(i as f32 * 0.05)
-                    .clamp(0.0, 1.0)
-                    .ease()
-                    .with_length(5.0)
-                    .repeat(),
-            )
-        });
+    scene.text("hello! welcome to\nnelo!\nsup");
+    // .latex(r"\vec{r}(\theta) = \frac{\sin^2(\theta)\hat{\imath}+\cos^2(\theta)\hat{\jmath}}{2}")
+    // .for_each(|i, e| {
+    //     e.visibility(
+    //         Timeline::ramp()
+    //             .shift(i as f32 * 0.05)
+    //             .clamp(0.0, 1.0)
+    //             .ease()
+    //             .with_length(5.0)
+    //             .repeat(),
+    //     )
+    // });
 
     // Wavy path.
     scene.spline_with_range(

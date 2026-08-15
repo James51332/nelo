@@ -81,7 +81,7 @@ impl RenderCommand {
 
 // ----- Spline Render -----
 
-pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
+pub(crate) fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
     // Get a view of all curves with a stroke.
     let items = scene.view_pair::<Transform, Spline>();
     items.into_iter().for_each(|(id, transform, spline)| {
@@ -109,7 +109,7 @@ pub fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
 
 /// Mostly the same as the spline renderer. However, we never fill arrows, and we add
 /// a triangle at the end.
-pub fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
+pub(crate) fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
     let items = scene.view_triple::<Transform, Arrow, Stroke>();
     items
         .into_iter()

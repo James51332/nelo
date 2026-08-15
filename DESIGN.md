@@ -31,7 +31,7 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [x] Grouping
         * [x] Creation
         * [x] Arrangement
-* [ ] Rendering
+* [x] Rendering
     * [x] Circle Batch
     * [x] Mesh Batch
     * [x] Batch
@@ -44,7 +44,7 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [x] Visiblity
     * [x] Color
     * [x] Bezier Builder
-    * [ ] Math Renderer
+    * [x] Math Renderer
 * [x] Exporting
     * [x] Video Files (via `ffmpeg`)
     * [x] Images

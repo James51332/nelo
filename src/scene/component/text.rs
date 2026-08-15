@@ -19,10 +19,10 @@ impl Scene {
             text,
             ..SectionText::default()
         };
-        let layout = Layout::SingleLine {
+        let layout = Layout::Wrap {
             line_breaker: BuiltInLineBreaker::default(),
             h_align: HorizontalAlign::Center,
-            v_align: VerticalAlign::Bottom, // Note vertical align isn't currently supported.
+            v_align: VerticalAlign::Center,
         };
         let geometry = SectionGeometry::default();
         let arrangement = layout.calculate_glyphs(&[self.default_font()], &geometry, &[section]);
@@ -57,7 +57,7 @@ impl Scene {
     }
 }
 
-pub fn letter(scene: &Scene, character: char, font: crate::scene::Font) -> Glyph {
+pub(crate) fn letter(scene: &Scene, character: char, font: crate::scene::Font) -> Glyph {
     // Basic glyph information
     let font = scene.font(font);
     let glyph_id = font.glyph_id(character);

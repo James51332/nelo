@@ -1,4 +1,4 @@
-//! A path is a Along<Vec2> in the interval [0, 1].
+//! A path is a Vec2 Along over the interval [0, 1].
 
 use std::f32::consts::TAU;
 
@@ -13,7 +13,7 @@ use glam::prelude::*;
 pub type Path = Along<Vec2>;
 
 impl Timeline<Vec2> {
-    /// Alias for .along() on Timeline<Vec2>
+    /// Alias for .along() on `Timeline<Vec2>`
     pub fn path(self) -> Path {
         self.along()
     }

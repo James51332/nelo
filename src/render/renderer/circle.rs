@@ -6,7 +6,7 @@ use crate::scene::{Circle, Fill, Scene, Stroke, Transform, Visibility};
 use crate::timeline::Path;
 
 /// Renders all circles from the scene into the batch.
-pub fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
+pub(crate) fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
     // Get a view of all elements with the required components.
     let items = scene.view_pair::<Transform, Circle>();
     items.into_iter().for_each(|(id, transform, _)| {

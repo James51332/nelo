@@ -149,7 +149,7 @@ impl Scene {
             .row(1.25);
 
         // Render some text.
-        scene.text("Hello, Nelo!").translate(Vec2::new(0.0, 4.0));
+        scene.text("Hello, Nelo!").translate(Vec2::Y * 4.0);
 
         // Wavy path.
         scene.spline_with_range(

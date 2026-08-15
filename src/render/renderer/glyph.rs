@@ -21,7 +21,7 @@ const STROKE_WEIGHT: f32 = 0.02;
 /// * Stroke only:
 ///     1. Stroke write in (0 -> 1.0)
 ///
-pub fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
+pub(crate) fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
     let items = scene.view_pair::<Transform, Glyph>();
     items.into_iter().for_each(|(id, transform, glyph)| {
         // Visibility short circuit
