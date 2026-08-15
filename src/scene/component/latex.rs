@@ -1,13 +1,13 @@
 //! Render latex into splines.
 
 use crate::{
-    scene::{Fill, Font, GroupRef, Scene, Transformable, component::text::letter},
-    timeline::Path,
+    scene::{Fill, Font, Glyph, GroupRef, Scene, Spline, Transformable, component::text::letter},
+    timeline::{Path, PathBuilder},
 };
 use glam::{Mat2, Vec2};
 use ratex_layout::{LayoutOptions, layout, to_display_list};
 use ratex_parser::parse;
-use ratex_types::DisplayItem;
+use ratex_types::{DisplayItem, PathCommand};
 
 impl Scene {
     pub fn latex(&mut self, tex: &str) -> GroupRef<'_> {
@@ -99,13 +99,69 @@ impl Scene {
                     });
                 }
                 DisplayItem::Path {
-                    x: _x,
-                    y: _y,
-                    commands: _commands,
+                    x,
+                    y,
+                    commands,
                     fill: _fill,
                     color: _color,
                 } => {
-                    todo!()
+                    let map = |px: f64, py: f64| {
+                        Vec2::new(px as f32 - half_width, half_height - py as f32)
+                    };
+                    let mut builder = None;
+                    let flush = |builder: Option<PathBuilder>, contours: &mut Vec<Spline>| {
+                        if let Some(builder) = builder {
+                            contours.push(Spline {
+                                spline_path: builder.build().into(),
+                                start_alpha: 0.0.into(),
+                                end_alpha: 1.0.into(),
+                                close: false.into(),
+                            });
+                        }
+                    };
+
+                    let mut contours = Vec::new();
+                    for command in commands.into_iter() {
+                        match command {
+                            PathCommand::MoveTo { x, y } => {
+                                flush(builder.take(), &mut contours);
+                                builder = Some(Path::bezier(map(x, y)));
+                            }
+                            PathCommand::LineTo { x, y } => {
+                                if let Some(builder) = builder.as_mut() {
+                                    builder.line_to(map(x, y));
+                                }
+                            }
+                            PathCommand::QuadTo { x1, y1, x, y } => {
+                                if let Some(builder) = builder.as_mut() {
+                                    builder.quad_to(map(x1, y1), map(x, y));
+                                }
+                            }
+                            PathCommand::CubicTo {
+                                x1,
+                                y1,
+                                x2,
+                                y2,
+                                x,
+                                y,
+                            } => {
+                                if let Some(builder) = builder.as_mut() {
+                                    builder.cubic_to(map(x1, y1), map(x2, y2), map(x, y));
+                                }
+                            }
+                            PathCommand::Close => flush(builder.take(), &mut contours),
+                        }
+                    }
+
+                    // Flush the last open contour.
+                    flush(builder.take(), &mut contours);
+
+                    group = group.create_once(|s| {
+                        s.create()
+                            .attach(Glyph { contours })
+                            .attach(Fill::solid())
+                            .translate(Vec2::new(x as f32, y as f32))
+                    });
                 }
             }
         }
