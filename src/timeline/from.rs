@@ -21,7 +21,7 @@ macro_rules! timeline_from {
     };
 }
 
-timeline_from!(f32, i32, u32, usize, Vec2, Vec3, Vec4, Mat2, Affine2);
+timeline_from!(bool, f32, i32, u32, usize, Vec2, Vec3, Vec4, Mat2, Affine2);
 
 impl<T: Clone> From<Along<T>> for Timeline<T> {
     fn from(t: Along<T>) -> Self {

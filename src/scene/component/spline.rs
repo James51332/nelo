@@ -10,7 +10,7 @@ pub struct Spline {
     pub spline_path: Timeline<Along<Vec2>>,
     pub start_alpha: Timeline<f32>,
     pub end_alpha: Timeline<f32>,
-    pub close: bool,
+    pub close: Timeline<bool>,
 }
 
 impl Scene {
@@ -32,7 +32,7 @@ impl Scene {
                 spline_path: spline_path.into().inner(),
                 start_alpha: start.into(),
                 end_alpha: end.into(),
-                close: false,
+                close: false.into(),
             })
             .attach(Stroke::default())
     }
@@ -65,7 +65,7 @@ impl Scene {
                     spline_path: spline_path.into().inner(),
                     start_alpha: start.into(),
                     end_alpha: end.into(),
-                    close: false,
+                    close: false.into(),
                 },
             })
             .attach(Stroke::default())

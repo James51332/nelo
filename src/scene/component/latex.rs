@@ -1,7 +1,7 @@
 //! Render latex into splines.
 
 use crate::{
-    scene::{Fill, Font, Glyph, GroupRef, Scene, Transformable},
+    scene::{Fill, Font, GroupRef, Scene, Transformable, component::text::letter},
     timeline::Path,
 };
 use glam::{Mat2, Vec2};
@@ -49,9 +49,10 @@ impl Scene {
                     if let Some(character) = char::from_u32(char_code) {
                         let font = Font::try_from(font).unwrap_or_default();
                         group = group.create_once(|s| {
+                            let letter = letter(s, character, font);
                             s.create()
                                 .attach(Fill::solid())
-                                .attach(Glyph { character, font })
+                                .attach(letter)
                                 .scale(scale as f32)
                                 .translate(Vec2::new(x as f32, y))
                         });

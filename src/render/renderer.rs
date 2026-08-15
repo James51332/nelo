@@ -33,7 +33,7 @@ impl Renderer {
             Box::new(circle::circles),
             Box::new(spline::splines),
             Box::new(spline::arrows),
-            Box::new(glyph::filled_glyphs),
+            Box::new(glyph::glyphs),
         ];
 
         Self {

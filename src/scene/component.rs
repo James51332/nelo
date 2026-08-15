@@ -9,7 +9,6 @@ pub mod transform;
 
 pub use group::GroupRef;
 pub use spline::{Arrow, Spline};
-pub use text::Glyph;
 pub use transform::{Transform, Transformable};
 
 use crate::render::Color;
@@ -116,4 +115,11 @@ impl Default for Visibility {
             z_index: 0.0.into(),
         }
     }
+}
+
+// ----- Glyph -----
+
+/// A collection of contours
+pub struct Glyph {
+    pub contours: Vec<Spline>,
 }

@@ -137,17 +137,17 @@ impl PathBuilder {
         }
     }
 
-    pub fn line_to(mut self, end: Vec2) -> Self {
+    pub fn line_to(&mut self, end: Vec2) -> &mut Self {
         self.segments.push(Bezier::LineTo(end));
         self
     }
 
-    pub fn quad_to(mut self, c0: Vec2, end: Vec2) -> Self {
+    pub fn quad_to(&mut self, c0: Vec2, end: Vec2) -> &mut Self {
         self.segments.push(Bezier::QuadTo(c0, end));
         self
     }
 
-    pub fn cubic_to(mut self, c0: Vec2, c1: Vec2, end: Vec2) -> Self {
+    pub fn cubic_to(&mut self, c0: Vec2, c1: Vec2, end: Vec2) -> &mut Self {
         self.segments.push(Bezier::CubicTo(c0, c1, end));
         self
     }

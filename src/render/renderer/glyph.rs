@@ -1,60 +1,129 @@
 //! Tool for rendering glyphs.
 
-use crate::render::{Batch, Color, FillBuilder, MeshVertex, Segment};
-use crate::scene::{Fill, Glyph, Scene, Transform, Visibility};
-use ab_glyph::{Font, OutlineCurve, Point};
-use glam::prelude::*;
+use crate::render::{Batch, FillBuilder, MeshVertex, Polyline, RenderCommand};
+use crate::scene::{Fill, Glyph, Scene, Stroke, Transform, Visibility};
+use crate::timeline::{Easing, Timeline};
+use glam::Vec2;
 
-pub fn filled_glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
-    // Let's get a view of all glyphs to rasterize.
-    let items = scene.view_triple::<Transform, Glyph, Fill>();
-    items.into_iter().for_each(|(id, transform, glyph, fill)| {
-        // Visibility
-        let visibility = scene.component::<Visibility>(id);
+const STROKE_TIME: f32 = 0.8;
+const STROKE_WEIGHT: f32 = 0.02;
+
+/// Renders a set of contours.
+///
+/// Visibility behavior:
+/// * Fill w/ Stroke:
+///     1. Stroke first (0 -> 0.8)
+///     2. Fill (0.8 -> 1.0)
+/// * Fill w/o Stroke:
+///     1. Stroke first (0 -> 0.8)
+///     2a. Fill (0.8 -> 1.0)
+///     2b. Stroke thins (0.8 -> 1.0)
+/// * Stroke only:
+///     1. Stroke write in (0 -> 1.0)
+///
+pub fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
+    let items = scene.view_pair::<Transform, Glyph>();
+    items.into_iter().for_each(|(id, transform, glyph)| {
+        // Visibility short circuit
+        let visibility: Option<&Visibility> = scene.component(id);
         let vis_amount = visibility.map_or(1.0, |v| v.amount.sample(time));
-        let z_index = visibility.map_or(0.0, |v| v.amount.sample(time));
-
-        // Font scale is used to normalize the glyph before rendering.
-        let font = scene.font(glyph.font);
-        let scale = font.units_per_em().unwrap_or(1000.0);
-
-        // Get the basic info about our glyph.
-        let glyph_id = font.glyph_id(glyph.character);
-        let mut transform = transform.sample(time);
-        transform.matrix2 /= scale;
-        let mut color = fill.color.sample(time);
-        color.alpha = vis_amount * vis_amount * vis_amount;
-
-        // Get the outline for our character. Skip spaces or other unsupported.
-        let Some(outline) = font.outline(glyph_id) else {
+        if vis_amount <= 0.005 {
             return;
-        };
-
-        // Run our tesselation. We are scaling to world space first, so scale is one.
-        let mut builder = FillBuilder::new(batch.tolerance());
-        outline
-            .curves
-            .into_iter()
-            .for_each(|x| builder.add_segment(convert_outline(x, transform, color)));
-        let result = builder.finish();
-
-        // Print if we fail.
-        match result {
-            Ok(command) => batch.add_command(command, id, z_index),
-            Err(e) => log::info!("Failed to triangulate glyph: {e}"),
-        };
-    });
-}
-
-/// Converts an OutlineCurve to a FillBuilder Segment.
-fn convert_outline(outline: OutlineCurve, transform: Affine2, color: Color) -> Segment {
-    let point = |p: Point| transform.matrix2 * Vec2::new(p.x, p.y) + transform.translation;
-    let vertex = |p: Point| MeshVertex::new(point(p), Vec2::ZERO, color);
-    match outline {
-        OutlineCurve::Line(p1, p2) => Segment::Line(vertex(p1), vertex(p2)),
-        OutlineCurve::Quad(p1, p2, p3) => Segment::Quad(vertex(p1), point(p2), vertex(p3)),
-        OutlineCurve::Cubic(p1, p2, p3, p4) => {
-            Segment::Cubic(vertex(p1), point(p2), point(p3), vertex(p4))
         }
-    }
+
+        // No fill and no stroke short circuit.
+        let fill = scene.component::<Fill>(id);
+        let mut stroke = scene.component(id);
+        if fill.is_none() && stroke.is_none() {
+            return;
+        }
+
+        // Artificial stroke for filled glyphs with partial visibility.
+        let new_stroke;
+        if stroke.is_none()
+            && vis_amount < 0.999
+            && let Some(fill) = fill.as_ref()
+        {
+            let weight = Timeline::keyframes(STROKE_WEIGHT * 0.5)
+                .ease_at(STROKE_TIME, STROKE_WEIGHT, Easing::CubicIn)
+                .at(1.0, 0.0)
+                .build()
+                .sample(vis_amount);
+
+            new_stroke = Some(Stroke {
+                color: Timeline::constant(fill.color.clone().along()),
+                weight: Timeline::constant(weight.into()),
+            });
+
+            stroke = new_stroke.as_ref();
+        }
+
+        let stroke_vis = if fill.is_none() {
+            vis_amount
+        } else {
+            (vis_amount / STROKE_TIME).clamp(0.0, 1.0)
+        };
+
+        // Convert the splines into polylines.
+        let mut polylines: Vec<(Polyline, bool)> = Vec::new();
+        let affine = transform.sample(time);
+        for spline in glyph.contours.iter() {
+            let start = spline.start_alpha.sample(time);
+            let end = spline.end_alpha.sample(time);
+            let end = start + (end - start) * stroke_vis;
+            let path = spline
+                .spline_path
+                .sample(time)
+                .map(move |v| affine.matrix2 * v + affine.translation);
+            let close = spline.close.sample(time);
+            let polyline = Polyline::flatten(&path, start, end, batch.tolerance());
+            polylines.push((polyline, close));
+        }
+
+        // Get the z-index.
+        let z_index = visibility.map_or(0.0, |v| v.z_index.sample(time));
+
+        // Handle filled glyphs.
+        if let Some(fill) = fill {
+            // Implement our fill scaling for partial visibility.
+            let mut color = fill.color.sample(time);
+            let alpha = Timeline::keyframes(0.0)
+                .at(STROKE_TIME, 0.0)
+                .at(1.0, 1.0)
+                .build()
+                .sample(vis_amount);
+            color.alpha *= alpha;
+            let map = |pos| MeshVertex::new(pos, Vec2::ZERO, color);
+
+            // Build the mesh geometry.
+            let mut builder = FillBuilder::new(0.001);
+            for (polyline, close) in polylines.iter() {
+                let mut points = polyline.points().iter();
+                if let Some(pair) = points.next() {
+                    builder.begin_subpath(map(pair.1));
+                    points.for_each(|pair| builder.line_to(map(pair.1)));
+                    builder.end_subpath(*close);
+                }
+            }
+
+            // Submit the command.
+            match builder.finish() {
+                Ok(command) => batch.add_command(command, id, z_index),
+                Err(e) => log::error!("Failed to tesselate glyph: {e}"),
+            };
+        }
+
+        // Then submit each splines geometry if we have a stroke.
+        if stroke.is_some() {
+            for (polyline, close) in polylines.into_iter() {
+                // Don't fill this since we've handle manually.
+                let commands = RenderCommand::polyline(polyline, close, time, None, stroke);
+
+                // Submit them.
+                for command in commands.into_iter() {
+                    batch.add_command(command, id, z_index);
+                }
+            }
+        }
+    });
 }

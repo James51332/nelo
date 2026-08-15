@@ -21,7 +21,7 @@ pub mod signal;
 pub use along::{Along, TimelineAlong, TimelineSpline};
 pub use easing::Easing;
 pub use keyframe::Lerp;
-pub use path::Path;
+pub use path::{Path, PathBuilder};
 pub use signal::{Signal, SignalClone};
 
 // ----- Timeline -----
