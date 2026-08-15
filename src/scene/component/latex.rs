@@ -4,7 +4,7 @@ use crate::{
     scene::{Fill, Font, Glyph, GroupRef, Scene, Transformable},
     timeline::Path,
 };
-use glam::Vec2;
+use glam::{Mat2, Vec2};
 use ratex_layout::{LayoutOptions, layout, to_display_list};
 use ratex_parser::parse;
 use ratex_types::DisplayItem;
@@ -73,7 +73,39 @@ impl Scene {
                     let line = Path::line(start, end);
                     group = group.create_once(|s| s.spline(line).stroke_weight(thickness));
                 }
-                _ => (),
+                DisplayItem::Rect {
+                    x,
+                    y,
+                    width,
+                    height,
+                    color: _color,
+                } => {
+                    // Translate our x and y position into world space.
+                    let x = x as f32 - half_width;
+                    let y = half_height - y as f32;
+
+                    // Compute the center coordinate (given bottom left)
+                    let half_width = width as f32 / 2.0;
+                    let half_height = height as f32 / 2.0;
+                    let x = x + half_width;
+                    let y = y + half_height;
+
+                    // Scale our square and apply the transformation.
+                    group = group.create_once(|s| {
+                        s.square()
+                            .matrix(Mat2::from_cols(Vec2::X * half_width, Vec2::Y * half_height))
+                            .translate(Vec2::new(x, y))
+                    });
+                }
+                DisplayItem::Path {
+                    x: _x,
+                    y: _y,
+                    commands: _commands,
+                    fill: _fill,
+                    color: _color,
+                } => {
+                    todo!()
+                }
             }
         }
 

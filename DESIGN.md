@@ -43,10 +43,8 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [x] Antialiasing
     * [x] Visiblity
     * [x] Color
-    * [ ] SVG Builder
-    * [ ] Geometry Cache
+    * [x] Bezier Builder
     * [ ] Math Renderer
-    * [ ] Textures
 * [x] Exporting
     * [x] Video Files (via `ffmpeg`)
     * [x] Images
@@ -58,6 +56,7 @@ A stateless, timeline-driven animation engine for explorable visual animations.
 ## future goals
 
 * [ ] Theming
+* [ ] Geometry Cache
 * [ ] Viewer
     * [ ] Hot Reloading
     * [ ] WASM Viewer
@@ -66,5 +65,5 @@ A stateless, timeline-driven animation engine for explorable visual animations.
     * [ ] From Timelines
     * [ ] From Viewer
 * [ ] Parallel Exporting
-* [ ] Depth
+* [ ] Textures
 * [ ] 3D Scenes
