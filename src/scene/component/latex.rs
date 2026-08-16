@@ -105,9 +105,9 @@ impl Scene {
                     fill: _fill,
                     color: _color,
                 } => {
-                    let map = |px: f64, py: f64| {
-                        Vec2::new(px as f32 - half_width, half_height - py as f32)
-                    };
+                    // Path commands are relative to the item origin, so they only
+                    // need the y-axis flipped. The origin itself is placed below.
+                    let map = |px: f64, py: f64| Vec2::new(px as f32, -py as f32);
                     let mut builder = None;
                     let flush = |builder: Option<PathBuilder>, contours: &mut Vec<Spline>| {
                         if let Some(builder) = builder {
@@ -160,7 +160,7 @@ impl Scene {
                         s.create()
                             .attach(Glyph { contours })
                             .attach(Fill::solid())
-                            .translate(Vec2::new(x as f32, y as f32))
+                            .translate(Vec2::new(x as f32 - half_width, half_height - y as f32))
                     });
                 }
             }

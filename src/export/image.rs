@@ -1,8 +1,7 @@
 //! Tool for exporting static frames using nelo.
 
 use crate::export::Export;
-use crate::render::{Gpu, Renderer, Target, TextureTarget};
-use crate::scene::Scene;
+use crate::render::{Gpu, Playback, Renderer, Target, TextureTarget};
 use png::{BitDepth, ColorType, Encoder};
 use std::fs::File;
 use std::io::BufWriter;
@@ -28,7 +27,7 @@ impl Default for ImageExport {
 }
 
 impl Export for ImageExport {
-    fn export(&self, scene: Scene) -> Result<(), String> {
+    fn export(&self, scene: impl Into<Playback>) -> Result<(), String> {
         // Setup a target and renderer.
         let gpu = Gpu::headless();
         let mut target = TextureTarget::new(&gpu, self.width, self.height);

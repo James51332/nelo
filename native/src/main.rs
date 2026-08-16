@@ -97,27 +97,13 @@ fn main() {
         .expect("Unexpected event loop failure!");
 }
 
-fn build_scene() -> Scene {
+fn build_scene() -> Story {
     let mut scene = Scene::new();
 
-    // scene.text("Hello, nelo!");
-    // scene
-    //     .latex(r"\text{Hello, nelo!}")
-    //     .translate(Vec2::Y * -2.0);
-
     // Render some Latex which goes on screen.
-    scene.text("hello! welcome to\nnelo!\nsup");
-    // .latex(r"\vec{r}(\theta) = \frac{\sin^2(\theta)\hat{\imath}+\cos^2(\theta)\hat{\jmath}}{2}")
-    // .for_each(|i, e| {
-    //     e.visibility(
-    //         Timeline::ramp()
-    //             .shift(i as f32 * 0.05)
-    //             .clamp(0.0, 1.0)
-    //             .ease()
-    //             .with_length(5.0)
-    //             .repeat(),
-    //     )
-    // });
+    let latex = scene
+        .latex(r"\vec{r}(\theta) = \frac{\sin^2(\theta)\hat{\imath}+\cos^2(\theta)\hat{\jmath}}{2}")
+        .id();
 
     // Wavy path.
     scene.spline_with_range(
@@ -126,5 +112,7 @@ fn build_scene() -> Scene {
         10.0,
     );
 
-    scene
+    let mut story = scene.story();
+    story.show(latex);
+    story
 }

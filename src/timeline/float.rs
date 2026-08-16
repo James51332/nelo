@@ -15,6 +15,11 @@ impl Timeline<f32> {
         Self::dynamic(|t: f32| t.max(0.0))
     }
 
+    /// Returns an f32 timeline which is zero for t < 0 and 1 otherwise.
+    pub fn step() -> Self {
+        Self::dynamic(|t| if t < 0.0 { 0.0 } else { 1.0 })
+    }
+
     /// Returns an f32 timeline which forwards its input at a multiplied rate.
     pub fn rate(rate: f32) -> Self {
         Self::dynamic(move |t| t * rate)

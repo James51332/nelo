@@ -13,4 +13,4 @@ pub use batch::{
 pub use camera::CameraBuffer;
 pub use color::Color;
 pub use gpu::{Frame, Gpu, Target, TextureTarget, WindowTarget};
-pub use renderer::{ComponentRenderer, Renderer};
+pub use renderer::{ComponentRenderer, Playback, Renderer};

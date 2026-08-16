@@ -6,8 +6,8 @@ pub mod video;
 pub use image::ImageExport;
 pub use video::VideoExport;
 
-use crate::scene::Scene;
+use crate::render::Playback;
 
 pub trait Export {
-    fn export(&self, scene: Scene) -> Result<(), String>;
+    fn export(&self, playback: impl Into<Playback>) -> Result<(), String>;
 }

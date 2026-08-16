@@ -1,8 +1,7 @@
 //! Tool for exporting videos using nelo.
 
 use crate::export::Export;
-use crate::render::{Gpu, Renderer, Target, TextureTarget};
-use crate::scene::Scene;
+use crate::render::{Gpu, Playback, Renderer, Target, TextureTarget};
 use std::io::Write;
 use std::process::{Command, Stdio};
 
@@ -35,7 +34,7 @@ impl Default for VideoExport {
 }
 
 impl Export for VideoExport {
-    fn export(&self, scene: Scene) -> Result<(), String> {
+    fn export(&self, scene: impl Into<Playback>) -> Result<(), String> {
         // Setup the render pipeline.
         let gpu = Gpu::headless();
         let mut target = TextureTarget::new(&gpu, self.width, self.height);

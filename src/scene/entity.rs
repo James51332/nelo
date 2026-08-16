@@ -38,6 +38,12 @@ impl<'a> EntityRef<'a> {
         self.scene.registry.get_mut(self.id)
     }
 
+    /// Returns the attached data of type `T`, attaching `T::default()` first if
+    /// this entity doesn't have one. Never removes or replaces existing data.
+    pub fn get_or_default<T: Any + Default>(&mut self) -> &mut T {
+        self.scene.registry.get_or_default(self.id)
+    }
+
     pub fn remove<T: Any>(&mut self) -> Option<T> {
         self.scene.registry.remove(self.id)
     }

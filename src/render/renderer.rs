@@ -14,6 +14,8 @@ use wgpu::{
 
 pub type ComponentRenderer = Box<dyn Fn(&mut Batch, &Scene, f32, (u32, u32))>;
 
+// ----- Renderer -----
+
 pub struct Renderer {
     scene: Scene,
     camera_buffer: CameraBuffer,
@@ -25,7 +27,8 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(gpu: &Gpu, scene: Scene) -> Self {
+    pub fn new(gpu: &Gpu, playback: impl Into<Playback>) -> Self {
+        let scene = playback.into().scene;
         let camera_buffer = CameraBuffer::new(&gpu);
         let msaa_texture = Self::create_msaa_texture(&gpu, (800, 600));
         let batch = Batch::new(&gpu, camera_buffer.layout());
@@ -130,5 +133,23 @@ impl Renderer {
             view_formats: &[],
         };
         gpu.device().create_texture(&texture_desc)
+    }
+}
+
+// ----- Playback -----
+
+pub struct Playback {
+    scene: Scene,
+}
+
+impl Playback {
+    pub fn new(scene: Scene) -> Self {
+        Self { scene }
+    }
+}
+
+impl From<Scene> for Playback {
+    fn from(scene: Scene) -> Self {
+        Self::new(scene)
     }
 }

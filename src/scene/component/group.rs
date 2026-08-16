@@ -23,6 +23,12 @@ impl<'a> GroupRef<'a> {
         g.children.contains(&id)
     }
 
+    /// Returns the children of this group and consumes the group.
+    pub fn children(self) -> Vec<EntityId> {
+        let g: &Group = self.scene.registry.get(self.id).unwrap();
+        g.children.clone()
+    }
+
     /// Returns the number of children in this group.
     pub fn len(&self) -> usize {
         let g: &Group = self.scene.registry.get(self.id).unwrap();
