@@ -1,7 +1,7 @@
 //! Text is a group of glyphs.
 
 use crate::{
-    scene::{Fill, Glyph, GroupRef, Scene, Spline, Transformable},
+    scene::{Fill, Glyph, GroupRef, Label, Scene, Spline, Transformable},
     timeline::{Path, PathBuilder},
 };
 use ab_glyph::{Font, OutlineCurve, Point};
@@ -45,10 +45,11 @@ impl Scene {
                 -sg.glyph.position.y / sg.glyph.scale.y * k,
             );
 
-            group = group.create_once(move |s| {
+            group.create_once(move |s| {
                 let letter = letter(s, character, font);
                 s.create()
                     .attach(letter)
+                    .attach(Label::Char(character))
                     .attach(Fill::solid())
                     .translate(offset)
             });

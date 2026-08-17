@@ -67,7 +67,11 @@ impl Story {
             .stroke(Color::srgb(1.0, 0.0, 0.0))
             .stroke_weight(0.04)
             .id();
-        let latex = scene.latex(r"\sum_{i=0}^n = \frac{n(n+1)}{2}").id();
+        let mut latex = scene.latex(r"\sum_{i=0}^n i = \frac{n(n+1)}{2}");
+
+        let split = latex.index('=').last().unwrap().clone();
+        let latex = latex.split_after_ids(&[split]).children();
+
         let text = scene
             .text("Sum of consecutive integers")
             .translate(Vec2::Y * 3.0)
@@ -83,21 +87,29 @@ impl Story {
                     .stroke(Color::lch(0.4, 0.3, i as f32 / 6.0 * 360.0))
             })
             .row(2.2)
-            .id();
+            .children();
 
         let mut story = scene.story();
 
         // Act 1. Show some donuts
-        story.show(donuts);
+        donuts.iter().for_each(|&id| {
+            story.show(id).wait(0.8);
+        });
 
         // Act 2. Do some plotting.
-        story.wait(2.5);
-        story.hide(donuts);
+        story.hide_all();
         story.show(axes);
         story.show(plot);
 
         // Act 3. Show an equation
-        story.wait(1.0).hide_all().wait(1.0).show(latex).show(text);
+        story.wait(1.0).hide_all().wait(1.0);
+
+        for &id in latex.iter() {
+            story.show(id);
+            story.wait(1.0);
+        }
+
+        story.show(text);
 
         story
     }

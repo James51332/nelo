@@ -5,7 +5,7 @@ use crate::scene::{Fill, Scene, Stroke, Transform, Transformable, Visibility};
 use crate::timeline::{Timeline, TimelineAlong};
 use std::any::Any;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntityId(usize);
 
 impl EntityId {

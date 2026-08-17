@@ -24,7 +24,8 @@ impl Scene {
         let y_min = -y_max;
 
         // Horizontal lines are one group and vertical are another.
-        self.group()
+        let mut group = self.group();
+        group
             .create(y_steps, |i, s| {
                 let y = y_min + i as f32;
                 let line = Path::line(Vec2::new(x_min - 1.0, y), Vec2::new(x_max + 1.0, y));
@@ -46,6 +47,8 @@ impl Scene {
                         Color::WHITE.with_alpha(0.1)
                     })
                     .stroke_weight(0.005)
-            })
+            });
+
+        group
     }
 }

@@ -7,7 +7,8 @@ mod registry;
 
 pub use camera::Camera;
 pub use component::{
-    Arrow, Circle, Fill, Glyph, GroupRef, Spline, Stroke, Transform, Transformable, Visibility,
+    Arrow, Circle, Fill, Glyph, GroupRef, Label, Spline, Stroke, Transform, Transformable,
+    Visibility,
 };
 pub use entity::{EntityId, EntityRef};
 pub(crate) use registry::{Query, Registry};

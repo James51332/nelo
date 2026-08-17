@@ -16,6 +16,22 @@ use crate::scene::{EntityRef, Scene};
 use crate::timeline::{Along, Path, Timeline};
 use std::f32::consts::PI;
 
+// ----- Label -----
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Label {
+    Char(char),
+    Line,
+    Rect,
+    Path,
+}
+
+impl From<char> for Label {
+    fn from(c: char) -> Self {
+        Self::Char(c)
+    }
+}
+
 // ----- Circle -----
 
 /// A circle has no attached data. It has a radius of 1 but can

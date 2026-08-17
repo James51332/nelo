@@ -1,7 +1,9 @@
 //! Render latex into splines.
 
 use crate::{
-    scene::{Fill, Font, Glyph, GroupRef, Scene, Spline, Transformable, component::text::letter},
+    scene::{
+        Fill, Font, Glyph, GroupRef, Label, Scene, Spline, Transformable, component::text::letter,
+    },
     timeline::{Path, PathBuilder},
 };
 use glam::{Mat2, Vec2};
@@ -48,11 +50,12 @@ impl Scene {
                     let y = half_height - y as f32;
                     if let Some(character) = char::from_u32(char_code) {
                         let font = Font::try_from(font).unwrap_or_default();
-                        group = group.create_once(|s| {
+                        group.create_once(|s| {
                             let letter = letter(s, character, font);
                             s.create()
                                 .attach(Fill::solid())
                                 .attach(letter)
+                                .attach(Label::Char(character))
                                 .scale(scale as f32)
                                 .translate(Vec2::new(x as f32, y))
                         });
@@ -72,7 +75,9 @@ impl Scene {
                     let start = Vec2::new(x, y);
                     let end = Vec2::new(x + width as f32, y);
                     let line = Path::line(start, end);
-                    group = group.create_once(|s| s.spline(line).stroke_weight(thickness));
+                    group.create_once(|s| {
+                        s.spline(line).attach(Label::Line).stroke_weight(thickness)
+                    });
                 }
                 DisplayItem::Rect {
                     x,
@@ -92,8 +97,9 @@ impl Scene {
                     let y = y + half_height;
 
                     // Scale our square and apply the transformation.
-                    group = group.create_once(|s| {
+                    group.create_once(|s| {
                         s.square()
+                            .attach(Label::Rect)
                             .matrix(Mat2::from_cols(Vec2::X * half_width, Vec2::Y * half_height))
                             .translate(Vec2::new(x, y))
                     });
@@ -156,9 +162,10 @@ impl Scene {
                     // Flush the last open contour.
                     flush(builder.take(), &mut contours);
 
-                    group = group.create_once(|s| {
+                    group.create_once(|s| {
                         s.create()
                             .attach(Glyph { contours })
+                            .attach(Label::Path)
                             .attach(Fill::solid())
                             .translate(Vec2::new(x as f32 - half_width, half_height - y as f32))
                     });

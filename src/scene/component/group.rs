@@ -1,5 +1,5 @@
 //! API for grouping entities by their transform
-use crate::scene::{EntityId, EntityRef, Scene, Transform, Transformable};
+use crate::scene::{EntityId, EntityRef, Label, Scene, Transform, Transformable};
 use crate::timeline::TimelineSpline;
 use glam::Vec2;
 
@@ -17,28 +17,44 @@ pub struct GroupRef<'a> {
 }
 
 impl<'a> GroupRef<'a> {
+    pub fn new(scene: &'a mut Scene, id: EntityId) -> Self {
+        Self { scene, id }
+    }
+
+    /// Returns the group object
+    pub fn group(&self) -> &Group {
+        self.scene
+            .registry
+            .get(self.id)
+            .expect("No group attached to this entity")
+    }
+
+    pub fn group_mut(&mut self) -> &mut Group {
+        self.scene
+            .registry
+            .get_mut(self.id)
+            .expect("No group attached to this entity")
+    }
+
     /// Returns true if this Group contains `id` as a child, and false otherwise.
     pub fn contains(&self, id: EntityId) -> bool {
-        let g: &Group = self.scene.registry.get(self.id).unwrap();
-        g.children.contains(&id)
+        self.group().children.contains(&id)
     }
 
     /// Returns the children of this group and consumes the group.
-    pub fn children(self) -> Vec<EntityId> {
-        let g: &Group = self.scene.registry.get(self.id).unwrap();
-        g.children.clone()
+    pub fn children(&self) -> Vec<EntityId> {
+        self.group().children.clone()
     }
 
     /// Returns the number of children in this group.
     pub fn len(&self) -> usize {
-        let g: &Group = self.scene.registry.get(self.id).unwrap();
-        g.children.len()
+        self.group().children.len()
     }
 
     /// Adds the given entity into this group under three conditions if the given
     /// entity does not have a parent, and the given entity is not an ancestor of
     /// `self`.
-    pub fn add(self, id: EntityId) -> Self {
+    pub fn add(&mut self, id: EntityId) -> &mut Self {
         // Return if the child has a parent. Ancestry check handled by Transform::parent().
         let mut child = self.scene.registry.get_or_default::<Transform>(id).clone();
         if child.has_parent() {
@@ -48,8 +64,7 @@ impl<'a> GroupRef<'a> {
         // Add this to our group.
         let transform = self.scene.registry.get_or_default::<Transform>(self.id);
         if child.parent(Some(transform.clone())).is_ok() {
-            let group: &mut Group = self.scene.registry.get_mut(self.id).unwrap();
-            group.children.push(id);
+            self.group_mut().children.push(id);
         }
 
         self
@@ -57,7 +72,7 @@ impl<'a> GroupRef<'a> {
 
     /// Removes the given entity from this group, or a no-op if this entity
     /// is not part of the group.
-    pub fn remove(self, id: EntityId) -> Self {
+    pub fn remove(&mut self, id: EntityId) -> &mut Self {
         // No-op if we don't contain the entity.
         if !self.contains(id) {
             return self;
@@ -71,19 +86,14 @@ impl<'a> GroupRef<'a> {
             .parent(None);
 
         // Update our children.
-        self.scene
-            .registry
-            .get_mut::<Group>(self.id)
-            .unwrap()
-            .children
-            .retain(|&x| x != id);
+        self.group_mut().children.retain(|&x| x != id);
 
         self
     }
 
     /// Moves all entities in this group to the origin. Useful for resetting
     /// local translations before calling `GroupRef::arrange()`.
-    pub fn collapse(self) -> Self {
+    pub fn collapse(&mut self) -> &mut Self {
         self.for_each(|_, mut e| {
             e.transform().to(Vec2::ZERO);
             e
@@ -91,18 +101,18 @@ impl<'a> GroupRef<'a> {
     }
 
     /// Arranges the elements of this group into a row with given `spacing`.
-    pub fn row(self, spacing: f32) -> Self {
+    pub fn row(&mut self, spacing: f32) -> &mut Self {
         self.space(Vec2::new(spacing, 0.0))
     }
 
     /// Arranges the elements of this group into a col with given `spacing`.
-    pub fn col(self, spacing: f32) -> Self {
+    pub fn col(&mut self, spacing: f32) -> &mut Self {
         self.space(Vec2::new(0.0, spacing))
     }
 
     /// Spaces elements equally using given `spacing`, keeping items centered.
     /// Spacing is given in group space.
-    pub fn space(self, spacing: Vec2) -> Self {
+    pub fn space(&mut self, spacing: Vec2) -> &mut Self {
         let n = self.len();
         if n == 0 {
             return self;
@@ -116,7 +126,7 @@ impl<'a> GroupRef<'a> {
     }
 
     /// Spaces entities equally along path parameter alpha from [0, 1].
-    pub fn arrange(self, spline: impl Into<TimelineSpline>) -> Self {
+    pub fn arrange(&mut self, spline: impl Into<TimelineSpline>) -> &mut Self {
         // Make sure we have a child to go along.
         let n = self.len();
         if n == 0 {
@@ -136,7 +146,7 @@ impl<'a> GroupRef<'a> {
 
     /// Calls the closure `n` times passing the scene mutably. Useful for
     /// creating multiple entities within the group.
-    pub fn create<T>(self, n: u32, mut generate: T) -> Self
+    pub fn create<T>(&mut self, n: u32, mut generate: T) -> &mut Self
     where
         T: for<'b> FnMut(u32, &'b mut Scene) -> EntityRef<'b>,
     {
@@ -149,7 +159,7 @@ impl<'a> GroupRef<'a> {
     }
 
     /// Create a single entity which is attached to this group.
-    pub fn create_once<T>(mut self, generate: T) -> Self
+    pub fn create_once<T>(&mut self, generate: T) -> &mut Self
     where
         T: for<'b> FnOnce(&'b mut Scene) -> EntityRef<'b>,
     {
@@ -158,21 +168,61 @@ impl<'a> GroupRef<'a> {
     }
 
     /// Runs a function for each element in
-    pub fn for_each<F>(mut self, mut generate: F) -> Self
+    pub fn for_each<F>(&mut self, mut generate: F) -> &mut Self
     where
         F: for<'b> FnMut(u32, EntityRef<'b>) -> EntityRef<'b>,
     {
-        let children = self
-            .scene
-            .registry
-            .get::<Group>(self.id)
-            .unwrap()
-            .children
-            .clone();
-
-        for (i, &id) in children.iter().enumerate() {
+        for (i, &id) in self.children().iter().enumerate() {
             let entity = EntityRef::new(&mut self.scene, id);
             generate(i as u32, entity);
+        }
+
+        self
+    }
+
+    // Returns all entities with a matching label.
+    pub fn index(&mut self, label: impl Into<Label>) -> Vec<EntityId> {
+        let label = label.into();
+        let mut children = self.children();
+
+        // Retain children which have a matching label
+        children.retain(|&id| {
+            self.scene
+                .component::<Label>(id)
+                .is_some_and(|l| *l == label)
+        });
+
+        children
+    }
+
+    /// Split this group into subgroups based on a token.
+    pub fn split_after(&mut self, label: impl Into<Label>) -> &mut Self {
+        let ids = self.index(label);
+        self.split_after_ids(&ids)
+    }
+
+    /// Splits this group by entity ids. Split ids are not placed into a subgroup.
+    pub fn split_after_ids(&mut self, ids: &[EntityId]) -> &mut Self {
+        // Remove all the children.
+        let children = self.children();
+        for &id in children.iter() {
+            self.remove(id);
+        }
+
+        // Create our initial subgroup.
+        let mut subgroup_id = self.scene.group().id();
+        self.add(subgroup_id);
+
+        // Iterate over all the children.
+        for id in children.into_iter() {
+            // Add to the current subgroup.
+            GroupRef::new(self.scene, subgroup_id).add(id);
+
+            // Create a new subgroup after any splits.
+            if ids.contains(&id) {
+                subgroup_id = self.scene.group().id();
+                self.add(subgroup_id);
+            }
         }
 
         self
@@ -201,10 +251,7 @@ impl<'a> EntityRef<'a> {
     /// Return this entity as a group if it is one, or None if it not a group.
     pub fn as_group(self) -> Option<GroupRef<'a>> {
         if self.has::<Group>() {
-            Some(GroupRef {
-                scene: self.scene,
-                id: self.id,
-            })
+            Some(GroupRef::new(self.scene, self.id))
         } else {
             None
         }
