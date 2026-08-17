@@ -74,14 +74,12 @@ impl<T: Lerp + Clone> KeyframeBuilder<T> {
         }
     }
 
-    pub fn at(mut self, time: f32, value: T) -> Self {
-        self.frames.push(Keyframe {
-            time,
-            value,
-            easing: Easing::Step,
-        });
+    pub fn at(self, time: f32, value: T) -> Self {
+        self.ease_at(time, value, Easing::Linear)
+    }
 
-        self
+    pub fn step_at(self, time: f32, value: T) -> Self {
+        self.ease_at(time, value, Easing::Step)
     }
 
     pub fn ease_at(mut self, time: f32, value: T, easing: Easing) -> Self {

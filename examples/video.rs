@@ -1,5 +1,10 @@
 use nelo::prelude::*;
 
 fn main() -> Result<(), String> {
-    VideoExport::default().export(Scene::demo())
+    let playback: Playback = Story::demo().into();
+    VideoExport {
+        end_time: playback.length().unwrap_or(10.0),
+        ..VideoExport::default()
+    }
+    .export(playback)
 }

@@ -4,12 +4,13 @@ pub mod action;
 pub mod show;
 
 pub use action::{Action, Stage};
+use glam::Vec2;
 use palette::num::Clamp;
 pub use show::{Hide, Show};
 
 use crate::{
     render::{Color, Playback},
-    scene::{EntityId, Scene},
+    scene::{EntityId, Scene, Transformable},
     timeline::Easing,
 };
 
@@ -60,27 +61,43 @@ impl Story {
     pub fn demo() -> Story {
         let mut scene = Scene::new();
 
-        // Act 1. Do some plotting
         let axes = scene.axes().id();
         let plot = scene
             .plot(|x: f32| 0.04 * x * x - 0.2 * x + 0.5, -7.0, 7.0)
             .stroke(Color::srgb(1.0, 0.0, 0.0))
             .stroke_weight(0.04)
             .id();
-
         let latex = scene.latex(r"\sum_{i=0}^n = \frac{n(n+1)}{2}").id();
+        let text = scene
+            .text("Sum of consecutive integers")
+            .translate(Vec2::Y * 3.0)
+            .id();
 
-        // Act 1. Do some plotting.
+        let donuts = scene
+            .group()
+            .create(6, |i, s| {
+                s.circle()
+                    .scale(0.6)
+                    .no_fill()
+                    .stroke_weight(0.75)
+                    .stroke(Color::lch(0.4, 0.3, i as f32 / 6.0 * 360.0))
+            })
+            .row(2.2)
+            .id();
+
         let mut story = scene.story();
-        story.wait(0.5);
+
+        // Act 1. Show some donuts
+        story.show(donuts);
+
+        // Act 2. Do some plotting.
+        story.wait(2.5);
+        story.hide(donuts);
         story.show(axes);
         story.show(plot);
 
-        // Act 2. Show an equation
-        story.wait(1.0);
-        story.hide_all();
-        story.wait(1.0);
-        story.show(latex);
+        // Act 3. Show an equation
+        story.wait(1.0).hide_all().wait(1.0).show(latex).show(text);
 
         story
     }
@@ -101,6 +118,6 @@ impl Scene {
 
 impl Into<Playback> for Story {
     fn into(self) -> Playback {
-        Playback::new(self.scene)
+        Playback::new(self.scene).with_length(self.cursor + 1.0)
     }
 }

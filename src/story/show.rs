@@ -1,6 +1,6 @@
 //! Animations to display and hide entities.
 
-use crate::scene::{EntityId, Scene, Visibility};
+use crate::scene::{EntityId, Fill, Scene, Stroke, Visibility};
 use crate::story::{Action, Stage};
 use crate::timeline::{Easing, Timeline};
 
@@ -116,12 +116,41 @@ impl Hide {
             return;
         };
 
-        // We don't force the entity to reveal for a hide.
+        // Multiply alpha for fill and stroke during the interval of this hide.
+        // After the animation, visibility takes over.
+        let multiply = Timeline::keyframes(1.0)
+            .at(*time, 1.0)
+            .ease_at(*time + self.duration, 0.0, self.easing)
+            .step_at(*time + self.duration, 1.0)
+            .build();
+
+        // Operate on fill and stroke. We fade for hiding to avoid quick unwrites.
+        if let Some(fill) = entity.get::<Fill>() {
+            let multiply = multiply.clone();
+            let old = fill.color.clone();
+            fill.color = Timeline::dynamic(move |t: f32| {
+                let multiplier = multiply.clone();
+                let color = old.sample(t);
+                color.with_alpha(color.alpha * multiplier.sample(t))
+            });
+        }
+
+        if let Some(stroke) = entity.get::<Stroke>() {
+            let old = stroke.color.clone();
+            stroke.color = Timeline::dynamic(move |t: f32| {
+                let multiplier = multiply.clone();
+                old.sample(t)
+                    .map(move |c| c.with_alpha(c.alpha * multiplier.sample(t)))
+            });
+        }
+
+        // After the fill and stroke are animated away, they reset, but visibility
+        // jumps to zero.
         let visibility = entity.get_or_default::<Visibility>();
         let before = visibility.amount.clone();
         let after = Timeline::keyframes(1.0)
-            .at(*time, 1.0)
-            .ease_at(*time + self.duration, 0.0, self.easing)
+            .at(*time + self.duration, 1.0)
+            .step_at(*time + self.duration, 0.0)
             .build();
 
         visibility.amount = before.multiply(after);

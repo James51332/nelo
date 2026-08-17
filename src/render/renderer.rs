@@ -140,11 +140,24 @@ impl Renderer {
 
 pub struct Playback {
     scene: Scene,
+    length: Option<f32>,
 }
 
 impl Playback {
     pub fn new(scene: Scene) -> Self {
-        Self { scene }
+        Self {
+            scene,
+            length: None,
+        }
+    }
+
+    pub fn length(&self) -> Option<f32> {
+        self.length
+    }
+
+    pub fn with_length(mut self, length: f32) -> Self {
+        self.length = Some(length);
+        self
     }
 }
 
