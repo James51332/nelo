@@ -36,16 +36,27 @@ impl Story {
     }
 
     pub fn show(&mut self, id: EntityId) -> &mut Self {
-        self.action(Show::default(), &[id])
+        self.show_slice(&[id])
+    }
+
+    pub fn show_all(&mut self) -> &mut Self {
+        self.show_slice(&self.scene.entities())
+    }
+
+    pub fn show_slice(&mut self, ids: &[EntityId]) -> &mut Self {
+        self.action(Show::default(), ids)
     }
 
     pub fn hide(&mut self, id: EntityId) -> &mut Self {
-        self.action(Hide::default(), &[id])
+        self.hide_slice(&[id])
     }
 
-    /// Hides all the entities in the scene.
     pub fn hide_all(&mut self) -> &mut Self {
-        self.action(Hide::default(), &self.scene.entities())
+        self.hide_slice(&self.scene.entities())
+    }
+
+    pub fn hide_slice(&mut self, ids: &[EntityId]) -> &mut Self {
+        self.action(Hide::default(), ids)
     }
 
     pub fn clear(&mut self) -> &mut Self {

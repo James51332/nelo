@@ -29,6 +29,7 @@ impl<'a> GroupRef<'a> {
             .expect("No group attached to this entity")
     }
 
+    /// Returns a mutable reference to the group object.
     pub fn group_mut(&mut self) -> &mut Group {
         self.scene
             .registry
@@ -89,6 +90,15 @@ impl<'a> GroupRef<'a> {
         self.group_mut().children.retain(|&x| x != id);
 
         self
+    }
+
+    /// Removes all entities from this group.
+    pub fn clear(&mut self) -> Vec<EntityId> {
+        let children = self.children();
+        for &id in children.iter() {
+            self.remove(id);
+        }
+        children
     }
 
     /// Moves all entities in this group to the origin. Useful for resetting
@@ -195,19 +205,68 @@ impl<'a> GroupRef<'a> {
         children
     }
 
+    pub fn split_before(&mut self, label: impl Into<Label>) -> &mut Self {
+        let ids = self.index(label);
+        self.split_before_ids(&ids)
+    }
+
+    /// Splits this group at all entities matching the label.
+    pub fn split(&mut self, label: impl Into<Label>) -> &mut Self {
+        let ids = self.index(label);
+        self.split_at_ids(&ids)
+    }
+
     /// Split this group into subgroups based on a token.
     pub fn split_after(&mut self, label: impl Into<Label>) -> &mut Self {
         let ids = self.index(label);
         self.split_after_ids(&ids)
     }
 
-    /// Splits this group by entity ids. Split ids are not placed into a subgroup.
+    pub fn split_before_ids(&mut self, ids: &[EntityId]) -> &mut Self {
+        let children = self.clear();
+        let mut subgroup_id = self.scene.group().id();
+        self.add(subgroup_id);
+
+        for id in children.into_iter() {
+            if ids.contains(&id) {
+                subgroup_id = self.scene.group().id();
+                self.add(subgroup_id);
+            }
+
+            GroupRef::new(self.scene, subgroup_id).add(id);
+        }
+
+        self
+    }
+
+    /// Divide into subgroups. entities in given slice remain at top-level.
+    pub fn split_at_ids(&mut self, ids: &[EntityId]) -> &mut Self {
+        let children = self.clear();
+
+        let mut subgroup_id = self.scene.group().id();
+        self.add(subgroup_id);
+
+        for id in children.into_iter() {
+            if ids.contains(&id) {
+                // Add split entities back into this group.
+                self.add(id);
+
+                // And create a new subgroup.
+                subgroup_id = self.scene.group().id();
+                self.add(subgroup_id);
+            } else {
+                // Add non-split entities to the subgroup.
+                GroupRef::new(self.scene, subgroup_id).add(id);
+            }
+        }
+
+        self
+    }
+
+    /// Splits this group by entity ids. Split elements are placed at the end of subgroups.
     pub fn split_after_ids(&mut self, ids: &[EntityId]) -> &mut Self {
         // Remove all the children.
-        let children = self.children();
-        for &id in children.iter() {
-            self.remove(id);
-        }
+        let children = self.clear();
 
         // Create our initial subgroup.
         let mut subgroup_id = self.scene.group().id();
