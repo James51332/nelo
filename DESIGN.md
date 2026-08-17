@@ -48,8 +48,8 @@ A stateless, timeline-driven animation engine for explorable visual animations.
 * [x] Exporting
     * [x] Video Files (via `ffmpeg`)
     * [x] Images
-* [ ] Storyboard
-    * [ ] Actions
+* [x] Storyboard
+    * [x] Actions
     * [ ] Transformations
     * [ ] Checkpoints
 
