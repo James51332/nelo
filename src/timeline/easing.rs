@@ -9,7 +9,7 @@ use crate::timeline::Signal;
 /// map a linear time variable from [0, 1] -> [0, 1]. Only
 /// a handful are implemented right now, but all of penner's
 /// will be implemented soon.
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Easing {
     Step,
     Linear,

@@ -78,7 +78,7 @@ impl<T: Lerp + Clone> KeyframeBuilder<T> {
         self.frames.push(Keyframe {
             time,
             value,
-            easing: Easing::Linear,
+            easing: Easing::Step,
         });
 
         self

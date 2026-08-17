@@ -1,12 +1,15 @@
 //! Render simple lines as a grid.
 
-use crate::scene::{GroupRef, Path, Scene};
+use crate::{
+    render::Color,
+    scene::{GroupRef, Path, Scene},
+};
 use glam::Vec2;
 
 impl Scene {
-    /// Creates x and y axes over interval (-10, 10)
+    /// Creates x and y axes over x-interval (-8, 8) and y-interval (-5, 5)
     pub fn axes(&mut self) -> GroupRef<'_> {
-        self.axes_with_count((21, 21))
+        self.axes_with_count((15, 9))
     }
 
     /// Creates x and y lines in a group using spacing of 1 according to the count.
@@ -20,17 +23,37 @@ impl Scene {
         let y_max = (y_steps as f32 - 1.0) / 2.0;
         let y_min = -y_max;
 
-        // Create horizontal lines first, then vertical.
-        self.group()
+        // Horizontal lines are one group.
+        let horizontal = self
+            .group()
             .create(y_steps, |i, s| {
                 let y = y_min + i as f32;
-                let line = Path::line(Vec2::new(x_min, y), Vec2::new(x_max, y));
-                s.spline(line).stroke_weight(0.01)
+                let line = Path::line(Vec2::new(x_min - 1.0, y), Vec2::new(x_max + 1.0, y));
+                s.spline(line)
+                    .stroke(if y.abs() < 0.001 {
+                        Color::WHITE
+                    } else {
+                        Color::WHITE.with_alpha(0.2)
+                    })
+                    .stroke_weight(0.005)
             })
+            .id();
+
+        let vertical = self
+            .group()
             .create(x_steps, |i, s| {
                 let x = x_min + i as f32;
-                let line = Path::line(Vec2::new(x, y_min), Vec2::new(x, y_max));
-                s.spline(line).stroke_weight(0.01)
+                let line = Path::line(Vec2::new(x, y_min - 1.0), Vec2::new(x, y_max + 1.0));
+                s.spline(line)
+                    .stroke(if x.abs() < 0.001 {
+                        Color::WHITE
+                    } else {
+                        Color::WHITE.with_alpha(0.2)
+                    })
+                    .stroke_weight(0.005)
             })
+            .id();
+
+        self.group().add(horizontal).add(vertical)
     }
 }

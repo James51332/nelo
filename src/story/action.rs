@@ -9,7 +9,7 @@ use crate::scene::{EntityId, Scene};
 /// scene as needed to implement their desired behavior. Modifying an entity
 /// after applying an action is undefined behavior.
 pub trait Action {
-    fn apply(&self, scene: Stage<'_>, ids: &[EntityId]);
+    fn apply(&self, scene: Stage<'_>, ids: &[EntityId]) -> Option<f32>;
 }
 
 // ----- Stage -----
@@ -25,11 +25,7 @@ impl<'a> Stage<'a> {
         Self { scene, cursor }
     }
 
-    pub fn scene(&self) -> &Scene {
-        self.scene
-    }
-
-    pub fn scene_mut(&mut self) -> &mut Scene {
+    pub fn scene(&mut self) -> &mut Scene {
         self.scene
     }
 

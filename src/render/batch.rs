@@ -64,7 +64,7 @@ impl Batch {
 
         // First sort by entity id (high to low), then sort by z-index.
         let mut commands = mem::take(&mut self.commands);
-        commands.sort_by(|m, n| n.0.cmp(&m.0));
+        commands.sort_by(|m, n| m.0.cmp(&n.0));
         commands.sort_by(|m, n| m.1.total_cmp(&n.1));
 
         // Map non-primitive commands into primitives.

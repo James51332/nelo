@@ -46,7 +46,7 @@ pub(crate) fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
         {
             let weight = Timeline::keyframes(STROKE_WEIGHT * 0.5)
                 .ease_at(STROKE_TIME, STROKE_WEIGHT, Easing::CubicIn)
-                .at(1.0, 0.0)
+                .ease_at(1.0, 0.0, Easing::CubicOut)
                 .build()
                 .sample(vis_amount);
 
@@ -89,7 +89,7 @@ pub(crate) fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
             let mut color = fill.color.sample(time);
             let alpha = Timeline::keyframes(0.0)
                 .at(STROKE_TIME, 0.0)
-                .at(1.0, 1.0)
+                .ease_at(1.0, 1.0, Easing::Linear)
                 .build()
                 .sample(vis_amount);
             color.alpha *= alpha;

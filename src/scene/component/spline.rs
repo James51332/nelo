@@ -36,6 +36,16 @@ impl Scene {
             })
             .attach(Stroke::default())
     }
+
+    /// Creates a spline for a function of x.
+    pub fn plot<T>(&mut self, function: T, x_min: f32, x_max: f32) -> EntityRef<'_>
+    where
+        T: Into<Along<f32>>,
+    {
+        let function = function.into();
+        let spline = move |_t, x| Vec2::new(x, function.sample(x));
+        self.spline_with_range(spline, x_min, x_max)
+    }
 }
 
 // ----- Arrow -----

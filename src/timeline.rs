@@ -43,6 +43,20 @@ impl<T: Clone> Timeline<T> {
         Self::Dynamic(Box::new(s))
     }
 
+    /// Returns `before.sample(t)` for times before t and `after.sample(t)` for times
+    /// after t.
+    pub fn branch(time: f32, before: impl Into<Self>, after: impl Into<Self>) -> Self {
+        let before = before.into();
+        let after = after.into();
+        Self::dynamic(move |t| {
+            if t < time {
+                before.sample(t)
+            } else {
+                after.sample(t)
+            }
+        })
+    }
+
     /// The timeline's finite duration, or `None` if it runs forever. A constant
     /// has no inherent end; a dynamic one defers to its [`Signal::length`].
     pub fn length(&self) -> Option<f32> {
@@ -79,6 +93,10 @@ impl<T: Clone> Timeline<T> {
     /// Repeats over this timelines length, or does nothing if this timeline
     /// has no length.
     pub fn repeat(self) -> Self {
+        if self.is_constant() {
+            return self;
+        }
+
         let Some(length) = self.length() else {
             return self;
         };
@@ -104,7 +122,11 @@ impl<T: Clone + 'static> Timeline<Timeline<T>> {
     /// resample the inner timeline, use `.map(|x| x.compose())`, and to resample both,
     /// use `.flatten().compose()`.
     pub fn flatten(self) -> Timeline<T> {
-        Timeline::dynamic(move |t| self.sample(t).sample(t))
+        if self.is_constant() {
+            self.sample(0.0)
+        } else {
+            Timeline::dynamic(move |t| self.sample(t).sample(t))
+        }
     }
 }
 

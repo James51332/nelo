@@ -1,4 +1,3 @@
-use glam::Vec2;
 use nelo::prelude::*;
 use std::sync::Arc;
 use std::time::Instant;
@@ -52,7 +51,7 @@ impl ApplicationHandler for App {
 
         let (gpu, surface) = Gpu::with_surface(window.clone());
         let target = WindowTarget::new(&gpu, surface, size.width, size.height);
-        let renderer = Renderer::new(&gpu, build_scene());
+        let renderer = Renderer::new(&gpu, build_story());
 
         self.window = Some(window);
         self.render_state = Some(RenderState {
@@ -97,22 +96,6 @@ fn main() {
         .expect("Unexpected event loop failure!");
 }
 
-fn build_scene() -> Story {
-    let mut scene = Scene::new();
-
-    // Render some Latex which goes on screen.
-    let latex = scene
-        .latex(r"\vec{r}(\theta) = \frac{\sin^2(\theta)\hat{\imath}+\cos^2(\theta)\hat{\jmath}}{2}")
-        .id();
-
-    // Wavy path.
-    scene.spline_with_range(
-        |t: f32, x: f32| Vec2::new(x, -4.0 - 0.6 * (x - 4.0 * t).sin()),
-        -10.0,
-        10.0,
-    );
-
-    let mut story = scene.story();
-    story.show(latex);
-    story
+fn build_story() -> Story {
+    Story::demo()
 }

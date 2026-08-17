@@ -97,6 +97,11 @@ impl Scene {
         self.registry.view_tuple::<T>()
     }
 
+    // Returns an iterator over all entities in this scene.
+    pub fn entities(&self) -> Vec<EntityId> {
+        self.active.iter().copied().collect()
+    }
+
     /// Returns an Some with a handle to the entity if it exists, or none otherwise.
     pub fn get(&mut self, entity: EntityId) -> Option<EntityRef<'_>> {
         match self.active.binary_search(&entity) {
