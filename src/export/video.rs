@@ -96,8 +96,20 @@ impl Export for VideoExport {
                     .texture
                     .create_view(&TextureViewDescriptor::default());
                 let time = self.start_time + i as f32 * timestep;
+
+                // Render to the texture.
                 renderer.render(&view, time);
-                if let Err(x) = stdin.write_all(&target.read(&device, &queue)) {
+
+                // Read back.
+                let data = match target.read(&device, &queue) {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        return Err(e.to_string());
+                    }
+                };
+
+                // Write out.
+                if let Err(x) = stdin.write_all(&data) {
                     return Err(x.to_string());
                 }
             }

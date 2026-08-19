@@ -48,7 +48,12 @@ impl Export for ImageExport {
         renderer.render(&view, self.time);
 
         // Read back and write PNG.
-        let pixels = target.read(&device, &queue);
+        let pixels = match target.read(&device, &queue) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(e.to_string());
+            }
+        };
         let path = format!("{}.{}", self.file_name, self.file_ext);
         let file = File::create(path).map_err(|e| e.to_string())?;
         let writer = BufWriter::new(file);

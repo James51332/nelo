@@ -64,7 +64,7 @@ impl ExportTexture {
     }
 
     /// Copy the rendered texture to the CPU and return tightly-packed RGBA8.
-    pub fn read(&self, device: &Device, queue: &Queue) -> Vec<u8> {
+    pub fn read(&self, device: &Device, queue: &Queue) -> Result<Vec<u8>, String> {
         // Encode the command to read back into the buffer.
         let mut encoder = device.create_command_encoder(&Default::default());
         encoder.copy_texture_to_buffer(
@@ -102,7 +102,12 @@ impl ExportTexture {
         rx.recv().unwrap().unwrap();
 
         // Account for the padding.
-        let padded = slice.get_mapped_range();
+        let padded = match slice.get_mapped_range() {
+            Ok(range) => range,
+            Err(e) => {
+                return Err(e.to_string());
+            }
+        };
         let unpadded = (self.width * 4) as usize;
         let mut out = Vec::with_capacity(unpadded * self.height as usize);
         for row in 0..self.height as usize {
@@ -115,6 +120,6 @@ impl ExportTexture {
         self.readback.unmap();
 
         // Return the read memory.
-        out
+        Ok(out)
     }
 }

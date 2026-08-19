@@ -12,7 +12,6 @@ categories = ["graphics", "multimedia::video"]
 
 [dependencies]
 log = "0.4.33"
-wgpu = "29.0.3"
 bytemuck = { version = "1", features = ["derive"] }
 glam = { version = "0.33.2", features = ["bytemuck"] }
 pollster = "0.4.0"
@@ -26,6 +25,10 @@ ratex-parser = "0.1.14"
 ratex-types = "0.1.14"
 winit = { version = "0.30.13", optional = true }
 env_logger = { version = "0.11.11", optional = true }
+egui = "0.36.1"
+egui-wgpu = "0.36.1"
+wgpu = "30"
+egui-winit = "0.36.1"
 
 [features]
 default = ["story", "viewer", "export"]

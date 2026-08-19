@@ -1,12 +1,16 @@
 //! Viewer for nelo scenes
 
+mod ui;
+
 use crate::render::{Playback, Renderer};
+use egui_wgpu::ScreenDescriptor;
 use std::sync::Arc;
 use std::time::Instant;
+use ui::UiRenderer;
 use wgpu::{
-    CompositeAlphaMode, CurrentSurfaceTexture, Device, DeviceDescriptor, Instance, PresentMode,
-    RequestAdapterOptions, Surface, SurfaceConfiguration, TextureFormat, TextureUsages,
-    TextureViewDescriptor,
+    CommandEncoderDescriptor, CompositeAlphaMode, CurrentSurfaceTexture, Device, DeviceDescriptor,
+    Instance, PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration,
+    TextureFormat, TextureUsages, TextureViewDescriptor,
 };
 use winit::{
     application::ApplicationHandler,
@@ -20,10 +24,16 @@ use winit::{
 
 pub struct State {
     device: Device,
+    queue: Queue,
+    window: Arc<Window>,
     surface: Surface<'static>,
     config: SurfaceConfiguration,
     renderer: Renderer,
-    start: Instant,
+    ui: UiRenderer,
+
+    last_frame: Instant,
+    time: f32,
+    playing: bool,
 }
 
 impl State {
@@ -62,6 +72,7 @@ impl State {
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format,
+            color_space: wgpu::SurfaceColorSpace::Srgb,
             width: size.width,
             height: size.height,
             present_mode: PresentMode::Fifo,
@@ -71,22 +82,31 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        // Create the renderer.
+        // Create the scene and ui renderers.
         let renderer = Renderer::new(device.clone(), queue.clone(), format, playback);
+        let ui = UiRenderer::new(&device, format, window.clone());
 
         // Get the current time.
-        let start = Instant::now();
+        let last_frame = Instant::now();
 
         Self {
             device,
+            queue,
+            window,
             surface,
             config,
             renderer,
-            start,
+            ui,
+            last_frame,
+            time: 0.0,
+            playing: true,
         }
     }
 
     fn event(&mut self, event_loop: &ActiveEventLoop, event: WindowEvent) {
+        // Let ui handle input first.
+        self.ui.handle_input(&event);
+
         match event {
             WindowEvent::RedrawRequested => self.draw(),
             WindowEvent::Resized(size) => {
@@ -124,11 +144,49 @@ impl State {
         let view = texture.texture.create_view(&view_desc);
 
         // Get the time and render.
-        let time = self.start.elapsed().as_secs_f32();
-        self.renderer.render(&view, time);
+        let now = Instant::now();
+        if self.playing {
+            let elapsed = (now - self.last_frame).as_secs_f32();
+            self.time += elapsed;
+        }
+        self.last_frame = now;
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor::default());
+
+        // Render the current frame.
+        self.renderer.render(&view, self.time);
+
+        // Render the ui.
+        self.ui.begin_frame();
+
+        egui::Window::new("Settings")
+            .resizable([true, true])
+            .show(self.ui.context(), |ui| {
+                ui.label("Time");
+                ui.checkbox(&mut self.playing, "Playing");
+
+                if !self.playing {
+                    ui.add(egui::Slider::new(&mut self.time, 0.0..=25.0).step_by(0.1));
+                }
+            });
+
+        self.ui.end_frame_and_draw(
+            &self.device,
+            &self.queue,
+            &mut encoder,
+            &view,
+            ScreenDescriptor {
+                size_in_pixels: [self.config.width, self.config.height],
+                pixels_per_point: self.window.scale_factor() as f32,
+            },
+        );
+
+        self.queue.submit(Some(encoder.finish()));
 
         // Present the image.
-        texture.present();
+        self.queue.present(texture);
     }
 }
 

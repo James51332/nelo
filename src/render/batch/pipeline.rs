@@ -37,7 +37,7 @@ pub(crate) fn create(
         vertex: VertexState {
             module: &shader,
             entry_point: None,
-            buffers: &[vertex_layout],
+            buffers: &[Some(vertex_layout)],
             compilation_options: PipelineCompilationOptions::default(),
         },
         fragment: Some(FragmentState {
