@@ -1,83 +1,91 @@
 //! A batch is a tool to encode render commands.
 
 pub mod builder;
-pub mod circle;
 pub mod command;
-pub mod mesh;
 pub mod polyline;
 
-pub use builder::{FillBuilder, Segment, StrokeBuilder, StrokePoint};
-pub use circle::CircleBatch;
-pub use command::RenderCommand;
-pub use mesh::{MeshBatch, MeshVertex};
+pub use builder::{FillBuilder, StrokeBuilder};
+pub use command::{MeshVertex, RenderCommand, StrokeVertex};
 pub use polyline::Polyline;
 
-use crate::{render::Gpu, scene::EntityId};
+mod circle;
+mod mesh;
+mod pipeline;
+
+use crate::scene::EntityId;
+use circle::CircleBatch;
+use mesh::MeshBatch;
 use std::mem;
-use wgpu::{BindGroupLayout, RenderPass};
+use wgpu::{BindGroupLayout, Device, Queue, RenderPass, TextureFormat};
+
+// ----- Submission -----
+
+enum Submission {
+    Circle(usize),
+    Mesh(usize),
+}
 
 // ----- Batch -----
 
 const MAX_CIRCLES: usize = 100_000;
 const MAX_VERTICES: usize = 100_000;
 const MAX_INDICES: usize = 50_000;
-const BUILDER_TOLERANCE: f32 = 0.001;
 
-/// A batch is a reusable geometry renderer.
+/// A batch is a list of high-level render commands.
 pub struct Batch {
     circles: CircleBatch,
     meshes: MeshBatch,
 
     /// Encodes commands and their z_indices.
-    commands: Vec<(EntityId, f32, RenderCommand)>,
+    commands: Vec<(EntityId, RenderCommand, f32)>,
 
-    /// Encodes the batches.
+    /// Tracks the submissions that we need to make. We'll try to batch these together in the
+    /// future.
     submissions: Vec<Submission>,
 }
 
 impl Batch {
-    pub fn new(gpu: &Gpu, camera_layout: &BindGroupLayout) -> Self {
+    pub fn new(device: &Device, format: TextureFormat, camera_layout: &BindGroupLayout) -> Self {
         Self {
-            circles: CircleBatch::new(gpu, MAX_CIRCLES, camera_layout),
-            meshes: MeshBatch::new(gpu, MAX_VERTICES, MAX_INDICES, camera_layout),
+            circles: CircleBatch::new(device, format, MAX_CIRCLES, camera_layout),
+            meshes: MeshBatch::new(device, format, MAX_VERTICES, MAX_INDICES, camera_layout),
             commands: Vec::new(),
             submissions: Vec::new(),
         }
     }
 
-    /// Encode a command for an entty.with an optional z_index. No z_index means that an object
-    /// strictly follows painter's algorithm.
-    pub fn add_command(&mut self, command: RenderCommand, id: EntityId, z_index: f32) {
-        self.commands.push((id, z_index, command));
-    }
-
-    /// Begins a new batch by clearing the current batch. Require GPU handle to restrict
-    /// this to top-level renderer, not individual batch submissions.
-    pub fn begin(&mut self, _gpu: &Gpu) {
+    /// Clears this batch and creates an encoder to record render commands.
+    pub fn encoder(&mut self) -> Encoder<'_> {
+        // First clear the commands we have
         self.commands.clear();
+
+        Encoder {
+            commands: &mut self.commands,
+        }
     }
 
-    pub fn submit(&mut self, gpu: &Gpu, pass: &mut RenderPass) {
+    /// Copies the data from encoded commands to GPU.
+    pub fn prepare(&mut self, queue: &Queue) {
         // Clear the batches.
         self.circles.clear();
         self.meshes.clear();
 
-        // First sort by entity id (high to low), then sort by z-index.
+        // First sort by entity-id, then sort by z-index.
         let mut commands = mem::take(&mut self.commands);
-        commands.sort_by(|m, n| m.0.cmp(&n.0));
-        commands.sort_by(|m, n| m.1.total_cmp(&n.1));
+        commands.sort_by_key(|id| id.0);
+        commands.sort_by(|m, n| m.2.total_cmp(&n.2));
 
         // Map non-primitive commands into primitives.
         let commands = commands
             .into_iter()
-            .flat_map(|(_, _, command)| match command {
+            .flat_map(|(_, command, _)| match command {
                 // Stroke commands get mapped into mesh commands.
                 RenderCommand::Stroke { vertices, close } => {
                     let mut iter = vertices.into_iter();
                     iter.next()
                         .map(|start| {
                             // Convert the stroke into a filled mesh.
-                            let mut builder = StrokeBuilder::new(start, BUILDER_TOLERANCE);
+                            let mut builder = StrokeBuilder::new(start);
                             iter.for_each(|v| builder.line_to(v));
                             let res = builder.finish(close);
 
@@ -99,7 +107,7 @@ impl Batch {
                     iter.next()
                         .map(|start| {
                             // Encode the points into a builder.
-                            let mut builder = FillBuilder::new(BUILDER_TOLERANCE);
+                            let mut builder = FillBuilder::default();
                             builder.begin_subpath(start);
                             iter.for_each(|v| builder.line_to(v));
                             let res = builder.finish();
@@ -143,22 +151,31 @@ impl Batch {
         }
 
         // Upload data to GPU and execute submissions.
-        self.circles.prepare(gpu);
-        self.meshes.prepare(gpu);
+        self.circles.prepare(queue);
+        self.meshes.prepare(queue);
+    }
+
+    /// Submits the calls to the GPU.
+    pub fn submit(&mut self, pass: &mut RenderPass) {
         for submission in self.submissions.iter() {
             match *submission {
-                Submission::Circle(idx) => self.circles.submit(gpu, pass, idx),
-                Submission::Mesh(idx) => self.meshes.submit(gpu, pass, idx),
+                Submission::Circle(idx) => self.circles.submit(pass, idx),
+                Submission::Mesh(idx) => self.meshes.submit(pass, idx),
             }
         }
     }
-
-    pub fn tolerance(&self) -> f32 {
-        BUILDER_TOLERANCE
-    }
 }
 
-enum Submission {
-    Circle(usize),
-    Mesh(usize),
+// ----- Encoder -----
+
+/// Builds a list of `RenderCommands` for a `Batch`.
+pub struct Encoder<'a> {
+    commands: &'a mut Vec<(EntityId, RenderCommand, f32)>,
+}
+
+impl Encoder<'_> {
+    /// Encode a command for an entity with specified z-index.
+    pub fn add_command(&mut self, id: EntityId, command: RenderCommand, z_index: f32) {
+        self.commands.push((id, command, z_index));
+    }
 }

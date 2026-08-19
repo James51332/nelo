@@ -3,7 +3,11 @@
 pub mod image;
 pub mod video;
 
+mod gpu;
+mod texture;
+
 pub use image::ImageExport;
+pub use texture::ExportTexture;
 pub use video::VideoExport;
 
 use crate::render::Playback;

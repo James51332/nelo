@@ -1,7 +1,5 @@
 //! A sequence of lines. Allows user to specify the vertex type.
 
-use crate::render::batch::{RenderCommand, StrokePoint};
-use crate::render::{Color, MeshVertex};
 use crate::timeline::Along;
 use glam::prelude::*;
 use std::cmp::Ordering;
@@ -11,6 +9,7 @@ use std::collections::BTreeMap;
 
 const MIN_SEGMENTS: u32 = 50;
 const MAX_SUBDIVISIONS: u32 = 10;
+const POLYLINE_TOLERANCE_PER_UNIT: f32 = 0.0001;
 
 /// Use alpha as key for polyline gen. Keys need Ord, so we wrap f32 and add it.
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
@@ -35,7 +34,7 @@ pub struct Polyline {
 impl Polyline {
     /// Takes a spline and the range of alpha values for which it is rendered and
     /// returns a polyline of (alpha, point) pairs.
-    pub fn flatten(spline: &Along<Vec2>, start: f32, end: f32, tolerance: f32) -> Self {
+    pub fn flatten(spline: &Along<Vec2>, start: f32, end: f32, scale: f32) -> Self {
         // Start by inserting the minimum number of segments.
         let mut map = Map::new();
         let step = (end - start) / MIN_SEGMENTS as f32;
@@ -45,7 +44,7 @@ impl Polyline {
         }
 
         // Then apply our subdivions to each segment.
-        let tolerance_squared = tolerance * tolerance;
+        let tolerance_squared = (scale * POLYLINE_TOLERANCE_PER_UNIT).powi(2);
         for i in 0..MIN_SEGMENTS {
             let min = start + i as f32 * step;
             let max = start + (i + 1) as f32 * step;
@@ -69,35 +68,8 @@ impl Polyline {
         &self.points
     }
 
-    /// Consumes this polyline and generates a Stroke render command.
-    pub fn to_stroke<T>(self, map: T, close: bool) -> RenderCommand
-    where
-        T: Fn(f32) -> (Color, f32),
-    {
-        let vertices = self
-            .points
-            .into_iter()
-            .map(|(a, pos)| {
-                let (color, weight) = map(a);
-                StrokePoint::new(pos, color, weight)
-            })
-            .collect();
-
-        RenderCommand::Stroke { vertices, close }
-    }
-
-    /// Consumes this polyline and generates a fill render command.
-    pub fn to_fill<T>(self, map: T) -> RenderCommand
-    where
-        T: Fn(f32) -> Color,
-    {
-        let vertices = self
-            .points
-            .into_iter()
-            .map(|(a, pos)| MeshVertex::new(pos, Vec2::ZERO, map(a)))
-            .collect();
-
-        RenderCommand::Polygon { vertices }
+    pub fn iter(&self) -> impl Iterator<Item = &(f32, Vec2)> {
+        self.points.iter()
     }
 
     fn subdivide_segment(
@@ -146,5 +118,14 @@ impl Polyline {
                 );
             }
         }
+    }
+}
+
+impl IntoIterator for Polyline {
+    type Item = (f32, Vec2);
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.points.into_iter()
     }
 }

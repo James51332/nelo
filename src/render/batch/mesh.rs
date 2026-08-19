@@ -2,17 +2,17 @@
 
 use std::ops::Range;
 
-use crate::render::{Color, Gpu};
-use bytemuck::{Pod, Zeroable, cast_slice};
-use glam::prelude::*;
+use crate::render::{MeshVertex, batch::pipeline};
+use bytemuck::{Zeroable, cast_slice};
 use wgpu::{
-    BindGroupLayout, Buffer, BufferDescriptor, BufferUsages, IndexFormat, RenderPass,
-    RenderPipeline, VertexBufferLayout, VertexStepMode, vertex_attr_array,
+    BindGroupLayout, Buffer, BufferDescriptor, BufferUsages, Device, IndexFormat, Queue,
+    RenderPass, RenderPipeline, TextureFormat, VertexBufferLayout, VertexStepMode,
+    vertex_attr_array,
 };
 
 // ----- MeshBatch -----
 
-pub struct MeshBatch {
+pub(crate) struct MeshBatch {
     // Render Pipeline
     pipeline: RenderPipeline,
 
@@ -35,7 +35,8 @@ pub struct MeshBatch {
 
 impl MeshBatch {
     pub fn new(
-        gpu: &Gpu,
+        device: &Device,
+        format: TextureFormat,
         vertex_capacity: usize,
         index_capacity: usize,
         camera_layout: &BindGroupLayout,
@@ -52,7 +53,7 @@ impl MeshBatch {
             ],
         };
         let bind_group_layouts = &[Some(camera_layout)];
-        let pipeline = gpu.create_pipeline(shader, vertex_layout, bind_group_layouts);
+        let pipeline = pipeline::create(device, format, shader, vertex_layout, bind_group_layouts);
 
         // Create our vertex GPU and CPU buffers
         let vertex_buffer_desc = BufferDescriptor {
@@ -61,7 +62,7 @@ impl MeshBatch {
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         };
-        let vertex_buffer = gpu.device().create_buffer(&vertex_buffer_desc);
+        let vertex_buffer = device.create_buffer(&vertex_buffer_desc);
         let vertices = vec![MeshVertex::zeroed(); vertex_capacity];
 
         // Create our index GPU and CPU buffers
@@ -71,7 +72,7 @@ impl MeshBatch {
             usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         };
-        let index_buffer = gpu.device().create_buffer(&index_buffer_desc);
+        let index_buffer = device.create_buffer(&index_buffer_desc);
         let indices = vec![u32::zeroed(); index_capacity];
 
         Self {
@@ -139,18 +140,17 @@ impl MeshBatch {
     }
 
     /// Copies mesh data to the GPU.
-    pub fn prepare(&mut self, gpu: &Gpu) {
+    pub fn prepare(&mut self, queue: &Queue) {
         self.submit_count = self.submissions.len();
 
-        // Copy index data
-        let queue = gpu.queue();
+        // Copy vertex data.
         queue.write_buffer(
             &self.vertex_buffer,
             0,
             cast_slice(&self.vertices[..self.vertex_count]),
         );
 
-        // Copy index data to the GPU.
+        // Copy index data.
         queue.write_buffer(
             &self.index_buffer,
             0,
@@ -158,7 +158,7 @@ impl MeshBatch {
         );
     }
 
-    pub fn submit(&self, _gpu: &Gpu, pass: &mut RenderPass, index: usize) {
+    pub fn submit(&self, pass: &mut RenderPass, index: usize) {
         // No-op.
         if self.vertex_count == 0 || self.index_count == 0 {
             return;
@@ -179,25 +179,5 @@ impl MeshBatch {
         let range = &self.submissions[index];
         let range = (range.start as u32)..(range.end as u32);
         pass.draw_indexed(range, 0, 0..1);
-    }
-}
-
-// ----- MeshVertex -----
-
-#[repr(C)]
-#[derive(Debug, Default, Clone, Copy, Pod, Zeroable)]
-pub struct MeshVertex {
-    pub position: Vec2,
-    pub uv: Vec2,
-    pub color: [f32; 4],
-}
-
-impl MeshVertex {
-    pub fn new(position: Vec2, uv: Vec2, color: Color) -> Self {
-        Self {
-            position,
-            uv,
-            color: color.to_array(),
-        }
     }
 }

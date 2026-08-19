@@ -1,11 +1,14 @@
 //! Tool for rendering glyphs.
 
-use crate::render::{Batch, FillBuilder, MeshVertex, Polyline, RenderCommand};
+use crate::render::{Encoder, FillBuilder, MeshVertex, Polyline, RenderCommand};
 use crate::scene::{Fill, Glyph, Scene, Stroke, Transform, Visibility};
 use crate::timeline::{Easing, Timeline};
 use glam::Vec2;
 
+/// Determines what fraction of the visibility animation is required to show the glyph.
 const STROKE_TIME: f32 = 0.8;
+
+/// Determines how thick the entity is when rendered.
 const STROKE_WEIGHT: f32 = 0.02;
 
 /// Renders a set of contours.
@@ -21,7 +24,7 @@ const STROKE_WEIGHT: f32 = 0.02;
 /// * Stroke only:
 ///     1. Stroke write in (0 -> 1.0)
 ///
-pub(crate) fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
+pub(crate) fn glyphs(batch: &mut Encoder, scene: &Scene, time: f32, _size: (u32, u32)) {
     let items = scene.view_pair::<Transform, Glyph>();
     items.into_iter().for_each(|(id, transform, glyph)| {
         // Visibility short circuit
@@ -76,7 +79,7 @@ pub(crate) fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
                 .sample(time)
                 .map(move |v| affine.matrix2 * v + affine.translation);
             let close = spline.close.sample(time);
-            let polyline = Polyline::flatten(&path, start, end, batch.tolerance());
+            let polyline = Polyline::flatten(&path, start, end, scene.sample_height(time));
             polylines.push((polyline, close));
         }
 
@@ -96,7 +99,7 @@ pub(crate) fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
             let map = |pos| MeshVertex::new(pos, Vec2::ZERO, color);
 
             // Build the mesh geometry.
-            let mut builder = FillBuilder::new(0.001);
+            let mut builder = FillBuilder::default();
             for (polyline, close) in polylines.iter() {
                 let mut points = polyline.points().iter();
                 if let Some(pair) = points.next() {
@@ -108,7 +111,7 @@ pub(crate) fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
 
             // Submit the command.
             match builder.finish() {
-                Ok(command) => batch.add_command(command, id, z_index),
+                Ok(command) => batch.add_command(id, command, z_index),
                 Err(e) => log::error!("Failed to tesselate glyph: {e}"),
             };
         }
@@ -121,7 +124,7 @@ pub(crate) fn glyphs(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
 
                 // Submit them.
                 for command in commands.into_iter() {
-                    batch.add_command(command, id, z_index);
+                    batch.add_command(id, command, z_index);
                 }
             }
         }

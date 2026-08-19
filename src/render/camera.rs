@@ -5,12 +5,11 @@
 //! aspect ratio. Zoom/pan are just animatable inputs later — for now the
 //! uniform is uploaded each frame from the current time and target size.
 
-use crate::render::Gpu;
 use glam::prelude::*;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
-    ShaderStages,
+    Device, Queue, ShaderStages,
 };
 
 #[repr(C)]
@@ -30,10 +29,7 @@ pub struct CameraBuffer {
 }
 
 impl CameraBuffer {
-    pub fn new(gpu: &Gpu) -> Self {
-        // Get the device to create GPU constructs.
-        let device = gpu.device();
-
+    pub fn new(device: &Device) -> Self {
         // Create our uniform buffer.
         let buffer_desc = BufferDescriptor {
             label: Some("nelo camera uniform"),
@@ -88,7 +84,7 @@ impl CameraBuffer {
     }
 
     /// Sample and upload a camera for this frame.
-    pub fn upload(&self, gpu: &Gpu, view_proj: &Affine2, time: f32) {
+    pub fn upload(&self, queue: &Queue, view_proj: &Affine2, time: f32) {
         // Do the work manually to define the camera
         let matrix = view_proj.matrix2;
         let trans = view_proj.translation;
@@ -104,7 +100,6 @@ impl CameraBuffer {
             time,
             _pad: [0.0; 3],
         };
-        gpu.queue()
-            .write_buffer(&self.buffer, 0, bytemuck::bytes_of(&uniform));
+        queue.write_buffer(&self.buffer, 0, bytemuck::bytes_of(&uniform));
     }
 }

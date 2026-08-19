@@ -4,19 +4,23 @@ pub mod circle;
 pub mod glyph;
 pub mod spline;
 
-use crate::render::{Batch, CameraBuffer, Gpu};
+use crate::render::{Batch, CameraBuffer, Encoder};
 use crate::scene::Scene;
 use wgpu::{
-    Color, CommandEncoderDescriptor, Extent3d, LoadOp, Operations, RenderPassColorAttachment,
-    RenderPassDescriptor, StoreOp, Texture, TextureDescriptor, TextureDimension, TextureUsages,
-    TextureView, TextureViewDescriptor,
+    Color, CommandEncoderDescriptor, Device, Extent3d, LoadOp, Operations, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, StoreOp, Texture, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor,
 };
 
-pub type ComponentRenderer = Box<dyn Fn(&mut Batch, &Scene, f32, (u32, u32))>;
+pub type ComponentRenderer = Box<dyn Fn(&mut Encoder, &Scene, f32, (u32, u32))>;
 
 // ----- Renderer -----
 
 pub struct Renderer {
+    device: Device,
+    queue: Queue,
+    format: TextureFormat,
+
     scene: Scene,
     camera_buffer: CameraBuffer,
     msaa_texture: Texture,
@@ -27,11 +31,16 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(gpu: &Gpu, playback: impl Into<Playback>) -> Self {
+    pub fn new(
+        device: Device,
+        queue: Queue,
+        format: TextureFormat,
+        playback: impl Into<Playback>,
+    ) -> Self {
         let scene = playback.into().scene;
-        let camera_buffer = CameraBuffer::new(&gpu);
-        let msaa_texture = Self::create_msaa_texture(&gpu, (800, 600));
-        let batch = Batch::new(&gpu, camera_buffer.layout());
+        let camera_buffer = CameraBuffer::new(&device);
+        let msaa_texture = Self::create_msaa_texture(&device, format, (800, 600));
+        let batch = Batch::new(&device, format, camera_buffer.layout());
         let renderers: Vec<ComponentRenderer> = vec![
             Box::new(circle::circles),
             Box::new(spline::splines),
@@ -40,9 +49,14 @@ impl Renderer {
         ];
 
         Self {
+            device,
+            queue,
+            format,
+
             scene,
-            msaa_texture,
             camera_buffer,
+            msaa_texture,
+
             batch,
             renderers,
         }
@@ -51,33 +65,38 @@ impl Renderer {
     // Renders the scene to the assigned frame and presents the frame if possible.
     // Uses all renderers and supplies them the data according to their geometry
     // filter.
-    pub fn render(&mut self, gpu: &Gpu, view: &TextureView, t: f32) {
+    pub fn render(&mut self, view: &TextureView, t: f32) {
         let size = (view.texture().width(), view.texture().height());
 
         // Get a valid view over our MSAA texture.
         let msaa_size = (self.msaa_texture.width(), self.msaa_texture.height());
         if size != msaa_size {
-            self.msaa_texture = Self::create_msaa_texture(&gpu, size);
+            self.msaa_texture = Self::create_msaa_texture(&self.device, self.format, size);
         }
         let msaa_view = self
             .msaa_texture
             .create_view(&TextureViewDescriptor::default());
 
         // Populate our batch with appropriate render commands.
-        self.batch.begin(gpu);
-        for renderer in self.renderers.iter() {
-            renderer(&mut self.batch, &self.scene, t, size);
+        {
+            let mut encoder = self.batch.encoder();
+            for renderer in self.renderers.iter() {
+                renderer(&mut encoder, &self.scene, t, size);
+            }
         }
+
+        // Prepare the batches with the render data.
+        self.batch.prepare(&self.queue);
 
         // Upload the camera data into the buffer.
         let (background, view_proj) = self.scene.sample_camera(size, t);
-        self.camera_buffer.upload(gpu, &view_proj, t);
+        self.camera_buffer.upload(&self.queue, &view_proj, t);
 
         // Get our command encoder and build our render pass.
         let encoder_desc = CommandEncoderDescriptor {
             label: Some("nelo scene renderer encoder"),
         };
-        let mut encoder = gpu.device().create_command_encoder(&encoder_desc);
+        let mut encoder = self.device.create_command_encoder(&encoder_desc);
 
         // Build our render pass from each of the renderers.
         {
@@ -109,14 +128,14 @@ impl Renderer {
             pass.set_bind_group(0, self.camera_buffer.bind_group(), &[]);
 
             // Submit the batch.
-            self.batch.submit(gpu, &mut pass);
+            self.batch.submit(&mut pass);
         }
 
         // Submit the draw commands to the GPU.
-        gpu.queue().submit(std::iter::once(encoder.finish()));
+        self.queue.submit(std::iter::once(encoder.finish()));
     }
 
-    fn create_msaa_texture(gpu: &Gpu, size: (u32, u32)) -> Texture {
+    fn create_msaa_texture(device: &Device, format: TextureFormat, size: (u32, u32)) -> Texture {
         let (width, height) = size;
         let texture_desc = TextureDescriptor {
             label: Some("nelo scene renderer msaa"),
@@ -128,11 +147,11 @@ impl Renderer {
             mip_level_count: 1,
             sample_count: 4,
             dimension: TextureDimension::D2,
-            format: gpu.format(),
+            format,
             usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC,
             view_formats: &[],
         };
-        gpu.device().create_texture(&texture_desc)
+        device.create_texture(&texture_desc)
     }
 }
 

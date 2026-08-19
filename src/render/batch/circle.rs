@@ -1,11 +1,11 @@
 //! Batch for SDF filled circles.
 
-use crate::render::{Color, Gpu};
+use crate::render::{Color, batch::pipeline};
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::prelude::*;
 use wgpu::{
-    BindGroupLayout, Buffer, BufferDescriptor, BufferUsages, RenderPass, RenderPipeline,
-    VertexBufferLayout, VertexStepMode, vertex_attr_array,
+    BindGroupLayout, Buffer, BufferDescriptor, BufferUsages, Device, Queue, RenderPass,
+    RenderPipeline, TextureFormat, VertexBufferLayout, VertexStepMode, vertex_attr_array,
 };
 
 // ----- CircleBatch -----
@@ -20,7 +20,12 @@ pub struct CircleBatch {
 }
 
 impl CircleBatch {
-    pub fn new(gpu: &Gpu, capacity: usize, camera_layout: &BindGroupLayout) -> Self {
+    pub fn new(
+        device: &Device,
+        format: TextureFormat,
+        capacity: usize,
+        camera_layout: &BindGroupLayout,
+    ) -> Self {
         // Create our render pipeline.
         let shader = include_str!("shaders/circle.wgsl");
         let vertex_layout = VertexBufferLayout {
@@ -34,7 +39,7 @@ impl CircleBatch {
             ],
         };
         let bind_group_layouts = &[Some(camera_layout)];
-        let pipeline = gpu.create_pipeline(shader, vertex_layout, bind_group_layouts);
+        let pipeline = pipeline::create(device, format, shader, vertex_layout, bind_group_layouts);
 
         // Create our gpu buffer.
         let desc = BufferDescriptor {
@@ -43,7 +48,7 @@ impl CircleBatch {
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         };
-        let buffer = gpu.device().create_buffer(&desc);
+        let buffer = device.create_buffer(&desc);
 
         // Create our cpu buffer.
         let instances = vec![CircleInstance::zeroed(); capacity];
@@ -83,11 +88,10 @@ impl CircleBatch {
     }
 
     /// Copies the data for this batch to the GPU.
-    pub fn prepare(&mut self, gpu: &Gpu) {
+    pub fn prepare(&mut self, queue: &Queue) {
         self.submit_count = self.count;
 
         // Write the buffer.
-        let queue = gpu.queue();
         let buffer = &self.buffer;
         let instances = &self.instances[..self.submit_count];
         queue.write_buffer(buffer, 0, cast_slice(instances));
@@ -95,7 +99,7 @@ impl CircleBatch {
 
     /// Submit a single circle to the batch. We can also support ranged submissions
     /// in the future.
-    pub fn submit(&mut self, _gpu: &Gpu, pass: &mut RenderPass, index: usize) {
+    pub fn submit(&mut self, pass: &mut RenderPass, index: usize) {
         // Encode our draw.
         pass.set_pipeline(&self.pipeline);
         pass.set_vertex_buffer(0, self.buffer.slice(..));

@@ -1,6 +1,6 @@
 //! Helper methods to render splines
 
-use crate::render::{Batch, MeshVertex, Polyline, RenderCommand};
+use crate::render::{Encoder, MeshVertex, Polyline, RenderCommand, StrokeVertex};
 use crate::scene::{Arrow, Fill, Scene, Spline, Stroke, Transform, Visibility};
 use glam::{Mat2, Vec2};
 
@@ -11,7 +11,7 @@ impl RenderCommand {
     pub fn spline(
         spline: &Spline,
         transform: &Transform,
-        tolerance: f32,
+        scale: f32,
         time: f32,
         fill: Option<&Fill>,
         stroke: Option<&Stroke>,
@@ -37,7 +37,7 @@ impl RenderCommand {
             .spline_path
             .sample(time)
             .map(move |v| affine.matrix2 * v + affine.translation);
-        let polyline = Polyline::flatten(&path, start, end, tolerance);
+        let polyline = Polyline::flatten(&path, start, end, scale);
 
         Self::polyline(polyline, spline.close.sample(time), time, fill, stroke)
     }
@@ -52,26 +52,30 @@ impl RenderCommand {
         stroke: Option<&Stroke>,
     ) -> Vec<Self> {
         // Closures to consume the polyline into command.
-        let fill_command = |cmds: &mut Vec<Self>, polyline: Polyline, fill: &Fill| {
-            cmds.push(polyline.to_fill(|_| fill.color.sample(time)));
+        let fill_command = |polyline: Polyline, fill: &Fill| {
+            let color = fill.color.sample(time);
+            let map = |(_, pos)| MeshVertex::new(pos, Vec2::ZERO, color);
+            let vertices = polyline.into_iter().map(map).collect();
+            RenderCommand::Polygon { vertices }
         };
 
-        let stroke_command = move |cmds: &mut Vec<Self>, polyline: Polyline, stroke: &Stroke| {
+        let stroke_command = move |polyline: Polyline, stroke: &Stroke| {
             let color = stroke.color.sample(time);
             let weight = stroke.weight.sample(time);
-            let map = |a| (color.sample(a), weight.sample(a));
-            cmds.push(polyline.to_stroke(map, close));
+            let map = |(a, pos)| StrokeVertex::new(pos, color.sample(a), weight.sample(a));
+            let vertices = polyline.into_iter().map(map).collect();
+            RenderCommand::Stroke { vertices, close }
         };
 
         // Use these closures. Clone polyline only if we have both.
         let mut commands = Vec::new();
         match (fill, stroke) {
             (Some(fill), Some(stroke)) => {
-                fill_command(&mut commands, polyline.clone(), fill);
-                stroke_command(&mut commands, polyline, stroke);
+                commands.push(fill_command(polyline.clone(), fill));
+                commands.push(stroke_command(polyline, stroke));
             }
-            (Some(fill), None) => fill_command(&mut commands, polyline, fill),
-            (None, Some(stroke)) => stroke_command(&mut commands, polyline, stroke),
+            (Some(fill), None) => commands.push(fill_command(polyline, fill)),
+            (None, Some(stroke)) => commands.push(stroke_command(polyline, stroke)),
             _ => (),
         }
 
@@ -81,7 +85,9 @@ impl RenderCommand {
 
 // ----- Spline Render -----
 
-pub(crate) fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
+pub(crate) fn splines(encoder: &mut Encoder, scene: &Scene, time: f32, _size: (u32, u32)) {
+    let height = scene.sample_height(time);
+
     // Get a view of all curves with a stroke.
     let items = scene.view_pair::<Transform, Spline>();
     items.into_iter().for_each(|(id, transform, spline)| {
@@ -89,27 +95,21 @@ pub(crate) fn splines(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, 
         let fill = scene.component(id);
         let stroke = scene.component(id);
         let visibility = scene.component(id);
-        let commands = RenderCommand::spline(
-            spline,
-            transform,
-            batch.tolerance(),
-            time,
-            fill,
-            stroke,
-            visibility,
-        );
+        let commands =
+            RenderCommand::spline(spline, transform, height, time, fill, stroke, visibility);
 
         // Submit them.
         let z_index = visibility.map_or(0.0, |v| v.z_index.sample(time));
         for command in commands.into_iter() {
-            batch.add_command(command, id, z_index);
+            encoder.add_command(id, command, z_index);
         }
     });
 }
 
 /// Mostly the same as the spline renderer. However, we never fill arrows, and we add
 /// a triangle at the end.
-pub(crate) fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u32)) {
+pub(crate) fn arrows(encoder: &mut Encoder, scene: &Scene, time: f32, _size: (u32, u32)) {
+    let height = scene.sample_height(time);
     let items = scene.view_triple::<Transform, Arrow, Stroke>();
     items
         .into_iter()
@@ -118,20 +118,13 @@ pub(crate) fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
             let fill = None; // Never fill in an arrow.
             let vis = scene.component(id);
             let spline = &arrow.spline;
-            let commands = RenderCommand::spline(
-                spline,
-                transform,
-                batch.tolerance(),
-                time,
-                fill,
-                Some(stroke),
-                vis,
-            );
+            let commands =
+                RenderCommand::spline(spline, transform, height, time, fill, Some(stroke), vis);
 
             // Submit them too.
             let z_index = vis.map_or(0.0, |v| v.z_index.sample(time));
             for command in commands.into_iter() {
-                batch.add_command(command, id, z_index);
+                encoder.add_command(id, command, z_index);
             }
 
             // Compute how we rotate and scale our triangle.
@@ -157,6 +150,6 @@ pub(crate) fn arrows(batch: &mut Batch, scene: &Scene, time: f32, _size: (u32, u
             let map = |v| MeshVertex::new(rotate * size * v + last, Vec2::ZERO, color.sample(end));
             let vertices = VERTICES.into_iter().map(map).collect();
             let command = RenderCommand::Polygon { vertices };
-            batch.add_command(command, id, z_index);
+            encoder.add_command(id, command, z_index);
         });
 }

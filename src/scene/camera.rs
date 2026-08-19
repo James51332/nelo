@@ -6,9 +6,9 @@ use crate::timeline::Timeline;
 use glam::prelude::*;
 
 pub struct Camera {
-    height: Timeline<f32>,
-    transform: Transform,
-    background: Timeline<Color>,
+    pub height: Timeline<f32>,
+    pub transform: Transform,
+    pub background: Timeline<Color>,
 }
 
 impl Camera {

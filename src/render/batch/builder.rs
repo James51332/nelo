@@ -1,50 +1,37 @@
 //! Geometry builder for tesselation.
 
-use crate::render::{Color, MeshVertex, batch::RenderCommand};
+use crate::render::{Color, MeshVertex, RenderCommand, StrokeVertex};
 use glam::prelude::*;
 use lyon::{
     math::Point,
     path::{BuilderWithAttributes, LineCap, LineJoin, Path},
     tessellation::{
         BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
-        StrokeVertex, TessellationError, VertexBuffers,
+        TessellationError, VertexBuffers,
     },
 };
 
-// ----- Segment -----
-
-pub enum Segment {
-    Line(MeshVertex, MeshVertex),
-    Quad(MeshVertex, Vec2, MeshVertex),
-    Cubic(MeshVertex, Vec2, Vec2, MeshVertex),
-}
-
-impl Segment {
-    /// Returns the first point along this segment.
-    pub fn start(&self) -> MeshVertex {
-        match *self {
-            Self::Line(s, _) | Self::Quad(s, _, _) | Self::Cubic(s, _, _, _) => s,
-        }
-    }
-}
+/// This shouldn't matter since we are only rendering polylines. However, lyon does sometimes try to
+/// aggregate for us, which we don't like. Therefore, we keep it relatively small.
+const BUILDER_TOLERANCE: f32 = 0.001;
 
 // ----- FillBuilder -----
 
 pub struct FillBuilder {
     builder: BuilderWithAttributes,
     last_point: Option<MeshVertex>,
-    tolerance: f32,
 }
 
-impl FillBuilder {
-    pub fn new(tolerance: f32) -> Self {
+impl Default for FillBuilder {
+    fn default() -> Self {
         Self {
             builder: Path::builder_with_attributes(4),
             last_point: None,
-            tolerance,
         }
     }
+}
 
+impl FillBuilder {
     /// Performs a tesselation of this path and adds to the batch if successful.
     /// Closes any open, subpath with looping if open.
     pub fn finish(mut self) -> Result<RenderCommand, TessellationError> {
@@ -64,7 +51,7 @@ impl FillBuilder {
 
         // Perform the tesselation
         let mut tesselator = FillTessellator::new();
-        let options = FillOptions::tolerance(self.tolerance);
+        let options = FillOptions::tolerance(BUILDER_TOLERANCE);
         let result = tesselator.tessellate_with_ids(
             path.id_iter(),
             &path,
@@ -78,44 +65,6 @@ impl FillBuilder {
             vertices: buffers.vertices,
             indices: buffers.indices,
         })
-    }
-
-    /// Add a segment to this geometry. If the segment doesn't align with the
-    /// last point, begin a new subpath.
-    pub fn add_segment(&mut self, segment: Segment) {
-        let start = segment.start();
-
-        // Optionally start a new segment.
-        match self.last_point {
-            Some(end) if end.position != start.position => {
-                self.builder.end(true);
-                self.builder.begin(point(start.position), &start.color);
-            }
-            None => {
-                self.builder.begin(point(start.position), &start.color);
-            }
-            _ => (),
-        };
-
-        // Emit the segment.
-        let end = match segment {
-            Segment::Line(_, end) => {
-                self.builder.line_to(point(end.position), &end.color);
-                end
-            }
-            Segment::Quad(_, c1, end) => {
-                self.builder
-                    .quadratic_bezier_to(point(c1), point(end.position), &end.color);
-                end
-            }
-            Segment::Cubic(_, c1, c2, end) => {
-                self.builder
-                    .cubic_bezier_to(point(c1), point(c2), point(end.position), &end.color);
-                end
-            }
-        };
-
-        self.last_point = Some(end);
     }
 
     /// Begins a new subpath, ending previous (closing loop) if needed.
@@ -149,14 +98,13 @@ impl FillBuilder {
 
 pub struct StrokeBuilder {
     builder: BuilderWithAttributes,
-    tolerance: f32,
 }
 
 impl StrokeBuilder {
-    pub fn new(start: StrokePoint, tolerance: f32) -> Self {
+    pub fn new(start: StrokeVertex) -> Self {
         let mut builder = Path::builder_with_attributes(5);
         builder.begin(point(start.position), &stroke(start));
-        Self { builder, tolerance }
+        Self { builder }
     }
 
     /// Performs a tesselation of this path and adds to the batch if successful.
@@ -167,15 +115,18 @@ impl StrokeBuilder {
         // Build the path and our buffers.
         let path = self.builder.build();
         let mut buffers: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
-        let mut geometry = BuffersBuilder::new(&mut buffers, |mut vertex: StrokeVertex| {
-            let position = vertex.position().to_array().into();
-            let color = Color::from_slice(vertex.interpolated_attributes().into());
-            MeshVertex::new(position, Vec2::ZERO, color)
-        });
+        let mut geometry = BuffersBuilder::new(
+            &mut buffers,
+            |mut vertex: lyon::tessellation::StrokeVertex| {
+                let position = vertex.position().to_array().into();
+                let color = Color::from_slice(vertex.interpolated_attributes().into());
+                MeshVertex::new(position, Vec2::ZERO, color)
+            },
+        );
 
         // Perform the tesselation
         let mut tesselator = StrokeTessellator::new();
-        let options = StrokeOptions::tolerance(self.tolerance)
+        let options = StrokeOptions::tolerance(BUILDER_TOLERANCE)
             .with_start_cap(LineCap::Round)
             .with_end_cap(LineCap::Round)
             .with_line_join(LineJoin::Miter)
@@ -195,27 +146,8 @@ impl StrokeBuilder {
         })
     }
 
-    pub fn line_to(&mut self, end: StrokePoint) {
+    pub fn line_to(&mut self, end: StrokeVertex) {
         self.builder.line_to(point(end.position), &stroke(end));
-    }
-}
-
-// ----- StrokePoint -----
-
-#[derive(Debug, Clone)]
-pub struct StrokePoint {
-    pub position: Vec2,
-    pub color: [f32; 4],
-    pub width: f32,
-}
-
-impl StrokePoint {
-    pub fn new(position: Vec2, color: Color, width: f32) -> Self {
-        Self {
-            position,
-            color: color.to_array(),
-            width,
-        }
     }
 }
 
@@ -226,7 +158,7 @@ fn point(pos: Vec2) -> Point {
 }
 
 /// Returns the stroke attributes. Width is index 4.
-fn stroke(point: StrokePoint) -> [f32; 5] {
+fn stroke(point: StrokeVertex) -> [f32; 5] {
     [
         point.color[0],
         point.color[1],

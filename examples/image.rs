@@ -13,6 +13,7 @@ fn main() -> Result<(), String> {
         time: SCENE_TIME,
         file_name: "nelo_scene",
         file_ext: "png",
+        gpu: None,
     };
 
     exporter.export(Scene::demo())

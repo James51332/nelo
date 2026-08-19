@@ -1,12 +1,12 @@
 //! Helper methods to render circles
 
 use crate::render::batch::RenderCommand;
-use crate::render::{Batch, Polyline};
+use crate::render::{Encoder, Polyline};
 use crate::scene::{Circle, Fill, Scene, Stroke, Transform, Visibility};
 use crate::timeline::Path;
 
 /// Renders all circles from the scene into the batch.
-pub(crate) fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32)) {
+pub(crate) fn circles(encoder: &mut Encoder, scene: &Scene, t: f32, _size: (u32, u32)) {
     // Get a view of all elements with the required components.
     let items = scene.view_pair::<Transform, Circle>();
     items.into_iter().for_each(|(id, transform, _)| {
@@ -29,20 +29,20 @@ pub(crate) fn circles(batch: &mut Batch, scene: &Scene, t: f32, _size: (u32, u32
                 color,
             };
 
-            batch.add_command(command, id, z_index);
+            encoder.add_command(id, command, z_index);
         }
 
         if let Some(stroke) = scene.component::<Stroke>(id) {
             // Generate the path and flatten it.
             let path = Path::circle().map(move |v| affine.matrix2 * v + affine.translation);
-            let polyline = Polyline::flatten(&path, 0.0, vis_amount, batch.tolerance());
+            let polyline = Polyline::flatten(&path, 0.0, vis_amount, scene.sample_height(t));
 
             // Generate the render command and submit.
-            let color = stroke.color.sample(t);
-            let weight = stroke.weight.sample(t);
-            let map = |a| (color.sample(a), weight.sample(a));
-            let command = polyline.to_stroke(map, vis_amount >= 0.995);
-            batch.add_command(command, id, z_index);
+            let close = vis_amount >= 0.995;
+            let commands = RenderCommand::polyline(polyline, close, t, None, Some(stroke));
+            for command in commands.into_iter() {
+                encoder.add_command(id, command, z_index);
+            }
         }
     });
 }

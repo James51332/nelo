@@ -1,13 +1,4 @@
 //! Timelines are the are a deterministic stream of data over time.
-//!
-//! They have two flavors:
-//! * [`Constant`](Timeline::Constant) — a value that never changes, held inline
-//!   with no allocation and no dynamic dispatch.
-//! * [`Dynamic`](Timeline::Dynamic) — a real [`Signal`], type-erased behind a
-//!   `Box` so a timeline stays `Clone` and can be shared cheaply.
-//!
-//! Callers sample both through the same [`sample`](Timeline::sample) call; the
-//! constant case is purely an optimisation, not a separate API.
 
 pub mod along;
 pub mod compose;
@@ -93,10 +84,7 @@ impl<T: Clone> Timeline<T> {
     /// Repeats over this timelines length, or does nothing if this timeline
     /// has no length.
     pub fn repeat(self) -> Self {
-        if self.is_constant() {
-            return self;
-        }
-
+        // Also handles constant case.
         let Some(length) = self.length() else {
             return self;
         };

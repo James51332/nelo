@@ -60,6 +60,10 @@ impl Scene {
         self.camera.sample(size, t)
     }
 
+    pub fn sample_height(&self, time: f32) -> f32 {
+        self.camera.height.sample(time)
+    }
+
     pub fn camera(&mut self) -> &mut Camera {
         &mut self.camera
     }
