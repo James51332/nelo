@@ -7,7 +7,7 @@ fn main() {
         .init();
 
     let event_loop = EventLoop::new().expect("Failed to create event loop!");
-    let mut app = Viewer::default();
+    let mut app = Viewer::new(Story::demo());
 
     event_loop.set_control_flow(ControlFlow::Poll);
     event_loop

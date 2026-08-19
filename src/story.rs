@@ -128,7 +128,7 @@ impl Story {
 
         // Act 1. Show some donuts
         donuts.iter().for_each(|&id| {
-            story.show(id).wait(0.4);
+            story.show(id).wait(0.1);
         });
 
         // Act 2. Do some plotting.

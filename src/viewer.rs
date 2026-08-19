@@ -1,5 +1,6 @@
 //! Viewer for nelo scenes
 
+use crate::render::{Playback, Renderer};
 use std::sync::Arc;
 use std::time::Instant;
 use wgpu::{
@@ -15,8 +16,6 @@ use winit::{
     window::{Window, WindowId},
 };
 
-use crate::{render::Renderer, story::Story};
-
 // ----- State -----
 
 pub struct State {
@@ -28,7 +27,7 @@ pub struct State {
 }
 
 impl State {
-    async fn new(window: Arc<Window>) -> Self {
+    async fn new(window: Arc<Window>, playback: Playback) -> Self {
         // Create our wgpu instance.
         let instance = Instance::default();
 
@@ -73,7 +72,7 @@ impl State {
         surface.configure(&device, &config);
 
         // Create the renderer.
-        let renderer = Renderer::new(device.clone(), queue.clone(), format, Story::demo());
+        let renderer = Renderer::new(device.clone(), queue.clone(), format, playback);
 
         // Get the current time.
         let start = Instant::now();
@@ -135,15 +134,21 @@ impl State {
 
 // ----- Viewer -----
 
-#[derive(Default)]
-pub struct Viewer {
-    window: Option<Arc<Window>>,
-    state: Option<State>,
+pub enum Viewer {
+    Pending(Playback),
+    Starting,
+    Running { window: Arc<Window>, state: State },
+}
+
+impl Viewer {
+    pub fn new(playback: impl Into<Playback>) -> Self {
+        Self::Pending(playback.into())
+    }
 }
 
 impl ApplicationHandler for Viewer {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_none() {
+        if let Self::Pending(playback) = std::mem::replace(self, Self::Starting) {
             // First create the window.
             let (width, height) = (1280, 720);
             let attrs = Window::default_attributes()
@@ -155,23 +160,28 @@ impl ApplicationHandler for Viewer {
                     .create_window(attrs)
                     .expect("Failed to create window"),
             );
-            self.window = Some(window.clone());
 
             // Then create the state.
-            let state = pollster::block_on(State::new(window));
-            self.state = Some(state);
+            let state = pollster::block_on(State::new(window.clone(), playback));
+
+            // Update to running state.
+            *self = Self::Running { window, state };
         }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        if let Some(state) = self.state.as_mut() {
-            state.event(event_loop, event);
-        }
+        let Self::Running { window: _, state } = self else {
+            return;
+        };
+
+        state.event(event_loop, event);
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if let Some(window) = self.window.as_ref() {
-            window.request_redraw();
-        }
+        let Self::Running { window, state: _ } = self else {
+            return;
+        };
+
+        window.request_redraw();
     }
 }

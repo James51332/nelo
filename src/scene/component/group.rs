@@ -92,8 +92,9 @@ impl<'a> GroupRef<'a> {
         self
     }
 
-    /// Removes all entities from this group.
-    pub fn clear(&mut self) -> Vec<EntityId> {
+    /// Removes all entities from this group and returns their ids. It does not
+    /// destroy this entity.
+    pub fn ungroup(&mut self) -> Vec<EntityId> {
         let children = self.children();
         for &id in children.iter() {
             self.remove(id);
@@ -160,12 +161,12 @@ impl<'a> GroupRef<'a> {
     where
         T: for<'b> FnMut(u32, &'b mut Scene) -> EntityRef<'b>,
     {
-        let mut group = self;
         for i in 0..n {
-            let id = generate(i, group.scene).id();
-            group = group.add(id);
+            let id = generate(i, self.scene).id();
+            self.add(id);
         }
-        group
+
+        self
     }
 
     /// Create a single entity which is attached to this group.
@@ -177,7 +178,7 @@ impl<'a> GroupRef<'a> {
         self.add(id)
     }
 
-    /// Runs a function for each element in
+    /// Runs a function for each element in the group.
     pub fn for_each<F>(&mut self, mut generate: F) -> &mut Self
     where
         F: for<'b> FnMut(u32, EntityRef<'b>) -> EntityRef<'b>,
@@ -190,8 +191,13 @@ impl<'a> GroupRef<'a> {
         self
     }
 
-    // Returns all entities with a matching label.
-    pub fn index(&mut self, label: impl Into<Label>) -> Vec<EntityId> {
+    /// Returns the element at given index, or panics if out of bounds.
+    pub fn index(&mut self, index: usize) -> EntityId {
+        self.children()[index]
+    }
+
+    /// Returns all entities with a matching label.
+    pub fn labeled(&mut self, label: impl Into<Label>) -> Vec<EntityId> {
         let label = label.into();
         let mut children = self.children();
 
@@ -206,24 +212,24 @@ impl<'a> GroupRef<'a> {
     }
 
     pub fn split_before(&mut self, label: impl Into<Label>) -> &mut Self {
-        let ids = self.index(label);
+        let ids = self.labeled(label);
         self.split_before_ids(&ids)
     }
 
     /// Splits this group at all entities matching the label.
     pub fn split(&mut self, label: impl Into<Label>) -> &mut Self {
-        let ids = self.index(label);
+        let ids = self.labeled(label);
         self.split_at_ids(&ids)
     }
 
     /// Split this group into subgroups based on a token.
     pub fn split_after(&mut self, label: impl Into<Label>) -> &mut Self {
-        let ids = self.index(label);
+        let ids = self.labeled(label);
         self.split_after_ids(&ids)
     }
 
     pub fn split_before_ids(&mut self, ids: &[EntityId]) -> &mut Self {
-        let children = self.clear();
+        let children = self.ungroup();
         let mut subgroup_id = self.scene.group().id();
         self.add(subgroup_id);
 
@@ -241,7 +247,7 @@ impl<'a> GroupRef<'a> {
 
     /// Divide into subgroups. entities in given slice remain at top-level.
     pub fn split_at_ids(&mut self, ids: &[EntityId]) -> &mut Self {
-        let children = self.clear();
+        let children = self.ungroup();
 
         let mut subgroup_id = self.scene.group().id();
         self.add(subgroup_id);
@@ -266,7 +272,7 @@ impl<'a> GroupRef<'a> {
     /// Splits this group by entity ids. Split elements are placed at the end of subgroups.
     pub fn split_after_ids(&mut self, ids: &[EntityId]) -> &mut Self {
         // Remove all the children.
-        let children = self.clear();
+        let children = self.ungroup();
 
         // Create our initial subgroup.
         let mut subgroup_id = self.scene.group().id();
@@ -292,13 +298,13 @@ impl<'a> GroupRef<'a> {
         EntityRef::new(self.scene, self.id)
     }
 
-    /// Drops this reference and returns the entity id of this group.
-    pub fn id(self) -> EntityId {
+    /// Returns the entity id of this group.
+    pub fn id(&self) -> EntityId {
         self.id
     }
 }
 
-impl Transformable for GroupRef<'_> {
+impl Transformable for &mut GroupRef<'_> {
     fn transform(&mut self) -> &mut Transform {
         self.scene.registry.get_or_default(self.id)
     }
@@ -322,6 +328,9 @@ impl<'a> EntityRef<'a> {
 impl Scene {
     /// Creates a group.
     pub fn group(&mut self) -> GroupRef<'_> {
-        self.create().attach(Group::default()).as_group().unwrap()
+        self.create()
+            .attach(Group::default())
+            .as_group()
+            .expect("Failed to attach group to new entity")
     }
 }

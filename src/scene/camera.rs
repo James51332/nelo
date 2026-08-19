@@ -49,7 +49,7 @@ impl Camera {
     }
 }
 
-impl Transformable for Camera {
+impl Transformable for &mut Camera {
     fn transform(&mut self) -> &mut Transform {
         &mut self.transform
     }
