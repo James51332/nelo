@@ -5,7 +5,7 @@ pub mod glyph;
 pub mod spline;
 
 use crate::render::{Batch, CameraBuffer, Encoder};
-use crate::scene::Scene;
+use crate::scene::{Playback, Scene};
 use wgpu::{
     Color, CommandEncoderDescriptor, Device, Extent3d, LoadOp, Operations, Queue,
     RenderPassColorAttachment, RenderPassDescriptor, StoreOp, Texture, TextureDescriptor,
@@ -21,7 +21,7 @@ pub struct Renderer {
     queue: Queue,
     format: TextureFormat,
 
-    scene: Scene,
+    playback: Playback,
     camera_buffer: CameraBuffer,
     msaa_texture: Texture,
 
@@ -37,7 +37,7 @@ impl Renderer {
         format: TextureFormat,
         playback: impl Into<Playback>,
     ) -> Self {
-        let scene = playback.into().scene;
+        let playback = playback.into();
         let camera_buffer = CameraBuffer::new(&device);
         let msaa_texture = Self::create_msaa_texture(&device, format, (800, 600));
         let batch = Batch::new(&device, format, camera_buffer.layout());
@@ -53,7 +53,7 @@ impl Renderer {
             queue,
             format,
 
-            scene,
+            playback,
             camera_buffer,
             msaa_texture,
 
@@ -67,6 +67,7 @@ impl Renderer {
     // filter.
     pub fn render(&mut self, view: &TextureView, t: f32) {
         let size = (view.texture().width(), view.texture().height());
+        let scene = self.playback.scene();
 
         // Get a valid view over our MSAA texture.
         let msaa_size = (self.msaa_texture.width(), self.msaa_texture.height());
@@ -81,7 +82,7 @@ impl Renderer {
         {
             let mut encoder = self.batch.encoder();
             for renderer in self.renderers.iter() {
-                renderer(&mut encoder, &self.scene, t, size);
+                renderer(&mut encoder, self.playback.scene(), t, size);
             }
         }
 
@@ -89,7 +90,7 @@ impl Renderer {
         self.batch.prepare(&self.queue);
 
         // Upload the camera data into the buffer.
-        let (background, view_proj) = self.scene.sample_camera(size, t);
+        let (background, view_proj) = scene.sample_camera(size, t);
         self.camera_buffer.upload(&self.queue, &view_proj, t);
 
         // Get our command encoder and build our render pass.
@@ -152,36 +153,5 @@ impl Renderer {
             view_formats: &[],
         };
         device.create_texture(&texture_desc)
-    }
-}
-
-// ----- Playback -----
-
-pub struct Playback {
-    scene: Scene,
-    length: Option<f32>,
-}
-
-impl Playback {
-    pub fn new(scene: Scene) -> Self {
-        Self {
-            scene,
-            length: None,
-        }
-    }
-
-    pub fn length(&self) -> Option<f32> {
-        self.length
-    }
-
-    pub fn with_length(mut self, length: f32) -> Self {
-        self.length = Some(length);
-        self
-    }
-}
-
-impl From<Scene> for Playback {
-    fn from(scene: Scene) -> Self {
-        Self::new(scene)
     }
 }

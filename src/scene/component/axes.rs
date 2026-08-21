@@ -1,9 +1,6 @@
 //! Render simple lines as a grid.
 
-use crate::{
-    render::Color,
-    scene::{GroupRef, Path, Scene},
-};
+use crate::scene::{Color, GroupRef, Path, Scene};
 use glam::Vec2;
 
 impl Scene {

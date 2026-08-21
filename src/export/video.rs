@@ -4,7 +4,8 @@ use wgpu::wgt::TextureViewDescriptor;
 use wgpu::{Device, Queue, TextureFormat};
 
 use crate::export::{Export, ExportTexture, gpu};
-use crate::render::{Playback, Renderer};
+use crate::render::Renderer;
+use crate::scene::Playback;
 use std::io::Write;
 use std::process::{Command, Stdio};
 

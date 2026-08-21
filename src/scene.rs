@@ -1,25 +1,27 @@
 //! A Scene is an interface between data and rendering.
 
 pub mod camera;
+pub mod color;
 pub mod component;
 pub mod entity;
+pub mod fonts;
+pub mod playback;
 mod registry;
 
 pub use camera::Camera;
+pub use color::Color;
 pub use component::{
     Arrow, Circle, Fill, Glyph, GroupRef, Label, Spline, Stroke, Transform, Transformable,
     Visibility,
 };
 pub use entity::{EntityId, EntityRef};
-pub(crate) use registry::{Query, Registry};
+pub use fonts::Font;
+pub use playback::Playback;
 
-use crate::{
-    fonts::Font,
-    render::Color,
-    timeline::{Path, Timeline},
-};
+use crate::timeline::{Path, Timeline};
 use ab_glyph::FontArc;
 use glam::prelude::*;
+use registry::{Query, Registry};
 use std::{any::Any, collections::HashMap};
 
 /// A Scene is the way that data is stored. All render data is attached to

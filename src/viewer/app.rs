@@ -1,6 +1,7 @@
 //! Core app features for viewer
 
-use crate::render::{Playback, Renderer};
+use crate::render::Renderer;
+use crate::scene::Playback;
 use crate::viewer::UiRenderer;
 use egui::{CentralPanel, Frame, Id, Panel, Slider, SliderClamping, TextureId, load::SizedTexture};
 use egui::{Image, Rect, Vec2};

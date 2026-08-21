@@ -14,6 +14,7 @@ categories = ["graphics", "multimedia::video"]
 log = "0.4.33"
 bytemuck = { version = "1", features = ["derive"] }
 glam = { version = "0.33.2", features = ["bytemuck"] }
+wgpu = "30"
 pollster = "0.4.0"
 lyon = "1.0.19"
 ab_glyph = "0.2.32"
@@ -24,17 +25,17 @@ ratex-layout = "0.1.14"
 ratex-parser = "0.1.14"
 ratex-types = "0.1.14"
 winit = { version = "0.30.13", optional = true }
-env_logger = { version = "0.11.11", optional = true }
-egui = "0.36.1"
-egui-wgpu = "0.36.1"
-wgpu = "30"
-egui-winit = "0.36.1"
+egui = { version = "0.36.1", optional = true }
+egui-wgpu = { version = "0.36.1", optional = true }
+egui-winit = { version = "0.36.1", optional = true }
 
 [features]
-default = ["story", "viewer", "export"]
-export = []
-story = []
-viewer = ["dep:winit", "dep:env_logger"]
+default = ["story", "render", "viewer", "export"]
+scene = []
+render = ["scene"]
+story = ["scene"]
+export = ["render"]
+viewer = ["render", "dep:winit", "dep:egui", "dep:egui-wgpu", "dep:egui-winit"]
 
 [[example]]
 name = "image"

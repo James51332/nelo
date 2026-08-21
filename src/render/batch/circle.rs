@@ -1,6 +1,6 @@
 //! Batch for SDF filled circles.
 
-use crate::render::{Color, batch::pipeline};
+use crate::{render::batch::pipeline, scene::Color};
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::prelude::*;
 use wgpu::{

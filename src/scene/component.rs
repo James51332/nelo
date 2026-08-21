@@ -11,8 +11,7 @@ pub use group::GroupRef;
 pub use spline::{Arrow, Spline};
 pub use transform::{Transform, Transformable};
 
-use crate::render::Color;
-use crate::scene::{EntityRef, Scene};
+use crate::scene::{Color, EntityRef, Scene};
 use crate::timeline::{Along, Path, Timeline};
 use std::f32::consts::PI;
 

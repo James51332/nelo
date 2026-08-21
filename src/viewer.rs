@@ -5,7 +5,7 @@ mod ui;
 
 pub use ui::UiRenderer;
 
-use crate::render::Playback;
+use crate::scene::Playback;
 use app::App;
 use std::sync::Arc;
 use winit::{

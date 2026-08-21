@@ -1,6 +1,7 @@
 //! Geometry builder for tesselation.
 
-use crate::render::{Color, MeshVertex, RenderCommand, StrokeVertex};
+use crate::render::{MeshVertex, RenderCommand, StrokeVertex};
+use crate::scene::Color;
 use glam::prelude::*;
 use lyon::{
     math::Point,

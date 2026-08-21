@@ -1,7 +1,6 @@
 //! An `Entity` is simple an id representing rendering data.
 
-use crate::render::Color;
-use crate::scene::{Fill, Scene, Stroke, Transform, Transformable, Visibility};
+use crate::scene::{Color, Fill, Scene, Stroke, Transform, Transformable, Visibility};
 use crate::timeline::{Timeline, TimelineAlong};
 use std::any::Any;
 

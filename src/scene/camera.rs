@@ -1,7 +1,6 @@
 //! Each scene has exactly one camera. It defines a height and a transform.
 
-use crate::render::Color;
-use crate::scene::{Transform, Transformable};
+use crate::scene::{Color, Transform, Transformable};
 use crate::timeline::Timeline;
 use glam::prelude::*;
 

@@ -8,8 +8,7 @@ use glam::Vec2;
 pub use show::{Hide, Show};
 
 use crate::{
-    render::{Color, Playback},
-    scene::{EntityId, Scene, Transformable},
+    scene::{Color, EntityId, Playback, Scene, Transformable},
     timeline::Easing,
 };
 

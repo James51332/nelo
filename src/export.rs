@@ -10,7 +10,7 @@ pub use image::ImageExport;
 pub use texture::ExportTexture;
 pub use video::VideoExport;
 
-use crate::render::Playback;
+use crate::scene::Playback;
 
 pub trait Export {
     fn export(&self, playback: impl Into<Playback>) -> Result<(), String>;

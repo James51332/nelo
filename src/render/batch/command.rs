@@ -1,6 +1,6 @@
 //! Each render command holds all data needed to complete a full render operation.
 
-use crate::render::Color;
+use crate::scene::Color;
 use bytemuck::{Pod, Zeroable};
 use glam::prelude::*;
 

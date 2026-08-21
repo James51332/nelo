@@ -1,7 +1,8 @@
 //! Tool for exporting static frames using nelo.
 
 use crate::export::{Export, ExportTexture, gpu};
-use crate::render::{Playback, Renderer};
+use crate::render::Renderer;
+use crate::scene::Playback;
 use png::{BitDepth, ColorType, Encoder};
 use std::fs::File;
 use std::io::BufWriter;
