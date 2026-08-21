@@ -2,7 +2,7 @@
 
 use crate::render::Renderer;
 use crate::scene::Playback;
-use crate::viewer::UiRenderer;
+use crate::viewer::{Canvas, UiRenderer};
 use egui::{CentralPanel, Frame, Id, Panel, Slider, SliderClamping, TextureId, load::SizedTexture};
 use egui::{Image, Rect, Vec2};
 use egui_wgpu::ScreenDescriptor;
@@ -10,9 +10,8 @@ use std::sync::Arc;
 use std::time::Instant;
 use wgpu::{
     CommandEncoderDescriptor, CompositeAlphaMode, CurrentSurfaceTexture, Device, DeviceDescriptor,
-    Extent3d, Instance, PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration,
-    Texture, TextureDescriptor, TextureDimension, TextureUsages, TextureView,
-    TextureViewDescriptor,
+    Instance, PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration,
+    TextureUsages, TextureViewDescriptor,
 };
 use winit::{
     event::{ElementState, KeyEvent, WindowEvent},
@@ -36,14 +35,8 @@ pub struct App {
     ui: UiRenderer,
 
     // Intermediate Texture
-    target: Texture,
-    view: TextureView,
+    canvas: Canvas,
     id: TextureId,
-
-    // Locked canvas aspect, and the size in physical pixels the scene should render at, as
-    // measured from the last ui pass.
-    aspect: f32,
-    canvas: (u32, u32),
 
     // Playback
     last_frame: Instant,
@@ -105,31 +98,8 @@ impl App {
 
         // Create canvas texture. Scene is srgb, but viewed as linear in egui.
         let (width, height) = (1280, 720);
-        let texture_desc = TextureDescriptor {
-            label: Some("nelo scene render texture"),
-            size: Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: scene_format,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-            view_formats: &[format],
-        };
-        let target = device.create_texture(&texture_desc);
-
-        // The scene renders through the sRGB view, so the gpu encodes its linear colors on write.
-        let view = target.create_view(&TextureViewDescriptor::default());
-        let ui_view = target.create_view(&TextureViewDescriptor {
-            label: Some("nelo scene ui view"),
-            format: Some(format),
-            ..Default::default()
-        });
-
-        let id = ui.register(&device, &ui_view);
+        let canvas = Canvas::new(&device, scene_format, format, width, height);
+        let id = ui.register(&device, &canvas.ui_view());
 
         // Get the current time.
         let last_frame = Instant::now();
@@ -140,13 +110,10 @@ impl App {
             window,
             surface,
             config,
-            target,
-            view,
+            canvas,
             id,
             renderer,
             ui,
-            aspect: width as f32 / height as f32,
-            canvas: (width, height),
             last_frame,
             time: 0.0,
             playing: true,
@@ -185,13 +152,8 @@ impl App {
         let encoder_desc = CommandEncoderDescriptor::default();
         let mut encoder = self.device.create_command_encoder(&encoder_desc);
 
-        // Make sure that our target is sized properly.
-        if self.canvas != (self.target.width(), self.target.height()) {
-            self.resize_canvas();
-        }
-
         // Render the current frame into the scene texture.
-        self.renderer.render(&self.view, self.time);
+        self.renderer.render(&self.canvas.view(), self.time);
 
         // Create a view onto the swapchain image, which the ui renders to.
         let surface_view = texture
@@ -201,22 +163,23 @@ impl App {
         // The scene texture is drawn at its own resolution and scaled down to fit.
         let scene = SizedTexture::new(
             self.id,
-            (self.target.width() as f32, self.target.height() as f32),
+            (self.canvas.width() as f32, self.canvas.height() as f32),
         );
 
         // Build the ui at the window root.
-        let aspect = self.aspect;
         self.ui.run(|ui| {
-            Panel::top(Id::new("menu")).show(ui, |ui| {
-                ui.horizontal_centered(|ui| {
-                    ui.checkbox(&mut self.playing, "Playing");
-                    ui.add(
-                        Slider::new(&mut self.time, 0.0..=30.0)
-                            .clamping(SliderClamping::Never)
-                            .step_by(0.001),
-                    );
+            Panel::top(Id::new("menu"))
+                .frame(Frame::default().inner_margin(10.0))
+                .show(ui, |ui| {
+                    ui.horizontal_centered(|ui| {
+                        ui.checkbox(&mut self.playing, "Playing");
+                        ui.add(
+                            Slider::new(&mut self.time, 0.0..=30.0)
+                                .clamping(SliderClamping::Never)
+                                .step_by(0.001),
+                        );
+                    });
                 });
-            });
 
             CentralPanel::default()
                 .frame(Frame::default().inner_margin(0.0))
@@ -224,6 +187,7 @@ impl App {
                     // Fit the locked aspect inside the available space. Sizing off `aspect`
                     // rather than the target's current size keeps the target out of the
                     // calculation that decides how big the target should be.
+                    let aspect = self.canvas.aspect();
                     let avail = ui.available_rect_before_wrap();
                     let fitted = avail.width().min(avail.height() * aspect);
                     let size = Vec2::new(fitted, fitted / aspect);
@@ -232,8 +196,7 @@ impl App {
 
                     // Calculate available canvas space.
                     let ppp = ui.ctx().pixels_per_point();
-                    let width = (rect.width() * ppp).round().max(1.0);
-                    self.canvas = (width as u32, (width / aspect).round().max(1.0) as u32);
+                    let _width = (rect.width() * ppp).round().max(1.0);
                 });
         });
 
@@ -254,37 +217,6 @@ impl App {
 
         // Present the image.
         self.queue.present(texture);
-    }
-
-    fn resize_canvas(&mut self) {
-        // Egui sends like 20000 for first frame. Clamp to protect.
-        let limit = self.device.limits().max_texture_dimension_2d;
-        self.canvas = (self.canvas.0.clamp(1, limit), self.canvas.1.clamp(1, limit));
-
-        let texture_desc = TextureDescriptor {
-            label: Some("nelo scene render texture"),
-            size: Extent3d {
-                width: self.canvas.0,
-                height: self.canvas.1,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: self.config.format.add_srgb_suffix(),
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-            view_formats: &[self.config.format],
-        };
-
-        self.target = self.device.create_texture(&texture_desc);
-        self.view = self.target.create_view(&TextureViewDescriptor::default());
-
-        let ui_view = self.target.create_view(&TextureViewDescriptor {
-            label: Some("nelo scene ui view"),
-            format: Some(self.config.format),
-            ..Default::default()
-        });
-        self.ui.update(&self.device, &ui_view, self.id);
     }
 
     pub fn event(&mut self, event_loop: &ActiveEventLoop, event: WindowEvent) {

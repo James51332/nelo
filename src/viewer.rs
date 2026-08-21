@@ -1,8 +1,10 @@
 //! Viewer for nelo scenes
 
 mod app;
+mod canvas;
 mod ui;
 
+pub use canvas::Canvas;
 pub use ui::UiRenderer;
 
 use crate::scene::Playback;
