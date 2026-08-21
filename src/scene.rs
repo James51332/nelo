@@ -40,12 +40,20 @@ pub struct Scene {
 }
 
 impl Scene {
+    /// Creates a scene with a default 16:9 aspect ratio.
     pub fn new() -> Self {
+        Self::with_aspect(16.0 / 9.0)
+    }
+
+    /// Creates a scene with a customized aspect ratio. Defaults to 16:9
+    /// if given aspect is negative or zero
+    pub fn with_aspect(aspect: f32) -> Self {
+        let aspect = if aspect > 0.0 { aspect } else { 16.0 / 9.0 };
         Self {
             registry: Registry::new(),
             active: Vec::new(),
             next_id: 0,
-            camera: Camera::new(),
+            camera: Camera::new(aspect),
             fonts: Font::map(),
         }
     }
@@ -68,6 +76,10 @@ impl Scene {
 
     pub fn camera(&mut self) -> &mut Camera {
         &mut self.camera
+    }
+
+    pub fn aspect(&self) -> f32 {
+        self.camera.aspect()
     }
 
     pub fn font(&self, font: Font) -> &FontArc {

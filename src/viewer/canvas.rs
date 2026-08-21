@@ -26,9 +26,8 @@ impl Canvas {
         width: u32,
         height: u32,
     ) -> Self {
-        dbg!(&format, &ui_format);
         let view_formats = &[ui_format];
-        let texture_desc = Self::texture_desc(format, view_formats, width, height);
+        let texture_desc = Self::texture_desc(device, format, view_formats, width, height);
         let target = device.create_texture(&texture_desc);
         let view = target.create_view(&TextureViewDescriptor::default());
         let ui_view = target.create_view(&TextureViewDescriptor {
@@ -56,7 +55,7 @@ impl Canvas {
         let aspect = self.aspect();
         let width = (aspect * height as f32) as u32;
         let view_formats = &[self.ui_format];
-        let texture_desc = Self::texture_desc(self.format, view_formats, width, height);
+        let texture_desc = Self::texture_desc(device, self.format, view_formats, width, height);
 
         self.target = device.create_texture(&texture_desc);
         self.view = self.target.create_view(&TextureViewDescriptor::default());
@@ -87,13 +86,22 @@ impl Canvas {
         self.width as f32 / self.height.max(1) as f32
     }
 
-    fn texture_desc(
+    /// Change the aspect ratio for this change. Use if a new scene is loaded.
+    pub fn set_aspect(&mut self, device: &Device, aspect: f32) {
+        let aspect = if aspect > 0.0 { aspect } else { 1.0 };
+        let new_height = self.width as f32 / aspect;
+        self.resize(device, new_height as u32);
+    }
+
+    fn texture_desc<'a>(
+        device: &Device,
         format: TextureFormat,
-        view_formats: &[TextureFormat],
+        view_formats: &'a [TextureFormat],
         width: u32,
         height: u32,
-    ) -> TextureDescriptor<'_> {
-        let (width, height) = (width.max(1), height.max(1));
+    ) -> TextureDescriptor<'a> {
+        let limit = device.limits().max_texture_dimension_2d;
+        let (width, height) = (width.min(limit).max(1), height.min(limit).max(1));
         TextureDescriptor {
             label: Some("nelo scene render texture"),
             size: Extent3d {

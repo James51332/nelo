@@ -5,6 +5,8 @@ use crate::timeline::Timeline;
 use glam::prelude::*;
 
 pub struct Camera {
+    // Aspect is fixed for the lifetime of the camera.
+    pub aspect: f32,
     pub height: Timeline<f32>,
     pub transform: Transform,
     pub background: Timeline<Color>,
@@ -13,12 +15,18 @@ pub struct Camera {
 impl Camera {
     /// Creates a new camera with a default height of 10.0 and the default
     /// background color.
-    pub fn new() -> Self {
+    pub fn new(aspect: f32) -> Self {
         Self {
+            aspect,
             height: Timeline::constant(10.0),
             transform: Transform::default(),
             background: Color::srgb(0.02, 0.02, 0.04).into(),
         }
+    }
+
+    /// Returns the aspect ratio for this camera.
+    pub fn aspect(&self) -> f32 {
+        self.aspect
     }
 
     /// Returns the cameras background color, view projection at time `t`.

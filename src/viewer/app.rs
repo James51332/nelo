@@ -8,17 +8,10 @@ use egui::{Image, Rect, Vec2};
 use egui_wgpu::ScreenDescriptor;
 use std::sync::Arc;
 use std::time::Instant;
-use wgpu::{
-    CommandEncoderDescriptor, CompositeAlphaMode, CurrentSurfaceTexture, Device, DeviceDescriptor,
-    Instance, PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration,
-    TextureUsages, TextureViewDescriptor,
-};
-use winit::{
-    event::{ElementState, KeyEvent, WindowEvent},
-    event_loop::ActiveEventLoop,
-    keyboard::{Key, NamedKey},
-    window::Window,
-};
+use wgpu::{CommandEncoderDescriptor, Device, Queue, TextureFormat, TextureView};
+use winit::dpi::PhysicalSize;
+use winit::event::WindowEvent;
+use winit::window::Window;
 
 // ----- App -----
 
@@ -27,14 +20,13 @@ pub struct App {
     device: Device,
     queue: Queue,
     window: Arc<Window>,
-    surface: Surface<'static>,
-    config: SurfaceConfiguration,
 
     // Renderers
     renderer: Renderer,
     ui: UiRenderer,
 
     // Intermediate Texture
+    available_height: u32,
     canvas: Canvas,
     id: TextureId,
 
@@ -45,60 +37,24 @@ pub struct App {
 }
 
 impl App {
-    pub async fn new(window: Arc<Window>, playback: Playback) -> Self {
-        // Create our wgpu instance.
-        let instance = Instance::default();
-
-        // Get our adapter to retrieve device and queue.
-        let adapter_opts = RequestAdapterOptions::default();
-        let adapter = instance
-            .request_adapter(&adapter_opts)
-            .await
-            .expect("Failed to get GPU adapter");
-
-        let device_opts = DeviceDescriptor::default();
-        let (device, queue) = adapter
-            .request_device(&device_opts)
-            .await
-            .expect("Failed to get GPU device");
-
-        // Create the render surface.
-        let surface = instance
-            .create_surface(window.clone())
-            .expect("Failed to create render surface");
-
-        // Render egui in linear rgb and scene in srgb.
-        let formats = surface.get_capabilities(&adapter).formats;
-        let format = formats
-            .iter()
-            .copied()
-            .find(|f| !f.is_srgb() && f.add_srgb_suffix() != *f)
-            .or_else(|| formats.first().copied())
-            .expect("Adapter does not support the render surface");
-        let scene_format = format.add_srgb_suffix();
-
-        // Configure the surface.
-        let size = window.inner_size();
-        let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT,
-            format,
-            color_space: wgpu::SurfaceColorSpace::Srgb,
-            width: size.width,
-            height: size.height,
-            present_mode: PresentMode::Fifo,
-            alpha_mode: CompositeAlphaMode::default(),
-            view_formats: vec![],
-            desired_maximum_frame_latency: 2,
-        };
-        surface.configure(&device, &config);
-
-        // Create the scene and ui renderers.
-        let renderer = Renderer::new(device.clone(), queue.clone(), scene_format, playback);
-        let mut ui = UiRenderer::new(&device, format, window.clone());
-
+    pub fn new(
+        window: Arc<Window>,
+        device: Device,
+        queue: Queue,
+        format: TextureFormat,
+        ui_format: TextureFormat,
+        playback: Playback,
+    ) -> Self {
         // Create canvas texture. Scene is srgb, but viewed as linear in egui.
-        let (width, height) = (1280, 720);
-        let canvas = Canvas::new(&device, scene_format, format, width, height);
+        let (width, available_height) = (1920, 1080);
+        let mut canvas = Canvas::new(&device, format, ui_format, width, available_height);
+        canvas.set_aspect(&device, playback.scene().aspect());
+
+        // Create the scene renderer.
+        let renderer = Renderer::new(device.clone(), queue.clone(), format, playback);
+
+        // Create the ui renderer and register canvas texture.
+        let mut ui = UiRenderer::new(&device, ui_format, window.clone());
         let id = ui.register(&device, &canvas.ui_view());
 
         // Get the current time.
@@ -108,8 +64,7 @@ impl App {
             device,
             queue,
             window,
-            surface,
-            config,
+            available_height,
             canvas,
             id,
             renderer,
@@ -120,26 +75,7 @@ impl App {
         }
     }
 
-    fn draw(&mut self) {
-        // Try to get a swapchain texture.
-        let texture = match self.surface.get_current_texture() {
-            CurrentSurfaceTexture::Success(t) => t,
-            CurrentSurfaceTexture::Suboptimal(t) => {
-                self.surface.configure(&self.device, &self.config);
-                t
-            }
-            CurrentSurfaceTexture::Outdated => {
-                self.surface.configure(&self.device, &self.config);
-                return;
-            }
-            CurrentSurfaceTexture::Timeout
-            | CurrentSurfaceTexture::Validation
-            | CurrentSurfaceTexture::Occluded
-            | CurrentSurfaceTexture::Lost => {
-                return;
-            }
-        };
-
+    pub fn render(&mut self, surface_view: &TextureView) {
         // Get the time.
         let now = Instant::now();
         if self.playing {
@@ -148,17 +84,18 @@ impl App {
         }
         self.last_frame = now;
 
+        // Make sure that our canvas size is accurate.
+        if self.canvas.height() != self.available_height {
+            self.canvas.resize(&self.device, self.available_height);
+            self.ui.update(&self.device, self.canvas.ui_view(), self.id);
+        }
+
         // Create an encoder.
         let encoder_desc = CommandEncoderDescriptor::default();
         let mut encoder = self.device.create_command_encoder(&encoder_desc);
 
         // Render the current frame into the scene texture.
         self.renderer.render(&self.canvas.view(), self.time);
-
-        // Create a view onto the swapchain image, which the ui renders to.
-        let surface_view = texture
-            .texture
-            .create_view(&TextureViewDescriptor::default());
 
         // The scene texture is drawn at its own resolution and scaled down to fit.
         let scene = SizedTexture::new(
@@ -196,13 +133,14 @@ impl App {
 
                     // Calculate available canvas space.
                     let ppp = ui.ctx().pixels_per_point();
-                    let _width = (rect.width() * ppp).round().max(1.0);
+                    self.available_height = (rect.height() * ppp).round().max(1.0) as u32;
                 });
         });
 
         // Paint the ui onto the swapchain image.
+        let PhysicalSize { width, height } = self.window.inner_size();
         let screen = ScreenDescriptor {
-            size_in_pixels: [self.config.width, self.config.height],
+            size_in_pixels: [width, height],
             pixels_per_point: self.window.scale_factor() as f32,
         };
         self.ui.draw(
@@ -214,34 +152,9 @@ impl App {
         );
 
         self.queue.submit(Some(encoder.finish()));
-
-        // Present the image.
-        self.queue.present(texture);
     }
 
-    pub fn event(&mut self, event_loop: &ActiveEventLoop, event: WindowEvent) {
-        // Let ui handle input first.
-        self.ui.handle_input(&event);
-
-        match event {
-            WindowEvent::RedrawRequested => self.draw(),
-            WindowEvent::Resized(size) => {
-                self.config.width = size.width;
-                self.config.height = size.height;
-                self.surface.configure(&self.device, &self.config);
-            }
-            WindowEvent::CloseRequested => event_loop.exit(),
-            // Escape to quit
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        logical_key: Key::Named(NamedKey::Escape),
-                        state: ElementState::Pressed,
-                        ..
-                    },
-                ..
-            } => event_loop.exit(),
-            _ => (),
-        };
+    pub fn handle_event(&mut self, event: &WindowEvent) {
+        self.ui.handle_input(event);
     }
 }
