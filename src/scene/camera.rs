@@ -1,8 +1,10 @@
 //! Each scene has exactly one camera. It defines a height and a transform.
 
-use crate::scene::{Color, Transform, Transformable};
+use crate::scene::{Color, Scene, Transform, Transformable};
 use crate::timeline::Timeline;
 use glam::prelude::*;
+
+// ----- Camera -----
 
 pub struct Camera {
     // Aspect is fixed for the lifetime of the camera.
@@ -59,5 +61,53 @@ impl Camera {
 impl Transformable for &mut Camera {
     fn transform(&mut self) -> &mut Transform {
         &mut self.transform
+    }
+}
+
+// ----- Scene -----
+
+/// The position vectors have a padding of this percentage of the screen.
+const SCREEN_PADDING: f32 = 0.1;
+
+// Gives the scene some convenience methods for positions on the screen.
+impl Scene {
+    /// Returns a timeline to the top of the screen.
+    pub fn top(&self) -> Timeline<Vec2> {
+        self.camera
+            .height
+            .clone()
+            .map(|h| Vec2::new(0.0, h * (0.5 - SCREEN_PADDING)))
+    }
+
+    pub fn bottom(&self) -> Timeline<Vec2> {
+        self.top().multiply(-1.0)
+    }
+
+    pub fn right(&self) -> Timeline<Vec2> {
+        self.camera
+            .height
+            .clone()
+            .multiply(self.aspect())
+            .map(|h| Vec2::new(h * (0.5 - SCREEN_PADDING), 0.0))
+    }
+
+    pub fn left(&self) -> Timeline<Vec2> {
+        self.right().multiply(-1.0)
+    }
+
+    pub fn top_right(&self) -> Timeline<Vec2> {
+        self.top().add(self.right())
+    }
+
+    pub fn top_left(&self) -> Timeline<Vec2> {
+        self.top().add(self.left())
+    }
+
+    pub fn bottom_right(&self) -> Timeline<Vec2> {
+        self.bottom().add(self.right())
+    }
+
+    pub fn bottom_left(&self) -> Timeline<Vec2> {
+        self.bottom().add(self.left())
     }
 }

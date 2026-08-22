@@ -93,6 +93,7 @@ impl Story {
 
     pub fn demo() -> Story {
         let mut scene = Scene::new();
+        scene.camera().height = 15.0.into();
 
         let axes = scene.axes().id();
         let plot = scene
@@ -111,6 +112,7 @@ impl Story {
             .translate(Vec2::Y * 3.0)
             .id();
 
+        let top = scene.top();
         let donuts = scene
             .group()
             .create(6, |i, s| {
@@ -121,8 +123,8 @@ impl Story {
                     .stroke(Color::lch(0.4, 0.3, i as f32 / 6.0 * 360.0))
             })
             .row(2.2)
+            .translate(top)
             .children();
-
         let mut story = scene.story();
 
         // Act 1. Show some donuts
@@ -131,7 +133,7 @@ impl Story {
         });
 
         // Act 2. Do some plotting.
-        story.hide_all();
+        story.wait(0.5).hide_all();
         story.show(axes);
         story.show(plot);
 
