@@ -1,7 +1,7 @@
 //! Implementation for creating timelines from keyframes.
 
 use crate::timeline::{Along, Easing, Timeline, signal::Signal};
-use glam::{Quat, Vec2, Vec3, Vec4};
+use glam::{Mat2, Quat, Vec2, Vec3, Vec4};
 
 // ----- Keyframe -----
 
@@ -138,7 +138,7 @@ macro_rules! impl_lerp {
         }
     )* };
 }
-impl_lerp!(f32, Vec2, Vec3, Vec4);
+impl_lerp!(f32, Vec2, Vec3, Vec4, Mat2);
 
 impl Lerp for Quat {
     fn interpolate(a: Self, b: Self, t: f32) -> Self {

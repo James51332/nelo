@@ -11,7 +11,7 @@ mod registry;
 pub use camera::Camera;
 pub use color::Color;
 pub use component::{
-    Arrow, Circle, Fill, Glyph, GroupRef, Label, Spline, Stroke, Transform, Transformable,
+    Arrow, Circle, Fill, Glyph, GroupRef, Label, Spline, Step, Stroke, Transform, Transformable,
     Visibility,
 };
 pub use entity::{EntityId, EntityRef};

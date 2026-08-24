@@ -1,7 +1,7 @@
 //! Animations to display and hide entities.
 
 use crate::scene::{EntityId, Fill, Scene, Stroke, Visibility};
-use crate::story::{Action, Stage};
+use crate::story::{Action, Stage, Story};
 use crate::timeline::{Easing, Timeline};
 
 // ----- Show -----
@@ -172,5 +172,33 @@ impl Action for Hide {
         }
 
         Some(cursor - stage.cursor())
+    }
+}
+
+// ----- Story -----
+
+impl Story {
+    pub fn show(&mut self, id: EntityId) -> &mut Self {
+        self.show_slice(&[id])
+    }
+
+    pub fn show_all(&mut self) -> &mut Self {
+        self.show_slice(&self.scene.entities())
+    }
+
+    pub fn show_slice(&mut self, ids: &[EntityId]) -> &mut Self {
+        self.apply(Show::default(), ids)
+    }
+
+    pub fn hide(&mut self, id: EntityId) -> &mut Self {
+        self.hide_slice(&[id])
+    }
+
+    pub fn hide_all(&mut self) -> &mut Self {
+        self.hide_slice(&self.scene.entities())
+    }
+
+    pub fn hide_slice(&mut self, ids: &[EntityId]) -> &mut Self {
+        self.apply(Hide::default(), ids)
     }
 }

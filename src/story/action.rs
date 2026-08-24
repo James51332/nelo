@@ -9,7 +9,7 @@ use crate::scene::{EntityId, Scene};
 /// scene as needed to implement their desired behavior. Modifying an entity
 /// after applying an action is undefined behavior.
 pub trait Action {
-    fn apply(&self, scene: Stage<'_>, ids: &[EntityId]) -> Option<f32>;
+    fn apply(&self, stage: Stage<'_>, ids: &[EntityId]) -> Option<f32>;
 }
 
 // ----- Stage -----

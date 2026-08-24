@@ -9,7 +9,7 @@ pub mod transform;
 
 pub use group::GroupRef;
 pub use spline::{Arrow, Spline};
-pub use transform::{Transform, Transformable};
+pub use transform::{Step, Transform, Transformable};
 
 use crate::scene::{Color, EntityRef, Scene};
 use crate::timeline::{Along, Path, Timeline};

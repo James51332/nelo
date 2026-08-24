@@ -2,6 +2,7 @@
 
 pub mod action;
 pub mod show;
+pub mod transform;
 
 pub use action::{Action, Stage};
 use glam::Vec2;
@@ -57,30 +58,6 @@ impl Story {
         self.together().wait(delay)
     }
 
-    pub fn show(&mut self, id: EntityId) -> &mut Self {
-        self.show_slice(&[id])
-    }
-
-    pub fn show_all(&mut self) -> &mut Self {
-        self.show_slice(&self.scene.entities())
-    }
-
-    pub fn show_slice(&mut self, ids: &[EntityId]) -> &mut Self {
-        self.apply(Show::default(), ids)
-    }
-
-    pub fn hide(&mut self, id: EntityId) -> &mut Self {
-        self.hide_slice(&[id])
-    }
-
-    pub fn hide_all(&mut self) -> &mut Self {
-        self.hide_slice(&self.scene.entities())
-    }
-
-    pub fn hide_slice(&mut self, ids: &[EntityId]) -> &mut Self {
-        self.apply(Hide::default(), ids)
-    }
-
     pub fn clear(&mut self) -> &mut Self {
         let clear = Hide {
             step: 0.0,
@@ -113,8 +90,8 @@ impl Story {
             .id();
 
         let top = scene.top();
-        let donuts = scene
-            .group()
+        let mut donuts = scene.group();
+        donuts
             .create(6, |i, s| {
                 s.circle()
                     .scale(0.6)
@@ -122,15 +99,18 @@ impl Story {
                     .stroke_weight(0.75)
                     .stroke(Color::lch(0.4, 0.3, i as f32 / 6.0 * 360.0))
             })
-            .row(2.2)
-            .translate(top)
-            .children();
+            .row(2.2);
+        let group = donuts.id();
+        let donuts = donuts.children();
+
         let mut story = scene.story();
 
         // Act 1. Show some donuts
         donuts.iter().for_each(|&id| {
             story.show(id).wait(0.1);
         });
+
+        story.translate(top, group);
 
         // Act 2. Do some plotting.
         story.wait(0.5).hide_all();

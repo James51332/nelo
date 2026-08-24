@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex, Weak};
 // ----- Step -----
 
 /// Captures different transformations which could be applied to an entity.
+#[derive(Clone)]
 pub enum Step {
     Matrix(Timeline<Mat2>),
     Translate(Timeline<Vec2>),
