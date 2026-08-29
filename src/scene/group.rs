@@ -1,15 +1,7 @@
 //! API for grouping entities by their transform
-use crate::scene::{EntityId, EntityRef, Label, Scene, Transform, Transformable};
+use crate::scene::{EntityId, EntityRef, Hierarchy, Label, Scene, Transform, Transformable};
 use crate::timeline::TimelineSpline;
-use glam::Vec2;
-
-/// A group is a transform that can be applied to children. Adding it
-/// to an entity will not affect rendering for that entity, but only for
-/// the children.
-#[derive(Default)]
-pub struct Group {
-    children: Vec<EntityId>,
-}
+use glam::{Affine2, Vec2};
 
 pub struct GroupRef<'a> {
     scene: &'a mut Scene,
@@ -21,84 +13,53 @@ impl<'a> GroupRef<'a> {
         Self { scene, id }
     }
 
-    /// Returns the group object
-    pub fn group(&self) -> &Group {
-        self.scene
-            .registry
-            .get(self.id)
-            .expect("No group attached to this entity")
+    /// Returns the hierarchy for the scene.
+    pub fn hierarchy(&self) -> &Hierarchy {
+        &self.scene.hierarchy
     }
 
-    /// Returns a mutable reference to the group object.
-    pub fn group_mut(&mut self) -> &mut Group {
-        self.scene
-            .registry
-            .get_mut(self.id)
-            .expect("No group attached to this entity")
-    }
-
-    /// Returns true if this Group contains `id` as a child, and false otherwise.
-    pub fn contains(&self, id: EntityId) -> bool {
-        self.group().children.contains(&id)
-    }
-
-    /// Returns the children of this group and consumes the group.
+    /// Returns the children of this group.
     pub fn children(&self) -> Vec<EntityId> {
-        self.group().children.clone()
+        self.hierarchy().children(self.id)
     }
 
     /// Returns the number of children in this group.
     pub fn len(&self) -> usize {
-        self.group().children.len()
+        self.children().len()
     }
 
-    /// Adds the given entity into this group under three conditions if the given
-    /// entity does not have a parent, and the given entity is not an ancestor of
-    /// `self`.
-    pub fn add(&mut self, id: EntityId) -> &mut Self {
-        // Return if the child has a parent. Ancestry check handled by Transform::parent().
-        let mut child = self.scene.registry.get_or_default::<Transform>(id).clone();
-        if child.has_parent() {
-            return self;
-        }
+    /// Returns true if this Group contains `id` as a child, and false otherwise.
+    pub fn contains(&self, id: EntityId) -> bool {
+        self.children().contains(&id)
+    }
 
-        // Add this to our group.
-        let transform = self.scene.registry.get_or_default::<Transform>(self.id);
-        if child.parent(Some(transform.clone())).is_ok() {
-            self.group_mut().children.push(id);
+    /// Adds `entity` to this group, grafting it from its parent if needed.
+    pub fn add(&mut self, child: EntityId) -> &mut Self {
+        let hierarchy = &mut self.scene.hierarchy;
+        hierarchy.graft(child);
+        hierarchy.add_child(self.id, child);
+        self
+    }
+
+    /// Removes `entity` from this group, or no-op if it is not part of the group.
+    pub fn remove(&mut self, child: EntityId) -> &mut Self {
+        let hierarchy = &mut self.scene.hierarchy;
+        if hierarchy.is_parent(self.id, child) {
+            hierarchy.graft(child);
         }
 
         self
     }
 
-    /// Removes the given entity from this group, or a no-op if this entity
-    /// is not part of the group.
-    pub fn remove(&mut self, id: EntityId) -> &mut Self {
-        // No-op if we don't contain the entity.
-        if !self.contains(id) {
-            return self;
-        }
-
-        // Remove the parent.
-        let _ = self
-            .scene
-            .registry
-            .get_or_default::<Transform>(id)
-            .parent(None);
-
-        // Update our children.
-        self.group_mut().children.retain(|&x| x != id);
-
-        self
-    }
-
-    /// Removes all entities from this group and returns their ids. It does not
-    /// destroy this entity.
+    /// Grafts all children in this group.
     pub fn ungroup(&mut self) -> Vec<EntityId> {
-        let children = self.children();
-        for &id in children.iter() {
-            self.remove(id);
+        let hierarchy = &mut self.scene.hierarchy;
+        let children = hierarchy.children(self.id);
+
+        for &child in children.iter() {
+            hierarchy.graft(child);
         }
+
         children
     }
 
@@ -106,7 +67,7 @@ impl<'a> GroupRef<'a> {
     /// local translations before calling `GroupRef::arrange()`.
     pub fn collapse(&mut self) -> &mut Self {
         self.for_each(|_, mut e| {
-            e.transform().to(Vec2::ZERO);
+            e.transform().reset();
             e
         })
     }
@@ -313,13 +274,10 @@ impl Transformable for &mut GroupRef<'_> {
 // ----- EntityRef -----
 
 impl<'a> EntityRef<'a> {
-    /// Return this entity as a group if it is one, or None if it not a group.
-    pub fn as_group(self) -> Option<GroupRef<'a>> {
-        if self.has::<Group>() {
-            Some(GroupRef::new(self.scene, self.id))
-        } else {
-            None
-        }
+    /// Access this entity using group API. Does not make any changes to the
+    /// entity.
+    pub fn as_group(self) -> GroupRef<'a> {
+        GroupRef::new(self.scene, self.id)
     }
 }
 
@@ -328,9 +286,28 @@ impl<'a> EntityRef<'a> {
 impl Scene {
     /// Creates a group.
     pub fn group(&mut self) -> GroupRef<'_> {
-        self.create()
-            .attach(Group::default())
-            .as_group()
-            .expect("Failed to attach group to new entity")
+        self.create().as_group()
+    }
+
+    /// Returns the world transform for an entity at a given time, composing with
+    /// parent transforms as needed.
+    pub fn world_transform(&self, entity: EntityId, time: f32) -> Affine2 {
+        // Get the transform for this entity.
+        let mut transform = self
+            .registry
+            .get::<Transform>(entity)
+            .map_or(Affine2::default(), |t| t.local(time));
+
+        // Walk up the parents and apply their transforms.
+        let mut current = entity;
+        while let Some(parent) = self.hierarchy.parent(current) {
+            if let Some(parent_transform) = self.registry.get::<Transform>(parent).cloned() {
+                transform = parent_transform.local(time) * transform;
+            }
+
+            current = parent;
+        }
+
+        transform
     }
 }

@@ -5,24 +5,27 @@ pub mod color;
 pub mod component;
 pub mod entity;
 pub mod fonts;
+pub mod group;
+pub mod hierarchy;
 pub mod playback;
 mod registry;
 
 pub use camera::Camera;
 pub use color::Color;
 pub use component::{
-    Arrow, Circle, Fill, Glyph, GroupRef, Label, Spline, Step, Stroke, Transform, Transformable,
-    Visibility,
+    Arrow, Circle, Fill, Glyph, Label, Spline, Step, Stroke, Transform, Transformable, Visibility,
 };
 pub use entity::{EntityId, EntityRef};
 pub use fonts::Font;
+pub use group::GroupRef;
+pub use hierarchy::Hierarchy;
 pub use playback::Playback;
 
 use crate::timeline::{Path, Timeline};
 use ab_glyph::FontArc;
 use glam::prelude::*;
-use registry::{Query, Registry};
-use std::{any::Any, collections::HashMap};
+use registry::Registry;
+use std::collections::HashMap;
 
 /// A Scene is the way that data is stored. All render data is attached to
 /// entities, and renderers operate on entities which meet their criteria.
@@ -32,9 +35,18 @@ use std::{any::Any, collections::HashMap};
 /// holds a mutable reference to the scene, you can use the `.id()` method to
 /// get the `EntityId`, which is an immutable reference to the entity.
 pub struct Scene {
-    registry: Registry,
+    /// All entities which are active within the scene.
     active: Vec<EntityId>,
+
+    /// The entity id which is used next. Increment by one to given default rendering order.
     next_id: usize,
+
+    /// Stores all components within the scene.
+    registry: Registry,
+
+    /// Stores the parent/child relationships within the scene.
+    hierarchy: Hierarchy,
+
     camera: Camera,
     fonts: HashMap<Font, FontArc>,
 }
@@ -46,11 +58,12 @@ impl Scene {
     }
 
     /// Creates a scene with a customized aspect ratio. Defaults to 16:9
-    /// if given aspect is negative or zero
+    /// if given aspect is negative or zero.
     pub fn with_aspect(aspect: f32) -> Self {
         let aspect = if aspect > 0.0 { aspect } else { 16.0 / 9.0 };
         Self {
             registry: Registry::default(),
+            hierarchy: Hierarchy::default(),
             active: Vec::new(),
             next_id: 0,
             camera: Camera::new(aspect),
@@ -58,67 +71,14 @@ impl Scene {
         }
     }
 
+    // ----- Entity Management -----
+
     /// Creates an empty entity with a `Transform` component.
     pub fn create(&mut self) -> EntityRef<'_> {
         let id = EntityId::new(self.next_id);
         self.next_id += 1;
         self.active.push(id);
         EntityRef::new(self, id).attach(Transform::default())
-    }
-
-    pub fn sample_camera(&self, size: (u32, u32), t: f32) -> (Color, Affine2) {
-        self.camera.sample(size, t)
-    }
-
-    pub fn sample_height(&self, time: f32) -> f32 {
-        self.camera.height.sample(time)
-    }
-
-    pub fn camera(&mut self) -> &mut Camera {
-        &mut self.camera
-    }
-
-    pub fn aspect(&self) -> f32 {
-        self.camera.aspect()
-    }
-
-    pub fn font(&self, font: Font) -> &FontArc {
-        &self.fonts.get(&font).expect("Font not found in font map")
-    }
-
-    pub fn default_font(&self) -> &FontArc {
-        &self
-            .fonts
-            .get(&Font::default())
-            .expect("Font not found in font map")
-    }
-
-    /// Returns all attached data of a certain type sorted by EntityId.
-    pub fn view<T: Any>(&self) -> impl Iterator<Item = (EntityId, &T)> {
-        self.registry.view()
-    }
-
-    /// Returns all entities an attached data for entities with components of type
-    /// `A` and `B` attached.
-    pub fn view_pair<A: Any, B: Any>(&self) -> Vec<(EntityId, &A, &B)> {
-        self.registry.view_pair()
-    }
-
-    /// Returns all entities an attached data for entities with components of type
-    /// `A`, `B`, and `C` attached.
-    pub fn view_triple<A: Any, B: Any, C: Any>(&self) -> Vec<(EntityId, &A, &B, &C)> {
-        self.registry.view_triple()
-    }
-
-    /// Returns a Vector of entities and their attached components which have
-    /// up to five types specified by the generic tuple `T`.
-    pub fn view_tuple<T: Query>(&self) -> T::Item<'_> {
-        self.registry.view_tuple::<T>()
-    }
-
-    // Returns an iterator over all entities in this scene.
-    pub fn entities(&self) -> Vec<EntityId> {
-        self.active.iter().copied().collect()
     }
 
     /// Returns an Some with a handle to the entity if it exists, or none otherwise.
@@ -129,8 +89,9 @@ impl Scene {
         }
     }
 
-    pub fn component<T: Any>(&self, entity: EntityId) -> Option<&T> {
-        self.registry.get::<T>(entity)
+    // Returns an iterator over all entities in this scene.
+    pub fn entities(&self) -> Vec<EntityId> {
+        self.active.iter().copied().collect()
     }
 
     /// Deletes an entity from the scene, or a no-op if the entity doesn't exist.
@@ -144,6 +105,36 @@ impl Scene {
         // Remove all attached components.
         self.registry.delete(entity);
     }
+
+    // ----- Camera -----
+
+    pub fn camera(&mut self) -> &mut Camera {
+        &mut self.camera
+    }
+
+    pub fn sample_camera(&self, size: (u32, u32), t: f32) -> (Color, Affine2) {
+        self.camera.sample(size, t)
+    }
+
+    pub fn sample_height(&self, time: f32) -> f32 {
+        self.camera.height.sample(time)
+    }
+
+    pub fn aspect(&self) -> f32 {
+        self.camera.aspect()
+    }
+
+    // ----- Fonts -----
+
+    pub fn font(&self, font: Font) -> &FontArc {
+        &self.fonts.get(&font).expect("Font not found in font map")
+    }
+
+    pub fn default_font(&self) -> &FontArc {
+        self.font(Font::default())
+    }
+
+    // ----- Demo -----
 
     /// Returns a small demo scene.
     pub fn demo() -> Scene {

@@ -103,18 +103,6 @@ impl Registry {
         }
     }
 
-    /// Copies all components from `source` onto `target`, replacing as necessary.
-    pub fn clone(&mut self, source: EntityId, target: EntityId) {
-        for (_, bucket) in self.component_stores.iter_mut() {
-            // First, find the index of the existing entity in the store.
-            let Ok(index) = bucket.binary_search_by(|pair| pair.0.cmp(&source)) else {
-                continue;
-            };
-
-            let x = &bucket[index].1;
-        }
-    }
-
     /// Returns an iterator over all entities with a given type. Preferable
     pub fn view<T: Any>(&self) -> impl Iterator<Item = (EntityId, &T)> {
         self.component_stores

@@ -1,7 +1,7 @@
 //! Tool for rendering glyphs.
 
 use crate::render::{Encoder, FillBuilder, MeshVertex, Polyline, RenderCommand};
-use crate::scene::{Fill, Glyph, Scene, Stroke, Transform, Visibility};
+use crate::scene::{Fill, Glyph, Scene, Stroke, Visibility};
 use crate::timeline::{Easing, Timeline};
 use glam::Vec2;
 
@@ -25,14 +25,17 @@ const STROKE_WEIGHT: f32 = 0.02;
 ///     1. Stroke write in (0 -> 1.0)
 ///
 pub(crate) fn glyphs(batch: &mut Encoder, scene: &Scene, time: f32, _size: (u32, u32)) {
-    let items = scene.view_pair::<Transform, Glyph>();
-    items.into_iter().for_each(|(id, transform, glyph)| {
+    let items = scene.view::<Glyph>();
+    items.into_iter().for_each(|(id, glyph)| {
         // Visibility short circuit
         let visibility: Option<&Visibility> = scene.component(id);
         let vis_amount = visibility.map_or(1.0, |v| v.amount.sample(time));
         if vis_amount <= 0.005 {
             return;
         }
+
+        // World position.
+        let affine = scene.world_transform(id, time);
 
         // No fill and no stroke short circuit.
         let fill = scene.component::<Fill>(id);
@@ -69,7 +72,6 @@ pub(crate) fn glyphs(batch: &mut Encoder, scene: &Scene, time: f32, _size: (u32,
 
         // Convert the splines into polylines.
         let mut polylines: Vec<(Polyline, bool)> = Vec::new();
-        let affine = transform.sample(time);
         for spline in glyph.contours.iter() {
             let start = spline.start_alpha.sample(time);
             let end = spline.end_alpha.sample(time);

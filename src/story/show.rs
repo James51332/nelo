@@ -26,13 +26,9 @@ impl Default for Show {
 
 impl Show {
     fn show(&self, scene: &mut Scene, time: &mut f32, id: EntityId) {
-        // Groups aren't rendered themselves, so they only stagger their children.
-        let children = scene
-            .get(id)
-            .and_then(|e| e.as_group())
-            .map(|g| g.children());
-
-        if let Some(children) = children {
+        // Groups usually aren't rendered themselves, so they only stagger their children.
+        let children = scene.hierarchy().children(id);
+        if !children.is_empty() {
             for id in children.into_iter() {
                 self.show(scene, time, id);
             }
@@ -98,12 +94,8 @@ impl Default for Hide {
 
 impl Hide {
     fn hide(&self, scene: &mut Scene, time: &mut f32, id: EntityId) {
-        let children = scene
-            .get(id)
-            .and_then(|e| e.as_group())
-            .map(|g| g.children());
-
-        if let Some(children) = children {
+        let children = scene.hierarchy().children(id);
+        if !children.is_empty() {
             for id in children.into_iter() {
                 self.hide(scene, time, id);
             }

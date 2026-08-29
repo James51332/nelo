@@ -1,11 +1,8 @@
-//! The `Transform` captures various transformations to an entity.
-//!
-//! Entities will have a list of transformations which are all
-//! composed on top of one another. This will enable more sophisticated
-//! hierarchies and entity grouping.
+//! A Transform is a list of transformations which are all composed on top of
+//! one another.
+
 use crate::timeline::Timeline;
 use glam::prelude::*;
-use std::sync::{Arc, Mutex, Weak};
 
 // ----- Step -----
 
@@ -40,126 +37,35 @@ impl Step {
 /// fast to pass around.
 #[derive(Clone, Default)]
 pub struct Transform {
-    inner: Arc<Mutex<Inner>>,
+    steps: Vec<Step>,
 }
 
 impl Transform {
-    /// Consolidates this transform and all it's parents steps into a single
-    /// affine transform.
-    pub fn sample(&self, t: f32) -> Affine2 {
-        self.inner.lock().unwrap().sample(t)
+    /// Returns the local transform at a given time.
+    pub fn local(&self, t: f32) -> Affine2 {
+        let mut cur = Affine2::default();
+
+        for step in self.steps.iter() {
+            cur = step.sample(t) * cur;
+        }
+
+        cur
     }
 
     /// Adds a single step of transform to this object.
     pub fn push(&mut self, step: Step) {
-        self.inner.lock().unwrap().steps.push(step)
+        self.steps.push(step)
     }
 
     /// Resets this to identity transform.
     pub fn reset(&mut self) {
-        self.inner.lock().unwrap().steps.clear();
-    }
-
-    /// Translates this to `position`.
-    pub fn to(&mut self, position: impl Into<Timeline<Vec2>>) {
-        // Remove all translations.
-        let steps = &mut self.inner.lock().unwrap().steps;
-        steps.retain(|x| !matches!(x, Step::Translate(_)));
-
-        // Add our new translation.
-        steps.push(Step::Translate(position.into()));
-    }
-
-    /// Determines if this transform is an ancestor of `child`.
-    pub fn is_ancestor(&self, child: &Transform) -> bool {
-        let mut cursor = child.inner.clone();
-
-        loop {
-            // See if we are equal to the cursor.
-            if Arc::ptr_eq(&self.inner, &cursor) {
-                return true;
-            }
-
-            // Go to the child's next parent.
-            let parent = cursor
-                .lock()
-                .unwrap()
-                .parent
-                .as_ref()
-                .and_then(Weak::upgrade);
-
-            // If the child doesn't have a parent, we must not be a parent.
-            match parent {
-                Some(x) => cursor = x,
-                None => return false,
-            }
-        }
-    }
-
-    /// Sets the parent for this transform unless `self` is an ancestor of parent
-    ///
-    /// Returns Ok(()) if the parent was successfully updated, and Err(()) if the `self`
-    /// is an ancestor of `parent`.
-    pub fn parent(&mut self, parent: Option<Transform>) -> Result<(), ()> {
-        // Remove the parent if we provide none.
-        let Some(transform) = parent else {
-            self.inner.lock().unwrap().parent = None;
-            return Ok(());
-        };
-
-        // Check if we can safely add the parent.
-        if !self.is_ancestor(&transform) {
-            self.inner.lock().unwrap().parent = Some(Arc::downgrade(&transform.inner));
-            Ok(())
-        } else {
-            Err(())
-        }
-    }
-
-    /// Returns true if this transform has a parent.
-    pub fn has_parent(&self) -> bool {
-        self.inner
-            .lock()
-            .unwrap()
-            .parent
-            .as_ref()
-            .and_then(Weak::upgrade)
-            .is_some()
+        self.steps.clear();
     }
 }
 
 impl Transformable for Transform {
     fn transform(&mut self) -> &mut Self {
         self
-    }
-}
-
-// ----- Inner -----
-
-#[derive(Default)]
-pub(crate) struct Inner {
-    pub steps: Vec<Step>,
-    pub parent: Option<Weak<Mutex<Inner>>>,
-}
-
-impl Inner {
-    /// Consolidates all steps of this transform into a single affine transformation.
-    pub fn sample(&self, t: f32) -> Affine2 {
-        let mut cur = Affine2::default();
-
-        // Apply the local transform first.
-        for step in self.steps.iter() {
-            cur = step.sample(t) * cur;
-        }
-
-        // Then apply the parent transform.
-        if let Some(ref parent) = self.parent {
-            if let Some(ref arc) = parent.upgrade() {
-                cur = arc.lock().unwrap().sample(t) * cur;
-            }
-        }
-
-        cur
     }
 }
 

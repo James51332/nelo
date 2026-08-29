@@ -2,15 +2,15 @@
 
 use crate::render::batch::RenderCommand;
 use crate::render::{Encoder, Polyline};
-use crate::scene::{Circle, Fill, Scene, Stroke, Transform, Visibility};
+use crate::scene::{Circle, Fill, Scene, Stroke, Visibility};
 use crate::timeline::Path;
 
 /// Renders all circles from the scene into the batch.
 pub(crate) fn circles(encoder: &mut Encoder, scene: &Scene, t: f32, _size: (u32, u32)) {
     // Get a view of all elements with the required components.
-    let items = scene.view_pair::<Transform, Circle>();
-    items.into_iter().for_each(|(id, transform, _)| {
-        let affine = transform.sample(t);
+    let items = scene.view::<Circle>();
+    items.into_iter().for_each(|(id, _)| {
+        let affine = scene.world_transform(id, t);
 
         // Visibility changes opacity for background and stroke length.
         let visibility = scene.component::<Visibility>(id);

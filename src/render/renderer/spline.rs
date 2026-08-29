@@ -1,8 +1,8 @@
 //! Helper methods to render splines
 
 use crate::render::{Encoder, MeshVertex, Polyline, RenderCommand, StrokeVertex};
-use crate::scene::{Arrow, Fill, Scene, Spline, Stroke, Transform, Visibility};
-use glam::{Mat2, Vec2};
+use crate::scene::{Arrow, Fill, Scene, Spline, Stroke, Visibility};
+use glam::{Affine2, Mat2, Vec2};
 
 // ----- RenderCommand -----
 
@@ -10,7 +10,7 @@ impl RenderCommand {
     /// Converts a spline and corresponding data into render commands.
     pub fn spline(
         spline: &Spline,
-        transform: &Transform,
+        affine: Affine2,
         scale: f32,
         time: f32,
         fill: Option<&Fill>,
@@ -29,7 +29,6 @@ impl RenderCommand {
         }
 
         // Flatten into a polyline and return commands for that.
-        let affine = transform.sample(time);
         let start = spline.start_alpha.sample(time);
         let end = spline.end_alpha.sample(time);
         let end = start + vis * (end - start);
@@ -89,14 +88,15 @@ pub(crate) fn splines(encoder: &mut Encoder, scene: &Scene, time: f32, _size: (u
     let height = scene.sample_height(time);
 
     // Get a view of all curves with a stroke.
-    let items = scene.view_pair::<Transform, Spline>();
-    items.into_iter().for_each(|(id, transform, spline)| {
+    let items = scene.view::<Spline>();
+    items.into_iter().for_each(|(id, spline)| {
         // Build the render command.
         let fill = scene.component(id);
         let stroke = scene.component(id);
         let visibility = scene.component(id);
+        let affine = scene.world_transform(id, time);
         let commands =
-            RenderCommand::spline(spline, transform, height, time, fill, stroke, visibility);
+            RenderCommand::spline(spline, affine, height, time, fill, stroke, visibility);
 
         // Submit them.
         let z_index = visibility.map_or(0.0, |v| v.z_index.sample(time));
@@ -110,46 +110,44 @@ pub(crate) fn splines(encoder: &mut Encoder, scene: &Scene, time: f32, _size: (u
 /// a triangle at the end.
 pub(crate) fn arrows(encoder: &mut Encoder, scene: &Scene, time: f32, _size: (u32, u32)) {
     let height = scene.sample_height(time);
-    let items = scene.view_triple::<Transform, Arrow, Stroke>();
-    items
-        .into_iter()
-        .for_each(|(id, transform, arrow, stroke)| {
-            // Build the render command for the spline.
-            let fill = None; // Never fill in an arrow.
-            let vis = scene.component(id);
-            let spline = &arrow.spline;
-            let commands =
-                RenderCommand::spline(spline, transform, height, time, fill, Some(stroke), vis);
+    let items = scene.view_pair::<Arrow, Stroke>();
+    items.into_iter().for_each(|(id, arrow, stroke)| {
+        // Build the render command for the spline.
+        let fill = None; // Never fill in an arrow.
+        let vis = scene.component(id);
+        let spline = &arrow.spline;
+        let affine = scene.world_transform(id, time);
+        let commands = RenderCommand::spline(spline, affine, height, time, fill, Some(stroke), vis);
 
-            // Submit them too.
-            let z_index = vis.map_or(0.0, |v| v.z_index.sample(time));
-            for command in commands.into_iter() {
-                encoder.add_command(id, command, z_index);
-            }
-
-            // Compute how we rotate and scale our triangle.
-            let end = spline.end_alpha.sample(time);
-            let spline_path = spline.spline_path.sample(time);
-
-            // Compute the direction of our alphate the direction of our alpha.
-            const DELTA_ALPHA: f32 = 0.001;
-            let last = spline_path.sample(end);
-            let prev = spline_path.sample(end - DELTA_ALPHA);
-            let dir = (last - prev).normalize_or(Vec2::X);
-            let rotate = Mat2::from_cols(dir, Vec2::new(-dir.y, dir.x));
-
-            // Add the triangle geometry.
-            const SCALE: f32 = 2.5;
-            const VERTICES: [Vec2; 3] = [
-                Vec2::new(1.0, 0.0),
-                Vec2::new(-1.0, 1.0),
-                Vec2::new(-1.0, -1.0),
-            ];
-            let size = SCALE * stroke.weight.sample(time).sample(end);
-            let color = stroke.color.sample(time);
-            let map = |v| MeshVertex::new(rotate * size * v + last, Vec2::ZERO, color.sample(end));
-            let vertices = VERTICES.into_iter().map(map).collect();
-            let command = RenderCommand::Polygon { vertices };
+        // Submit them too.
+        let z_index = vis.map_or(0.0, |v| v.z_index.sample(time));
+        for command in commands.into_iter() {
             encoder.add_command(id, command, z_index);
-        });
+        }
+
+        // Compute how we rotate and scale our triangle.
+        let end = spline.end_alpha.sample(time);
+        let spline_path = spline.spline_path.sample(time);
+
+        // Compute the direction of our alphate the direction of our alpha.
+        const DELTA_ALPHA: f32 = 0.001;
+        let last = spline_path.sample(end);
+        let prev = spline_path.sample(end - DELTA_ALPHA);
+        let dir = (last - prev).normalize_or(Vec2::X);
+        let rotate = Mat2::from_cols(dir, Vec2::new(-dir.y, dir.x));
+
+        // Add the triangle geometry.
+        const SCALE: f32 = 2.5;
+        const VERTICES: [Vec2; 3] = [
+            Vec2::new(1.0, 0.0),
+            Vec2::new(-1.0, 1.0),
+            Vec2::new(-1.0, -1.0),
+        ];
+        let size = SCALE * stroke.weight.sample(time).sample(end);
+        let color = stroke.color.sample(time);
+        let map = |v| MeshVertex::new(rotate * size * v + last, Vec2::ZERO, color.sample(end));
+        let vertices = VERTICES.into_iter().map(map).collect();
+        let command = RenderCommand::Polygon { vertices };
+        encoder.add_command(id, command, z_index);
+    });
 }

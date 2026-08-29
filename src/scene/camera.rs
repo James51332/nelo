@@ -42,7 +42,7 @@ impl Camera {
         let scene_height = self.height.sample(t);
         let scale = Vec2::new(2.0 / (scene_height * aspect), 2.0 / scene_height);
         let proj = Affine2::from_scale(scale);
-        let view = self.transform.sample(t).inverse();
+        let view = self.transform.local(t).inverse();
 
         (self.background.sample(t), proj * view)
     }

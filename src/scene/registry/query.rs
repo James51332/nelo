@@ -2,9 +2,7 @@
 
 use std::any::Any;
 
-use crate::scene::{EntityId, registry::Registry};
-
-// ----- Registry -----
+use crate::scene::{EntityId, Scene, registry::Registry};
 
 // ----- Query -----
 
@@ -76,5 +74,37 @@ impl<A: Any, B: Any, C: Any, D: Any, E: Any> Query for (A, B, C, D, E) {
                 ))
             })
             .collect()
+    }
+}
+
+// ----- Query -----
+
+impl Scene {
+    /// Returns the attached component of specific type.
+    pub fn component<T: Any>(&self, entity: EntityId) -> Option<&T> {
+        self.registry.get::<T>(entity)
+    }
+
+    /// Returns all attached data of a certain type sorted by EntityId.
+    pub fn view<T: Any>(&self) -> impl Iterator<Item = (EntityId, &T)> {
+        self.registry.view()
+    }
+
+    /// Returns all entities an attached data for entities with components of type
+    /// `A` and `B` attached.
+    pub fn view_pair<A: Any, B: Any>(&self) -> Vec<(EntityId, &A, &B)> {
+        self.registry.view_pair()
+    }
+
+    /// Returns all entities an attached data for entities with components of type
+    /// `A`, `B`, and `C` attached.
+    pub fn view_triple<A: Any, B: Any, C: Any>(&self) -> Vec<(EntityId, &A, &B, &C)> {
+        self.registry.view_triple()
+    }
+
+    /// Returns a Vector of entities and their attached components which have
+    /// up to five types specified by the generic tuple `T`.
+    pub fn view_tuple<T: Query>(&self) -> T::Item<'_> {
+        self.registry.view_tuple::<T>()
     }
 }
