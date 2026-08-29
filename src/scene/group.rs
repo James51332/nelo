@@ -9,7 +9,7 @@ pub struct GroupRef<'a> {
 }
 
 impl<'a> GroupRef<'a> {
-    pub fn new(scene: &'a mut Scene, id: EntityId) -> Self {
+    pub(super) fn new(scene: &'a mut Scene, id: EntityId) -> Self {
         Self { scene, id }
     }
 
@@ -301,7 +301,7 @@ impl Scene {
         // Walk up the parents and apply their transforms.
         let mut current = entity;
         while let Some(parent) = self.hierarchy.parent(current) {
-            if let Some(parent_transform) = self.registry.get::<Transform>(parent).cloned() {
+            if let Some(parent_transform) = self.registry.get::<Transform>(parent) {
                 transform = parent_transform.local(time) * transform;
             }
 

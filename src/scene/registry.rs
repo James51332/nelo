@@ -7,12 +7,14 @@ pub use query::Query;
 use crate::scene::EntityId;
 use std::any::{Any, TypeId};
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+
+type Store = BTreeMap<EntityId, Box<dyn Any>>;
 
 /// A registry will keep track of attachments to entities.
 #[derive(Debug, Default)]
 pub struct Registry {
-    component_stores: HashMap<TypeId, Vec<(EntityId, Box<dyn Any>)>>,
+    component_stores: HashMap<TypeId, Store>,
 }
 
 impl Registry {
@@ -23,93 +25,67 @@ impl Registry {
         let store = self.component_stores.entry(type_id).or_default();
 
         // Keep the vector sorted by entity id.
-        let index = store.binary_search_by(|x| x.0.cmp(&id));
-        match index {
-            Ok(i) => store[i].1 = Box::new(value),
-            Err(i) => store.insert(i, (id, Box::new(value))),
-        };
+        store.insert(id, Box::new(value));
     }
 
     pub fn get<T: Any>(&self, id: EntityId) -> Option<&T> {
         let type_id = TypeId::of::<T>();
         let store = self.component_stores.get(&type_id)?;
-
-        let index = store.binary_search_by(|x| x.0.cmp(&id));
-        match index {
-            Ok(i) => store.get(i).map(|x| x.1.downcast_ref()).flatten(),
-            _ => None,
-        }
+        store.get(&id).map(|x| x.downcast_ref()).flatten()
     }
 
     pub fn get_mut<T: Any>(&mut self, id: EntityId) -> Option<&mut T> {
         let type_id = TypeId::of::<T>();
         let store = self.component_stores.get_mut(&type_id)?;
-
-        let index = store.binary_search_by(|x| x.0.cmp(&id));
-        match index {
-            Ok(i) => store.get_mut(i).map(|x| x.1.downcast_mut()).flatten(),
-            _ => None,
-        }
+        store.get_mut(&id).map(|x| x.downcast_mut()).flatten()
     }
 
     pub fn get_or_default<'a, T: Any + Default>(&'a mut self, id: EntityId) -> &'a mut T {
         let type_id = TypeId::of::<T>();
         let store = self.component_stores.entry(type_id).or_default();
-
-        let index = match store.binary_search_by(|x| x.0.cmp(&id)) {
-            Ok(i) => i,
-            Err(i) => {
-                store.insert(i, (id, Box::new(T::default())));
-                i
-            }
-        };
-
-        store[index]
-            .1
+        store
+            .entry(id)
+            .or_insert(Box::new(T::default()))
             .downcast_mut()
             .expect("bucket for TypeId::of<T>() only ever holds T")
     }
 
     pub fn has<T: Any>(&self, id: EntityId) -> bool {
         let type_id = TypeId::of::<T>();
-        let Some(store) = self.component_stores.get(&type_id) else {
-            return false;
-        };
-
-        match store.binary_search_by(|x| x.0.cmp(&id)) {
-            Ok(_) => true,
-            Err(_) => false,
+        if let Some(store) = self.component_stores.get(&type_id) {
+            store.contains_key(&id)
+        } else {
+            false
         }
     }
 
     pub fn remove<T: Any>(&mut self, id: EntityId) -> Option<T> {
         let type_id = TypeId::of::<T>();
-        let Some(store) = self.component_stores.get_mut(&type_id) else {
-            return None;
-        };
-
-        match store.binary_search_by(|x| x.0.cmp(&id)) {
-            Ok(i) => store.remove(i).1.downcast::<T>().ok().map(|x| *x),
-            _ => None,
+        if let Some(store) = self.component_stores.get_mut(&type_id) {
+            store
+                .remove(&id)
+                .map(|x| x.downcast::<T>().ok())
+                .flatten()
+                .map(|x| *x)
+        } else {
+            None
         }
     }
 
     /// Removes all attached components for this entity, or a noop if there are none.
     pub fn delete(&mut self, entity: EntityId) {
         for (_, bucket) in self.component_stores.iter_mut() {
-            if let Ok(i) = bucket.binary_search_by(|pair| pair.0.cmp(&entity)) {
-                bucket.remove(i);
-            }
+            bucket.remove(&entity);
         }
     }
 
-    /// Returns an iterator over all entities with a given type. Preferable
+    /// Returns an iterator over all entities with a given type.
     pub fn view<T: Any>(&self) -> impl Iterator<Item = (EntityId, &T)> {
         self.component_stores
             .get(&TypeId::of::<T>())
             .into_iter()
             .flatten()
-            .filter_map(|pair| pair.1.downcast_ref::<T>().map(|x| (pair.0, x)))
+            .filter_map(|pair| pair.1.downcast_ref::<T>().map(|x| (*pair.0, x)))
     }
 
     /// Returns a vector over all entities with at least two types.
@@ -122,19 +98,22 @@ impl Registry {
             _ => return Vec::new(),
         };
 
-        // Output is sorted, so we can keep a pointer.
-        let (mut i, mut j) = (0, 0);
+        let mut iter_a = a.iter();
+        let mut iter_b = b.iter();
+        let mut next_a = iter_a.next();
+        let mut next_b = iter_b.next();
         let mut out = Vec::new();
-        while i < a.len() && j < b.len() {
-            match a[i].0.cmp(&b[j].0) {
-                Ordering::Less => i += 1,
-                Ordering::Greater => j += 1,
+
+        while let (Some((id_a, a)), Some((id_b, b))) = (next_a, next_b) {
+            match id_a.cmp(id_b) {
+                Ordering::Less => next_a = iter_a.next(),
+                Ordering::Greater => next_b = iter_b.next(),
                 Ordering::Equal => {
-                    let ra = a[i].1.downcast_ref::<A>().expect("A bucket holds only A");
-                    let rb = b[j].1.downcast_ref::<B>().expect("B bucket holds only B");
-                    out.push((a[i].0, ra, rb));
-                    i += 1;
-                    j += 1;
+                    let ra = a.downcast_ref::<A>().expect("A bucket holds only A");
+                    let rb = b.downcast_ref::<B>().expect("B bucket holds only B");
+                    out.push((*id_a, ra, rb));
+                    next_a = iter_a.next();
+                    next_b = iter_b.next();
                 }
             }
         }
@@ -151,30 +130,31 @@ impl Registry {
             _ => return Vec::new(),
         };
 
-        // Output is sorted, so we can keep three points and iterate.
-        let (mut i, mut j, mut k) = (0, 0, 0);
+        let mut iter_a = a.iter();
+        let mut iter_b = b.iter();
+        let mut iter_c = c.iter();
+        let mut next_a = iter_a.next();
+        let mut next_b = iter_b.next();
+        let mut next_c = iter_c.next();
         let mut out = Vec::new();
-        while i < a.len() && j < b.len() && k < c.len() {
-            let (ia, ib, ic) = (a[i].0, b[j].0, c[k].0);
-            let max = ia.max(ib.max(ic));
 
-            // If any are less than the max, then we need to increment them.
-            if ia < max {
-                i += 1;
-            } else if ib < max {
-                j += 1;
-            } else if ic < max {
-                k += 1;
+        while let (Some((id_a, a)), Some((id_b, b)), Some((id_c, c))) = (next_a, next_b, next_c) {
+            let max = id_a.max(id_b.max(id_c));
+
+            if id_a < max {
+                next_a = iter_a.next();
+            } else if id_b < max {
+                next_b = iter_b.next();
+            } else if id_c < max {
+                next_c = iter_c.next();
             } else {
-                out.push((
-                    ia,
-                    a[i].1.downcast_ref().expect("A bucket only holds A"),
-                    b[j].1.downcast_ref().expect("B bucket only holds B"),
-                    c[k].1.downcast_ref().expect("C bucket only holds C"),
-                ));
-                i += 1;
-                j += 1;
-                k += 1;
+                let a = a.downcast_ref::<A>().expect("A bucket holds only A");
+                let b = b.downcast_ref::<B>().expect("B bucket holds only B");
+                let c = c.downcast_ref::<C>().expect("C bucket holds only C");
+                out.push((*id_a, a, b, c));
+                next_a = iter_a.next();
+                next_b = iter_b.next();
+                next_c = iter_c.next();
             }
         }
         out

@@ -25,7 +25,7 @@ use crate::timeline::{Path, Timeline};
 use ab_glyph::FontArc;
 use glam::prelude::*;
 use registry::Registry;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 /// A Scene is the way that data is stored. All render data is attached to
 /// entities, and renderers operate on entities which meet their criteria.
@@ -36,7 +36,7 @@ use std::collections::HashMap;
 /// get the `EntityId`, which is an immutable reference to the entity.
 pub struct Scene {
     /// All entities which are active within the scene.
-    active: Vec<EntityId>,
+    active: BTreeSet<EntityId>,
 
     /// The entity id which is used next. Increment by one to given default rendering order.
     next_id: usize,
@@ -64,7 +64,7 @@ impl Scene {
         Self {
             registry: Registry::default(),
             hierarchy: Hierarchy::default(),
-            active: Vec::new(),
+            active: BTreeSet::default(),
             next_id: 0,
             camera: Camera::new(aspect),
             fonts: Font::map(),
@@ -77,15 +77,16 @@ impl Scene {
     pub fn create(&mut self) -> EntityRef<'_> {
         let id = EntityId::new(self.next_id);
         self.next_id += 1;
-        self.active.push(id);
+        self.active.insert(id);
         EntityRef::new(self, id).attach(Transform::default())
     }
 
     /// Returns an Some with a handle to the entity if it exists, or none otherwise.
     pub fn get(&mut self, entity: EntityId) -> Option<EntityRef<'_>> {
-        match self.active.binary_search(&entity) {
-            Ok(_) => Some(EntityRef::new(self, entity)),
-            _ => None,
+        if self.active.contains(&entity) {
+            Some(EntityRef::new(self, entity))
+        } else {
+            None
         }
     }
 
@@ -97,10 +98,10 @@ impl Scene {
     /// Deletes an entity from the scene, or a no-op if the entity doesn't exist.
     pub fn delete(&mut self, entity: EntityId) {
         // Remove the entity from the active list.
-        match self.active.binary_search(&entity) {
-            Ok(i) => self.active.remove(i),
-            _ => return,
-        };
+        self.active.remove(&entity);
+
+        // Remove the parents and children.
+        self.hierarchy.remove(entity);
 
         // Remove all attached components.
         self.registry.delete(entity);

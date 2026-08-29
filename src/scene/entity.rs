@@ -8,19 +8,19 @@ use std::any::Any;
 pub struct EntityId(usize);
 
 impl EntityId {
-    pub(crate) fn new(id: usize) -> Self {
+    pub(super) fn new(id: usize) -> Self {
         Self(id)
     }
 }
 
 /// A reference to an entities transform.
 pub struct EntityRef<'a> {
-    pub(crate) scene: &'a mut Scene,
-    pub(crate) id: EntityId,
+    pub(super) scene: &'a mut Scene,
+    pub(super) id: EntityId,
 }
 
 impl<'a> EntityRef<'a> {
-    pub(crate) fn new(scene: &'a mut Scene, id: EntityId) -> Self {
+    pub(super) fn new(scene: &'a mut Scene, id: EntityId) -> Self {
         Self { scene, id }
     }
 

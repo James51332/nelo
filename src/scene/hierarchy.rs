@@ -1,11 +1,11 @@
 //! A DAG representing the hierarchy within a scene.
 
 use crate::scene::{EntityId, Scene};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct Hierarchy {
-    children: HashMap<EntityId, BTreeSet<EntityId>>,
+    children: HashMap<EntityId, Vec<EntityId>>,
     parents: HashMap<EntityId, EntityId>,
 }
 
@@ -26,10 +26,15 @@ impl Hierarchy {
 
     /// Returns true iff `entity` is an ancestor of `child`.
     pub fn is_ancestor(&self, entity: EntityId, child: EntityId) -> bool {
+        // Check if these are same entity.
         let mut current = child;
+        if current == entity {
+            return true;
+        }
 
+        // Walk up child's ancestry to find entity.
         while let Some(&parent) = self.parents.get(&current) {
-            if current == entity {
+            if parent == entity {
                 return true;
             }
 
@@ -41,10 +46,7 @@ impl Hierarchy {
 
     /// Get all children for a given entity.
     pub fn children(&self, parent: EntityId) -> Vec<EntityId> {
-        self.children
-            .get(&parent)
-            .map(|x| x.iter().copied().collect())
-            .unwrap_or_default()
+        self.children.get(&parent).cloned().unwrap_or_default()
     }
 
     /// Returns true iff this entity has children attached.
@@ -61,7 +63,7 @@ impl Hierarchy {
 
         // Remove the child from the parents array.
         if let Some(children) = self.children.get_mut(&parent) {
-            children.remove(&child);
+            children.retain(|&id| id != child);
         }
     }
 
@@ -74,14 +76,26 @@ impl Hierarchy {
         }
     }
 
+    // Grafts the entity and its children.
+    pub fn remove(&mut self, entity: EntityId) {
+        self.graft(entity);
+        self.clear(entity);
+    }
+
     /// Inserts a parent child relationship, removing existing parents of child
-    /// if needed.
+    /// if needed. No-op if the child is an ancestor of the parent.
     pub fn add_child(&mut self, parent: EntityId, child: EntityId) {
+        // If the child is an ancestor of parent, then we would create a circle
+        // dependency. Disallow this.
+        if self.is_ancestor(child, parent) {
+            return;
+        }
+
         // Remove any existing parents.
         self.graft(child);
 
         // Insert the child into the parents child set.
-        self.children.entry(parent).or_default().insert(child);
+        self.children.entry(parent).or_default().push(child);
 
         // Map the child id to its parent.
         self.parents.insert(child, parent);
