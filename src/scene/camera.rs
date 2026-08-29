@@ -71,6 +71,22 @@ const SCREEN_PADDING: f32 = 0.1;
 
 // Gives the scene some convenience methods for positions on the screen.
 impl Scene {
+    pub fn camera(&mut self) -> &mut Camera {
+        &mut self.camera
+    }
+
+    pub fn sample_camera(&self, size: (u32, u32), t: f32) -> (Color, Affine2) {
+        self.camera.sample(size, t)
+    }
+
+    pub fn sample_height(&self, time: f32) -> f32 {
+        self.camera.height.sample(time)
+    }
+
+    pub fn aspect(&self) -> f32 {
+        self.camera.aspect()
+    }
+
     /// Returns a timeline to the top of the screen.
     pub fn top(&self) -> Timeline<Vec2> {
         self.camera

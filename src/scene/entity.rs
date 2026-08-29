@@ -13,7 +13,8 @@ impl EntityId {
     }
 }
 
-/// A reference to an entities transform.
+/// A reference to an entity in the scene. The reference is guaranteed to be valid.
+/// It holds the entity id and a mutable reference to the scene.
 pub struct EntityRef<'a> {
     pub(super) scene: &'a mut Scene,
     pub(super) id: EntityId,

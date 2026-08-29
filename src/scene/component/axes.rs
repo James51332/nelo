@@ -1,12 +1,20 @@
 //! Render simple lines as a grid.
 
-use crate::scene::{Color, GroupRef, Path, Scene};
+use crate::{
+    scene::{Color, GroupRef, Scene},
+    timeline::Path,
+};
 use glam::Vec2;
 
 impl Scene {
-    /// Creates x and y axes over x-interval (-8, 8) and y-interval (-5, 5)
+    /// Creates x and y axes over height of the screen at time zero.
     pub fn axes(&mut self) -> GroupRef<'_> {
-        self.axes_with_count((17, 9))
+        let height = self.camera.height.sample(0.0);
+        let width = self.camera.aspect() * height;
+        let x_lines = width.ceil() as u32 * 2 + 1;
+        let y_lines = height.ceil() as u32 * 2 + 1;
+
+        self.axes_with_count((x_lines, y_lines))
     }
 
     /// Creates x and y lines in a group using spacing of 1 according to the count.

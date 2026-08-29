@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use ab_glyph::FontArc;
 
+use crate::scene::Scene;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 pub enum Font {
     #[default]
@@ -123,5 +125,17 @@ impl TryFrom<String> for Font {
             "Typewriter-Regular" => Ok(Self::TypewriterRegular),
             _ => Err(format!("Unknown font: {value}")),
         }
+    }
+}
+
+// ----- Scene -----
+
+impl Scene {
+    pub fn font(&self, font: Font) -> &FontArc {
+        &self.fonts.get(&font).expect("Font not found in font map")
+    }
+
+    pub fn default_font(&self) -> &FontArc {
+        self.font(Font::default())
     }
 }
