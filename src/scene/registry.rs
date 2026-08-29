@@ -1,22 +1,21 @@
 //! Helper object to store components in cache friendly buckets.
 
+mod query;
+
+pub use query::Query;
+
 use crate::scene::EntityId;
 use std::any::{Any, TypeId};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
 /// A registry will keep track of attachments to entities.
+#[derive(Debug, Default)]
 pub struct Registry {
     component_stores: HashMap<TypeId, Vec<(EntityId, Box<dyn Any>)>>,
 }
 
 impl Registry {
-    pub fn new() -> Self {
-        Self {
-            component_stores: HashMap::new(),
-        }
-    }
-
     /// Attaches `value` to entity, or replaces it if there is already a an
     /// attachment of type `T`.
     pub fn attach<T: Any>(&mut self, id: EntityId, value: T) {
@@ -28,7 +27,7 @@ impl Registry {
         match index {
             Ok(i) => store[i].1 = Box::new(value),
             Err(i) => store.insert(i, (id, Box::new(value))),
-        }
+        };
     }
 
     pub fn get<T: Any>(&self, id: EntityId) -> Option<&T> {
@@ -101,6 +100,18 @@ impl Registry {
             if let Ok(i) = bucket.binary_search_by(|pair| pair.0.cmp(&entity)) {
                 bucket.remove(i);
             }
+        }
+    }
+
+    /// Copies all components from `source` onto `target`, replacing as necessary.
+    pub fn clone(&mut self, source: EntityId, target: EntityId) {
+        for (_, bucket) in self.component_stores.iter_mut() {
+            // First, find the index of the existing entity in the store.
+            let Ok(index) = bucket.binary_search_by(|pair| pair.0.cmp(&source)) else {
+                continue;
+            };
+
+            let x = &bucket[index].1;
         }
     }
 
@@ -183,76 +194,5 @@ impl Registry {
 
     pub fn view_tuple<T: Query>(&self) -> T::Item<'_> {
         T::query(self)
-    }
-}
-
-pub trait Query {
-    type Item<'a>;
-    fn query<'a>(registry: &'a Registry) -> Self::Item<'a>;
-}
-
-impl<A: Any> Query for (A,) {
-    // impl Iterator is not stable for trait types, so we return a new vector.
-    type Item<'a> = Vec<(EntityId, &'a A)>;
-
-    fn query<'a>(registry: &'a Registry) -> Self::Item<'a> {
-        registry.view().collect()
-    }
-}
-
-impl<A: Any, B: Any> Query for (A, B) {
-    type Item<'a> = Vec<(EntityId, &'a A, &'a B)>;
-
-    fn query<'a>(registry: &'a Registry) -> Self::Item<'a> {
-        registry.view_pair()
-    }
-}
-
-impl<A: Any, B: Any, C: Any> Query for (A, B, C) {
-    type Item<'a> = Vec<(EntityId, &'a A, &'a B, &'a C)>;
-
-    fn query<'a>(registry: &'a Registry) -> Self::Item<'a> {
-        registry.view_triple()
-    }
-}
-
-impl<A: Any, B: Any, C: Any, D: Any> Query for (A, B, C, D) {
-    type Item<'a> = Vec<(EntityId, &'a A, &'a B, &'a C, &'a D)>;
-
-    fn query<'a>(registry: &'a Registry) -> Self::Item<'a> {
-        let driver = registry.view::<A>();
-        driver
-            .filter_map(|pair| {
-                let id = pair.0;
-                Some((
-                    id,
-                    pair.1,
-                    registry.get::<B>(id)?,
-                    registry.get::<C>(id)?,
-                    registry.get::<D>(id)?,
-                ))
-            })
-            .collect()
-    }
-}
-
-impl<A: Any, B: Any, C: Any, D: Any, E: Any> Query for (A, B, C, D, E) {
-    type Item<'a> = Vec<(EntityId, &'a A, &'a B, &'a C, &'a D, &'a E)>;
-
-    fn query<'a>(registry: &'a Registry) -> Self::Item<'a> {
-        let driver = registry.view::<A>();
-        driver
-            .filter_map(|pair| {
-                let id = pair.0;
-                Some((
-                    id,
-                    pair.1,
-                    registry.get::<B>(id)?,
-                    registry.get::<C>(id)?,
-                    registry.get::<D>(id)?,
-                    registry.get::<E>(id)?,
-                ))
-            })
-            .collect()
     }
 }

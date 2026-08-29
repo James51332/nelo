@@ -50,7 +50,7 @@ impl Scene {
     pub fn with_aspect(aspect: f32) -> Self {
         let aspect = if aspect > 0.0 { aspect } else { 16.0 / 9.0 };
         Self {
-            registry: Registry::new(),
+            registry: Registry::default(),
             active: Vec::new(),
             next_id: 0,
             camera: Camera::new(aspect),
