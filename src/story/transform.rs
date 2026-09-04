@@ -2,75 +2,56 @@
 
 use crate::{
     scene::{EntityId, Step, Transform},
-    story::{Action, Stage, Story},
-    timeline::{Easing, Timeline},
+    story::{Action, Stage, Story, Target},
+    timeline::Timeline,
 };
 use glam::{Mat2, Vec2};
 
-pub struct ApplyTransform {
-    pub duration: f32,
-    pub step: Step,
-    pub easing: Easing,
-}
+impl Action for Step {
+    fn apply(&self, id: EntityId, mut stage: Stage) {
+        let time = stage.cursor();
+        let duration = stage.duration();
+        let easing = stage.easing();
 
-impl ApplyTransform {
-    pub fn new(duration: f32, step: Step, easing: Easing) -> Self {
-        Self {
-            duration,
-            step,
-            easing,
-        }
-    }
-
-    pub fn step(step: Step) -> Self {
-        Self::new(1.0, step, Easing::CubicInOut)
-    }
-}
-
-impl Action for ApplyTransform {
-    fn apply(&self, mut stage: Stage, ids: &[EntityId]) -> Option<f32> {
-        let t = stage.cursor();
-
-        let step = match self.step.clone() {
+        let step = match self.clone() {
             Step::Matrix(timeline) => {
                 let blended = Timeline::keyframes(Timeline::constant(Mat2::IDENTITY))
-                    .ease_at(self.duration, timeline, self.easing)
+                    .ease_at(duration, timeline, easing)
                     .build()
                     .flatten();
-                Step::Matrix(blended.shift(t))
+                Step::Matrix(blended.shift(time))
             }
             Step::Translate(timeline) => {
                 let blended = Timeline::keyframes(Timeline::constant(Vec2::ZERO))
-                    .ease_at(self.duration, timeline, self.easing)
+                    .ease_at(duration, timeline, easing)
                     .build()
                     .flatten();
-                Step::Translate(blended.shift(t))
+                Step::Translate(blended.shift(time))
             }
             Step::Scale(timeline) => {
                 let blended = Timeline::keyframes(Timeline::constant(0.0))
-                    .ease_at(self.duration, timeline, self.easing)
+                    .ease_at(duration, timeline, easing)
                     .build()
                     .flatten();
-                Step::Scale(blended.shift(t))
+                Step::Scale(blended.shift(time))
             }
             Step::Rotate(timeline) => {
                 let blended = Timeline::keyframes(Timeline::constant(0.0))
-                    .ease_at(self.duration, timeline, self.easing)
+                    .ease_at(duration, timeline, easing)
                     .build()
                     .flatten();
-                Step::Rotate(blended.shift(t))
+                Step::Rotate(blended.shift(time))
             }
         };
 
-        for &id in ids.iter() {
-            if let Some(mut entity) = stage.scene().get(id) {
-                let transform: &mut Transform = entity.get_or_default();
-                transform.push(step.clone());
-            }
+        if let Some(mut entity) = stage.scene().get(id) {
+            let transform: &mut Transform = entity.get_or_default();
+            transform.push(step.clone());
         }
+    }
 
-        // Return the duration
-        Some(self.duration)
+    fn target() -> Target {
+        Target::Roots
     }
 }
 
@@ -78,22 +59,18 @@ impl Action for ApplyTransform {
 
 impl Story {
     pub fn matrix(&mut self, delta: impl Into<Timeline<Mat2>>, id: EntityId) {
-        let step = Step::Matrix(delta.into());
-        self.apply(ApplyTransform::step(step), &[id]);
+        self.apply(Step::Matrix(delta.into()), &[id]);
     }
 
     pub fn translate(&mut self, delta: impl Into<Timeline<Vec2>>, id: EntityId) {
-        let step = Step::Translate(delta.into());
-        self.apply(ApplyTransform::step(step), &[id]);
+        self.apply(Step::Translate(delta.into()), &[id]);
     }
 
     pub fn scale(&mut self, delta: impl Into<Timeline<f32>>, id: EntityId) {
-        let step = Step::Scale(delta.into());
-        self.apply(ApplyTransform::step(step), &[id]);
+        self.apply(Step::Scale(delta.into()), &[id]);
     }
 
     pub fn rotate(&mut self, delta: impl Into<Timeline<f32>>, id: EntityId) {
-        let step = Step::Rotate(delta.into());
-        self.apply(ApplyTransform::step(step), &[id]);
+        self.apply(Step::Rotate(delta.into()), &[id]);
     }
 }

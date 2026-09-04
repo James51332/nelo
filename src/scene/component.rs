@@ -10,7 +10,7 @@ pub use spline::{Arrow, Spline};
 pub use transform::{Step, Transform, Transformable};
 
 use crate::scene::{Color, EntityRef, Scene};
-use crate::timeline::{Along, Path, Timeline};
+use crate::timeline::{Along, Path, Timeline, TimelineAlong};
 use std::f32::consts::PI;
 
 // ----- Label -----
@@ -75,7 +75,14 @@ pub struct Fill {
 }
 
 impl Fill {
-    fn solid() -> Self {
+    /// Constructs a new fill with the specified color.
+    pub fn new(color: impl Into<Timeline<Color>>) -> Self {
+        Self {
+            color: color.into(),
+        }
+    }
+
+    pub fn solid() -> Self {
         Self {
             color: Color::WHITE.into(),
         }
@@ -92,9 +99,43 @@ impl Default for Fill {
 
 // ----- Stroke -----
 
+#[derive(Clone)]
 pub struct Stroke {
     pub color: Timeline<Along<Color>>,
     pub weight: Timeline<Along<f32>>,
+}
+
+impl Stroke {
+    pub fn new<T, U>(color: T, weight: U) -> Self
+    where
+        T: Into<TimelineAlong<Color>>,
+        U: Into<TimelineAlong<f32>>,
+    {
+        Self {
+            color: color.into().inner(),
+            weight: weight.into().inner(),
+        }
+    }
+
+    pub fn color<T>(color: T) -> Self
+    where
+        T: Into<TimelineAlong<Color>>,
+    {
+        Self {
+            color: color.into().inner(),
+            ..Stroke::default()
+        }
+    }
+
+    pub fn weight<T>(weight: T) -> Self
+    where
+        T: Into<TimelineAlong<f32>>,
+    {
+        Self {
+            weight: weight.into().inner(),
+            ..Stroke::default()
+        }
+    }
 }
 
 impl Default for Stroke {

@@ -1,11 +1,12 @@
 //! Sequence tool for actions on entities in a scene
 
 pub mod action;
+pub mod color;
 pub mod demo;
 pub mod show;
 pub mod transform;
 
-pub use action::{Action, Stage};
+pub use action::{Action, Stage, Target, Timing};
 pub use show::{Hide, Show};
 
 use crate::{
@@ -32,15 +33,63 @@ impl Story {
         self
     }
 
-    pub fn apply(&mut self, action: impl Action, ids: &[EntityId]) -> &mut Self {
-        // Set the stage, so to speak.
-        let stage = Stage::new(&mut self.scene, self.cursor);
+    pub fn apply_with_timing<T: Action>(
+        &mut self,
+        action: &T,
+        ids: &[EntityId],
+        timing: &Timing,
+    ) -> &mut Self {
+        // Determine how we are applying. Specified target takes precedent, but usually None.
+        let target = timing.target.unwrap_or(T::target());
+        let initial_time = self.cursor;
 
-        // Wait even if the action doesn't have a length so together knows where to go.
-        let length = action.apply(stage, ids).unwrap_or(0.0);
-        self.wait(length);
+        // Iterate over the given entity list.
+        for (i, &id) in ids.iter().enumerate() {
+            let has_children = self.scene.hierarchy().has_children(id);
+
+            match target {
+                // If we are group and asked to split, then apply recursively to children.
+                Target::Leaves if has_children => {
+                    // Applying with timing will add the steps and the duration of last.
+                    self.apply_with_timing(action, &self.scene.hierarchy().children(id), timing);
+
+                    // Remove the duration of the last.
+                    self.cursor -= timing.duration;
+
+                    // If we have another id, add step.
+                    if i + 1 < ids.len() {
+                        self.cursor += timing.group_step;
+                    }
+                }
+
+                // Otherwise, just apply to this entity and move the cursor.
+                _ => {
+                    let duration = timing.duration;
+                    let easing = timing.easing;
+                    let stage = Stage::new(&mut self.scene, self.cursor, duration, easing);
+                    action.apply(id, stage);
+
+                    if i + 1 < ids.len() {
+                        self.cursor += timing.step;
+                    }
+                }
+            }
+        }
+
+        // Add the duration of the last.
+        if !ids.is_empty() {
+            self.cursor += timing.duration;
+        }
+
+        // Set the last cursor at the end (overwrite any recursive calls).
+        self.prev_cursor = Some(initial_time);
 
         self
+    }
+
+    /// Apply an action with the default timing.
+    pub fn apply(&mut self, action: impl Action, ids: &[EntityId]) -> &mut Self {
+        self.apply_with_timing(&action, ids, &Timing::default())
     }
 
     // Moves the cursor to the last position to enable simultaneous animations.
@@ -59,27 +108,25 @@ impl Story {
     }
 
     pub fn clear(&mut self) -> &mut Self {
-        let clear = Hide {
+        let timing = Timing {
             step: 0.0,
             group_step: 0.0,
             duration: 0.0,
             easing: Easing::Step,
+            target: Some(Target::Leaves),
         };
-        self.apply(clear, &self.scene.entities())
+        self.apply_with_timing(&Hide, &self.scene.entities(), &timing)
     }
 }
 
 impl Scene {
-    /// Creates a new story using this scene. Clears all entities by default.
+    /// Creates a new story using this scene.
     pub fn story(self) -> Story {
-        let mut story = Story {
+        Story {
             scene: self,
             cursor: 0.0,
             prev_cursor: None,
-        };
-
-        story.clear();
-        story
+        }
     }
 }
 

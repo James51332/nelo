@@ -42,7 +42,9 @@ impl Story {
         let group = donuts.id();
         let donuts = donuts.children();
 
+        // Create a story and start it without any visible entities.
         let mut story = scene.story();
+        story.clear();
 
         // Act 1. Show some donuts
         donuts.iter().for_each(|&id| {
@@ -50,6 +52,8 @@ impl Story {
         });
 
         story.translate(top, group);
+
+        story.stroke_slice(&donuts, Color::WHITE);
 
         // Act 2. Do some plotting.
         story.wait(0.5).hide_all();
