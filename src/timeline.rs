@@ -18,12 +18,12 @@ pub use signal::{Signal, SignalClone};
 // ----- Timeline -----
 
 /// A sampleable value over time, either a fixed constant or a shared [`Signal`].
-pub enum Timeline<T: Clone + 'static> {
+pub enum Timeline<T: Clone + Send + 'static> {
     Constant(T),
     Dynamic(Box<dyn SignalClone<Output = T>>),
 }
 
-impl<T: Clone> Timeline<T> {
+impl<T: Clone + Send> Timeline<T> {
     /// Wrap a fixed value that never changes.
     pub fn constant(s: T) -> Self {
         Self::Constant(s)
@@ -93,7 +93,7 @@ impl<T: Clone> Timeline<T> {
     }
 }
 
-impl<T: Clone + 'static> Clone for Timeline<T> {
+impl<T: Clone + Send + 'static> Clone for Timeline<T> {
     fn clone(&self) -> Self {
         match self {
             Self::Constant(s) => Self::Constant(s.clone()),
@@ -102,7 +102,7 @@ impl<T: Clone + 'static> Clone for Timeline<T> {
     }
 }
 
-impl<T: Clone + 'static> Timeline<Timeline<T>> {
+impl<T: Clone + Send + 'static> Timeline<Timeline<T>> {
     /// Reduces depth of timeline of timelines by one by sampling both at the time
     /// with the same input parameter.
     ///
@@ -122,12 +122,12 @@ impl<T: Clone + 'static> Timeline<Timeline<T>> {
 /// reported duration. Built by [`Timeline::with_length`] and immediately erased
 /// into a [`Timeline::Dynamic`].
 #[derive(Clone)]
-struct WithLength<T: Clone + 'static> {
+struct WithLength<T: Clone + Send + 'static> {
     timeline: Timeline<T>,
     length: f32,
 }
 
-impl<T: Clone + 'static> Signal for WithLength<T> {
+impl<T: Clone + Send + 'static> Signal for WithLength<T> {
     type Output = T;
 
     fn sample(&self, t: f32) -> Self::Output {

@@ -28,6 +28,7 @@ winit = { version = "0.30.13", optional = true }
 egui = { version = "0.36.1", optional = true }
 egui-wgpu = { version = "0.36.1", optional = true }
 egui-winit = { version = "0.36.1", optional = true }
+env_logger = { version = "0.11.11", optional = true }
 
 [features]
 default = ["story", "render", "viewer", "export"]
@@ -35,7 +36,7 @@ scene = []
 render = ["scene"]
 story = ["scene"]
 export = ["render"]
-viewer = ["render", "dep:winit", "dep:egui", "dep:egui-wgpu", "dep:egui-winit"]
+viewer = ["render", "dep:winit", "dep:egui", "dep:egui-wgpu", "dep:egui-winit", "dep:env_logger"]
 
 [[example]]
 name = "image"

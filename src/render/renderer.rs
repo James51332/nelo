@@ -62,6 +62,11 @@ impl Renderer {
         }
     }
 
+    /// Sets the playback and returns the old playback.
+    pub fn set_playback(&mut self, playback: Playback) -> Playback {
+        std::mem::replace(&mut self.playback, playback)
+    }
+
     // Renders the scene to the assigned frame and presents the frame if possible.
     // Uses all renderers and supplies them the data according to their geometry
     // filter.

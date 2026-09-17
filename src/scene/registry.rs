@@ -9,7 +9,7 @@ use std::any::{Any, TypeId};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 
-type Store = BTreeMap<EntityId, Box<dyn Any>>;
+type Store = BTreeMap<EntityId, Box<dyn Any + Send>>;
 
 /// A registry will keep track of attachments to entities.
 #[derive(Debug, Default)]
@@ -20,7 +20,7 @@ pub struct Registry {
 impl Registry {
     /// Attaches `value` to entity, or replaces it if there is already a an
     /// attachment of type `T`.
-    pub fn attach<T: Any>(&mut self, id: EntityId, value: T) {
+    pub fn attach<T: Any + Send>(&mut self, id: EntityId, value: T) {
         let type_id = TypeId::of::<T>();
         let store = self.component_stores.entry(type_id).or_default();
 
@@ -40,7 +40,7 @@ impl Registry {
         store.get_mut(&id).map(|x| x.downcast_mut()).flatten()
     }
 
-    pub fn get_or_default<'a, T: Any + Default>(&'a mut self, id: EntityId) -> &'a mut T {
+    pub fn get_or_default<'a, T: Any + Send + Default>(&'a mut self, id: EntityId) -> &'a mut T {
         let type_id = TypeId::of::<T>();
         let store = self.component_stores.entry(type_id).or_default();
         store

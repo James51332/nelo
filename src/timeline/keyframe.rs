@@ -10,7 +10,7 @@ use glam::{Mat2, Quat, Vec2, Vec3, Vec4};
 /// Anytype which wishes to be part of a keyframe must implement
 /// the `Lerp` trait.
 #[derive(Clone)]
-struct Keyframe<T: Lerp + Clone + 'static> {
+struct Keyframe<T: Lerp + Clone + Send + 'static> {
     time: f32,
     value: T,
     easing: Easing,
@@ -20,9 +20,9 @@ struct Keyframe<T: Lerp + Clone + 'static> {
 /// are sorted by their end time. This struct is a private, intermediate
 /// which implements Signal so it can be converted into a timeline.
 #[derive(Clone)]
-struct Keyframes<T: Lerp + Clone + 'static>(Vec<Keyframe<T>>);
+struct Keyframes<T: Lerp + Clone + Send + 'static>(Vec<Keyframe<T>>);
 
-impl<T: Lerp + Clone> Signal for Keyframes<T> {
+impl<T: Lerp + Clone + Send> Signal for Keyframes<T> {
     type Output = T;
 
     fn sample(&self, t: f32) -> T {
@@ -59,11 +59,11 @@ impl<T: Lerp + Clone> Signal for Keyframes<T> {
 
 /// Keyframe builder is used to build a keyframe that meets the requirements for the
 /// API. Therefore, this is the only way to access the API.
-pub struct KeyframeBuilder<T: Lerp + Clone + 'static> {
+pub struct KeyframeBuilder<T: Lerp + Clone + Send + 'static> {
     frames: Vec<Keyframe<T>>,
 }
 
-impl<T: Lerp + Clone> KeyframeBuilder<T> {
+impl<T: Lerp + Clone + Send> KeyframeBuilder<T> {
     fn new(anchor: T) -> Self {
         Self {
             frames: vec![Keyframe {
@@ -112,7 +112,7 @@ impl<T: Lerp + Clone> KeyframeBuilder<T> {
 
 // ----- Timeline -----
 
-impl<T: Clone + Lerp> Timeline<T> {
+impl<T: Clone + Send + Lerp> Timeline<T> {
     /// Use this method to create a timeline where you know the value
     /// at a fixed number of points in time. These can be specified
     /// directly using the builder's `at` and `ease_at` methods. Requires
@@ -146,13 +146,13 @@ impl Lerp for Quat {
     }
 }
 
-impl<T: Clone + Lerp> Lerp for Timeline<T> {
+impl<T: Clone + Send + Lerp> Lerp for Timeline<T> {
     fn interpolate(a: Self, b: Self, progress: f32) -> Self {
         Timeline::dynamic(move |t: f32| T::interpolate(a.sample(t), b.sample(t), progress))
     }
 }
 
-impl<T: Clone + Lerp> Lerp for Along<T> {
+impl<T: Clone + Send + Lerp> Lerp for Along<T> {
     fn interpolate(a: Self, b: Self, t: f32) -> Self {
         Timeline::interpolate(a.timeline(), b.timeline(), t).along()
     }

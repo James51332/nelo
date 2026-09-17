@@ -130,8 +130,8 @@ impl Scene {
     }
 }
 
-impl Into<Playback> for Story {
-    fn into(self) -> Playback {
-        Playback::new(self.scene).with_length(self.cursor + 1.0)
+impl From<Story> for Playback {
+    fn from(story: Story) -> Playback {
+        Playback::new(story.scene, Some(story.cursor), None)
     }
 }

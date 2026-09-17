@@ -1,7 +1,7 @@
 //! Signals  arevalues that vary over time.
 
 /// A value that varies over time.
-pub trait Signal: 'static {
+pub trait Signal: Send + 'static {
     /// The value produced at each instant.
     type Output;
 
@@ -16,7 +16,7 @@ pub trait Signal: 'static {
 }
 
 /// Any closure `Fn(f32) -> T + 'static` is a signal, with no length.
-impl<T: 'static, F: Fn(f32) -> T + Clone + 'static> Signal for F {
+impl<T: 'static, F: Fn(f32) -> T + Clone + Send + 'static> Signal for F {
     type Output = T;
 
     fn sample(&self, t: f32) -> T {

@@ -15,4 +15,4 @@ pub use crate::story::{Action, Story};
 pub use crate::export::{Export, ImageExport, VideoExport};
 
 #[cfg(feature = "viewer")]
-pub use crate::viewer::Viewer;
+pub use crate::viewer::{Catalog, Viewer};

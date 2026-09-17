@@ -2,9 +2,11 @@
 
 mod app;
 mod canvas;
+pub mod catalog;
 mod ui;
 
 pub use canvas::Canvas;
+pub use catalog::Catalog;
 pub use ui::UiRenderer;
 use wgpu::{
     CompositeAlphaMode, CurrentSurfaceTexture, Device, DeviceDescriptor, Instance, PresentMode,
@@ -12,14 +14,13 @@ use wgpu::{
     TextureViewDescriptor,
 };
 
-use crate::scene::Playback;
 use app::App;
 use std::sync::Arc;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
     event::{ElementState, KeyEvent, WindowEvent},
-    event_loop::ActiveEventLoop,
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{Key, NamedKey},
     window::{Window, WindowId},
 };
@@ -27,7 +28,7 @@ use winit::{
 // ----- Viewer -----
 
 pub enum Viewer {
-    Pending(Playback),
+    Pending(String, Box<dyn Catalog>),
     Starting,
     Running {
         window: Arc<Window>,
@@ -40,8 +41,8 @@ pub enum Viewer {
 }
 
 impl Viewer {
-    pub fn new(playback: impl Into<Playback>) -> Self {
-        Self::Pending(playback.into())
+    pub fn new(active: String, catalog: impl Catalog + 'static) -> Self {
+        Self::Pending(active, Box::new(catalog))
     }
 
     pub fn draw(&mut self) {
@@ -88,7 +89,7 @@ impl Viewer {
     }
 
     pub async fn start(&mut self, event_loop: &ActiveEventLoop) {
-        if let Self::Pending(playback) = std::mem::replace(self, Self::Starting) {
+        if let Self::Pending(active, sources) = std::mem::replace(self, Self::Starting) {
             // First create the window.
             let (width, height) = (1280, 720);
             let attrs = Window::default_attributes()
@@ -154,7 +155,8 @@ impl Viewer {
                 queue.clone(),
                 format,
                 ui_format,
-                playback,
+                sources,
+                active,
             );
 
             // Update to running state.
@@ -167,6 +169,20 @@ impl Viewer {
                 app,
             };
         }
+    }
+
+    /// Runs the viewer with the given playback sources.
+    pub fn run(mut self) {
+        // Set up logging.
+        env_logger::Builder::new()
+            .filter_level(log::LevelFilter::Info)
+            .init();
+
+        let event_loop = EventLoop::new().expect("Failed to create event loop!");
+        event_loop.set_control_flow(ControlFlow::Poll);
+        event_loop
+            .run_app(&mut self)
+            .expect("Unexpected event loop failure!");
     }
 }
 

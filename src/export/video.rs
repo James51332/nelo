@@ -16,8 +16,8 @@ pub struct VideoExport {
     pub width: u32,
     pub height: u32,
     pub frame_rate: u32,
-    pub file_name: &'static str,
-    pub file_ext: &'static str,
+    pub file_name: String,
+    pub file_ext: String,
 
     pub gpu: Option<(Device, Queue)>,
 
@@ -33,8 +33,8 @@ impl Default for VideoExport {
             width: 1920,
             height: 1080,
             frame_rate: 30,
-            file_name: "nelo_scene",
-            file_ext: "mp4",
+            file_name: "nelo_scene".into(),
+            file_ext: "mp4".into(),
             gpu: None,
             start_time: 0.0,
             end_time: 10.0,

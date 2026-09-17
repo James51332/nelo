@@ -5,7 +5,7 @@ use glam::prelude::*;
 // ----- Timeline -----
 
 /// Closures implement signal automatically, so they can become dynamic timelines.
-impl<T: Clone, F: Fn(f32) -> T + Clone + 'static> From<F> for Timeline<T> {
+impl<T: Clone + Send, F: Fn(f32) -> T + Clone + Send + 'static> From<F> for Timeline<T> {
     fn from(f: F) -> Self {
         Timeline::dynamic(f)
     }
@@ -23,7 +23,7 @@ macro_rules! timeline_from {
 
 timeline_from!(bool, f32, i32, u32, usize, Vec2, Vec3, Vec4, Mat2, Affine2);
 
-impl<T: Clone> From<Along<T>> for Timeline<T> {
+impl<T: Clone + Send> From<Along<T>> for Timeline<T> {
     fn from(t: Along<T>) -> Self {
         t.timeline()
     }
@@ -35,7 +35,7 @@ impl From<Easing> for Timeline<f32> {
     }
 }
 
-impl<T: Clone> From<Along<T>> for Timeline<Along<T>> {
+impl<T: Clone + Send> From<Along<T>> for Timeline<Along<T>> {
     fn from(t: Along<T>) -> Self {
         Timeline::constant(t)
     }
@@ -43,7 +43,7 @@ impl<T: Clone> From<Along<T>> for Timeline<Along<T>> {
 
 // ----- Along -----
 
-impl<T: Clone, F: Fn(f32) -> T + Clone + 'static> From<F> for Along<T> {
+impl<T: Clone + Send, F: Fn(f32) -> T + Clone + Send + 'static> From<F> for Along<T> {
     /// Alongs can also be generated from parameters. This isn't used by our public API since
     /// we always want to enable the value to change over time, so we use `TimelineAlong<T>`.
     /// This adds one more layer of indirection.
@@ -64,7 +64,7 @@ macro_rules! along_from {
 
 along_from!(f32, i32, u32, usize, Vec2, Vec3, Vec4, Mat2, Affine2);
 
-impl<T: Clone> From<Timeline<T>> for Along<T> {
+impl<T: Clone + Send> From<Timeline<T>> for Along<T> {
     fn from(t: Timeline<T>) -> Self {
         t.along()
     }
@@ -72,7 +72,7 @@ impl<T: Clone> From<Timeline<T>> for Along<T> {
 
 // ----- TimelineAlong -----
 
-impl<T: Clone, F: Fn(f32, f32) -> T + Clone + 'static> From<F> for TimelineAlong<T> {
+impl<T: Clone + Send, F: Fn(f32, f32) -> T + Clone + Send + 'static> From<F> for TimelineAlong<T> {
     /// Takes a closure over time and alpha and converts it to a timeline.
     fn from(f: F) -> Self {
         Self::new(Timeline::dynamic(move |t| {
@@ -94,7 +94,7 @@ macro_rules! timeline_along_from {
 
 timeline_along_from!(f32, Vec2, Vec3, Vec4, Mat2, Affine2);
 
-impl<T: Clone> From<Timeline<T>> for TimelineAlong<T> {
+impl<T: Clone + Send> From<Timeline<T>> for TimelineAlong<T> {
     /// Converts a `Timeline<T>` to a time-varying TimelineAlong whose value
     /// is uniform along the curve.
     fn from(t: Timeline<T>) -> Self {
@@ -102,19 +102,19 @@ impl<T: Clone> From<Timeline<T>> for TimelineAlong<T> {
     }
 }
 
-impl<T: Clone> From<Timeline<Along<T>>> for TimelineAlong<T> {
+impl<T: Clone + Send> From<Timeline<Along<T>>> for TimelineAlong<T> {
     fn from(s: Timeline<Along<T>>) -> Self {
         Self::new(s)
     }
 }
 
-impl<T: Clone> From<Timeline<Timeline<T>>> for TimelineAlong<T> {
+impl<T: Clone + Send> From<Timeline<Timeline<T>>> for TimelineAlong<T> {
     fn from(s: Timeline<Timeline<T>>) -> Self {
         Self::new(s.map(|p| p.along()))
     }
 }
 
-impl<T: Clone> From<Along<T>> for TimelineAlong<T> {
+impl<T: Clone + Send> From<Along<T>> for TimelineAlong<T> {
     fn from(along: Along<T>) -> Self {
         Self::new(Timeline::constant(along))
     }
@@ -122,7 +122,7 @@ impl<T: Clone> From<Along<T>> for TimelineAlong<T> {
 
 // ----- TimelineSpline -----
 
-impl<F: Fn(f32, f32) -> Vec2 + Clone + 'static> From<F> for TimelineSpline {
+impl<F: Fn(f32, f32) -> Vec2 + Clone + Send + 'static> From<F> for TimelineSpline {
     fn from(f: F) -> Self {
         Self::new(f.into())
     }

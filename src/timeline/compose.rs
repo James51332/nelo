@@ -5,7 +5,7 @@ use std::ops::{Add, Mul};
 
 // ----- Timeline -----
 
-impl<T: Clone> Timeline<T> {
+impl<T: Clone + Send> Timeline<T> {
     /// Resamples this timeline with the inner parameter. Length is set to
     /// that of inner timeline.
     pub fn compose(self, inner: impl Into<Timeline<f32>>) -> Self {
@@ -35,13 +35,13 @@ impl<T: Clone> Timeline<T> {
     }
 
     /// Adds this timeline to the timeline. The length is the maximum of the two.
-    pub fn add<U: Clone + 'static>(
+    pub fn add<U: Clone + Send + 'static>(
         self,
         rhs: impl Into<Timeline<U>>,
     ) -> Timeline<<T as Add<U>>::Output>
     where
         T: Add<U>,
-        <T as Add<U>>::Output: Clone,
+        <T as Add<U>>::Output: Clone + Send,
     {
         let rhs = rhs.into();
         if self.is_constant() && rhs.is_constant() {
@@ -56,13 +56,13 @@ impl<T: Clone> Timeline<T> {
 
     /// Multiply this timeline (LHS) with other timeline (RHS). The length is the maximum
     /// of the two lengths.
-    pub fn multiply<U: Clone + 'static>(
+    pub fn multiply<U: Clone + Send + 'static>(
         self,
         rhs: impl Into<Timeline<U>>,
     ) -> Timeline<<T as Mul<U>>::Output>
     where
         T: Mul<U>,
-        <T as Mul<U>>::Output: Clone,
+        <T as Mul<U>>::Output: Clone + Send,
     {
         let rhs = rhs.into();
         if self.is_constant() && rhs.is_constant() {
@@ -77,7 +77,10 @@ impl<T: Clone> Timeline<T> {
 
     /// Consume this timeline and return a new timeline with a mapped output value. The length
     /// of the timeline is unchanged.
-    pub fn map<U: Clone + 'static>(self, map: impl Fn(T) -> U + Clone + 'static) -> Timeline<U> {
+    pub fn map<U: Clone + Send + 'static>(
+        self,
+        map: impl Fn(T) -> U + Clone + Send + 'static,
+    ) -> Timeline<U> {
         if self.is_constant() {
             Timeline::constant(map(self.sample(0.0)))
         } else {
@@ -91,7 +94,7 @@ impl<T: Clone> Timeline<T> {
 
 // ----- Along -----
 
-impl<T: Clone> Along<T> {
+impl<T: Clone + Send> Along<T> {
     pub fn compose(self, inner: impl Into<Along<f32>>) -> Self {
         self.timeline().compose(inner.into().timeline()).along()
     }
@@ -100,29 +103,32 @@ impl<T: Clone> Along<T> {
         self.timeline().shift(delay).along()
     }
 
-    pub fn add<U: Clone + 'static>(self, rhs: impl Into<Along<U>>) -> Along<<T as Add<U>>::Output>
+    pub fn add<U: Clone + Send + 'static>(
+        self,
+        rhs: impl Into<Along<U>>,
+    ) -> Along<<T as Add<U>>::Output>
     where
         T: Add<U>,
-        <T as Add<U>>::Output: Clone + 'static,
+        <T as Add<U>>::Output: Clone + Send + 'static,
     {
         self.timeline().add(rhs.into().timeline()).along()
     }
 
-    pub fn multiply<U: Clone + 'static>(
+    pub fn multiply<U: Clone + Send + 'static>(
         self,
         rhs: impl Into<Along<U>>,
     ) -> Along<<T as Mul<U>>::Output>
     where
         T: Mul<U>,
-        <T as Mul<U>>::Output: Clone + 'static,
+        <T as Mul<U>>::Output: Clone + Send + 'static,
     {
         self.timeline().multiply(rhs.into().timeline()).along()
     }
 
     pub fn map<F, U>(self, map: F) -> Along<U>
     where
-        U: Clone + 'static,
-        F: Fn(T) -> U + Clone + 'static,
+        U: Clone + Send + 'static,
+        F: Fn(T) -> U + Clone + Send + 'static,
     {
         self.timeline().map(map).along()
     }
@@ -132,12 +138,12 @@ impl<T: Clone> Along<T> {
 
 /// Type-erased struct that implements signal to support `Timeline::compose` method.
 #[derive(Clone)]
-struct Compose<T: Clone + 'static> {
+struct Compose<T: Clone + Send + 'static> {
     outer: Timeline<T>,
     inner: Timeline<f32>,
 }
 
-impl<T: Clone> Signal for Compose<T> {
+impl<T: Clone + Send> Signal for Compose<T> {
     type Output = T;
 
     fn sample(&self, t: f32) -> Self::Output {
@@ -154,12 +160,12 @@ impl<T: Clone> Signal for Compose<T> {
 /// Type-erased struct that implements signal to support `Timeline::shift`
 /// method.
 #[derive(Clone)]
-struct Shift<T: Clone + 'static> {
+struct Shift<T: Clone + Send + 'static> {
     timeline: Timeline<T>,
     delay: f32,
 }
 
-impl<T: Clone> Signal for Shift<T> {
+impl<T: Clone + Send> Signal for Shift<T> {
     type Output = T;
 
     fn sample(&self, t: f32) -> Self::Output {
@@ -180,14 +186,14 @@ impl<T: Clone> Signal for Shift<T> {
 /// Type-erased struct that implements signal to support `Timeline::add`
 /// method.
 #[derive(Clone)]
-struct Sum<T: Clone + 'static, U: Clone + 'static> {
+struct Sum<T: Clone + Send + 'static, U: Clone + Send + 'static> {
     first: Timeline<T>,
     second: Timeline<U>,
 }
 
-impl<T: Clone + Add<U>, U: Clone> Signal for Sum<T, U>
+impl<T: Clone + Send + Add<U>, U: Clone + Send> Signal for Sum<T, U>
 where
-    <T as Add<U>>::Output: Clone,
+    <T as Add<U>>::Output: Clone + Send,
 {
     type Output = <T as Add<U>>::Output;
 
@@ -208,14 +214,14 @@ where
 /// Type-erased struct that implements signal to support `Timeline::multiply`
 /// method.
 #[derive(Clone)]
-struct Product<T: Clone + 'static, U: Clone + 'static> {
+struct Product<T: Clone + Send + 'static, U: Clone + Send + 'static> {
     first: Timeline<T>,
     second: Timeline<U>,
 }
 
-impl<T: Clone + Mul<U>, U: Clone> Signal for Product<T, U>
+impl<T: Clone + Send + Mul<U>, U: Clone + Send> Signal for Product<T, U>
 where
-    <T as Mul<U>>::Output: Clone,
+    <T as Mul<U>>::Output: Clone + Send,
 {
     type Output = <T as Mul<U>>::Output;
 
@@ -234,12 +240,12 @@ where
 // ----- Map -----
 
 /// Type-erased struct that implements signal to support `Timeline::map`
-struct Map<T: Clone + 'static, U: Clone + 'static> {
+struct Map<T: Clone + Send + 'static, U: Clone + Send + 'static> {
     inner: Timeline<T>,
     map: Box<dyn MapClone<T, U>>,
 }
 
-impl<T: Clone, U: Clone> Signal for Map<T, U> {
+impl<T: Clone + Send, U: Clone + Send> Signal for Map<T, U> {
     type Output = U;
 
     fn sample(&self, t: f32) -> Self::Output {
@@ -252,21 +258,23 @@ impl<T: Clone, U: Clone> Signal for Map<T, U> {
 }
 
 /// We have to use this workaround to support map being clone.
-trait MapClone<T: Clone + 'static, U: Clone + 'static>: Fn(T) -> U + 'static {
+trait MapClone<T: Clone + Send + 'static, U: Clone + Send + 'static>:
+    Fn(T) -> U + Send + 'static
+{
     fn clone_box(&self) -> Box<dyn MapClone<T, U>>;
 }
 
 // If a closure is clone, then it's map clone.
-impl<F, T: Clone + 'static, U: Clone + 'static> MapClone<T, U> for F
+impl<F, T: Clone + Send + 'static, U: Clone + Send + 'static> MapClone<T, U> for F
 where
-    F: Fn(T) -> U + Clone + 'static,
+    F: Fn(T) -> U + Clone + Send + 'static,
 {
     fn clone_box(&self) -> Box<dyn MapClone<T, U>> {
         Box::new(self.clone())
     }
 }
 
-impl<T: Clone + 'static, U: Clone + 'static> Clone for Map<T, U> {
+impl<T: Clone + Send + 'static, U: Clone + Send + 'static> Clone for Map<T, U> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),

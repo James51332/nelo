@@ -25,7 +25,7 @@ impl<'a> EntityRef<'a> {
         Self { scene, id }
     }
 
-    pub fn attach<T: Any>(self, data: T) -> Self {
+    pub fn attach<T: Any + Send>(self, data: T) -> Self {
         self.scene.registry.attach(self.id, data);
         self
     }
@@ -40,7 +40,7 @@ impl<'a> EntityRef<'a> {
 
     /// Returns the attached data of type `T`, attaching `T::default()` first if
     /// this entity doesn't have one. Never removes or replaces existing data.
-    pub fn get_or_default<T: Any + Default>(&mut self) -> &mut T {
+    pub fn get_or_default<T: Any + Send + Default>(&mut self) -> &mut T {
         self.scene.registry.get_or_default(self.id)
     }
 

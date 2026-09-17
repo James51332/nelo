@@ -1,8 +1,8 @@
 //! Core app features for viewer
 
+use crate::export::{Export, VideoExport};
 use crate::render::Renderer;
-use crate::scene::Playback;
-use crate::viewer::{Canvas, UiRenderer};
+use crate::viewer::{Canvas, Catalog, UiRenderer};
 use egui::{CentralPanel, Frame, Id, Panel, Slider, SliderClamping, TextureId, load::SizedTexture};
 use egui::{Image, Rect, Vec2};
 use egui_wgpu::ScreenDescriptor;
@@ -21,7 +21,7 @@ pub struct App {
     queue: Queue,
     window: Arc<Window>,
 
-    // Renderers
+    // Rendering
     renderer: Renderer,
     ui: UiRenderer,
 
@@ -33,7 +33,13 @@ pub struct App {
     // Playback
     last_frame: Instant,
     time: f32,
+    length: Option<f32>,
     playing: bool,
+
+    // Sources,
+    catalog: Box<dyn Catalog>,
+    active: String,
+    stale: bool,
 }
 
 impl App {
@@ -43,8 +49,13 @@ impl App {
         queue: Queue,
         format: TextureFormat,
         ui_format: TextureFormat,
-        playback: Playback,
+        catalog: Box<dyn Catalog>,
+        active: String,
     ) -> Self {
+        // We need to generate a playback at least once.
+        let playback = catalog.playback(&active).expect("Playback not found");
+        let length = playback.length();
+
         // Create canvas texture. Scene is srgb, but viewed as linear in egui.
         let (width, available_height) = (1920, 1080);
         let mut canvas = Canvas::new(&device, format, ui_format, width, available_height);
@@ -71,11 +82,32 @@ impl App {
             ui,
             last_frame,
             time: 0.0,
+            length,
             playing: true,
+            catalog,
+            active,
+            stale: false,
         }
     }
 
     pub fn render(&mut self, surface_view: &TextureView) {
+        // See if we need to update the playback.
+        if self.catalog.stale() || self.stale {
+            if let Some(playback) = self.catalog.playback(&self.active) {
+                // Update the canvas aspect ratio.
+                self.canvas
+                    .set_aspect(&self.device, playback.scene().aspect());
+
+                // Submit to the renderer.
+                self.length = playback.length();
+                self.renderer.set_playback(playback);
+            } else {
+                log::warn!("Playback ({}) not found!", self.active);
+            }
+
+            self.stale = false;
+        }
+
         // Get the time.
         let now = Instant::now();
         if self.playing {
@@ -111,10 +143,46 @@ impl App {
                     ui.horizontal_centered(|ui| {
                         ui.checkbox(&mut self.playing, "Playing");
                         ui.add(
-                            Slider::new(&mut self.time, 0.0..=30.0)
+                            Slider::new(&mut self.time, 0.0..=self.length.unwrap_or(30.0))
                                 .clamping(SliderClamping::Never)
                                 .step_by(0.001),
                         );
+
+                        // Show the dropdown.
+                        let mut next = self.active.clone();
+                        egui::ComboBox::from_label("Playback")
+                            .selected_text(self.active.clone())
+                            .show_ui(ui, |ui| {
+                                for key in self.catalog.names() {
+                                    ui.selectable_value(&mut next, key.clone(), key);
+                                }
+                            });
+
+                        if next != self.active {
+                            self.active = next;
+                            self.stale = true;
+                        }
+
+                        // Show the export button.
+                        if ui.button("Export").clicked() {
+                            let playback = self
+                                .catalog
+                                .playback(&self.active)
+                                .expect("Playback not found");
+
+                            let video = VideoExport {
+                                width: 3840,
+                                height: 2160,
+                                frame_rate: 30,
+                                file_name: self.active.clone(),
+                                file_ext: "mp4".into(),
+                                gpu: Some((self.device.clone(), self.queue.clone())),
+                                start_time: 0.0,
+                                end_time: playback.length().unwrap_or(self.time),
+                            };
+
+                            std::thread::spawn(move || video.export(playback));
+                        }
                     });
                 });
 

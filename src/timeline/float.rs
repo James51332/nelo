@@ -73,7 +73,7 @@ impl Timeline<f32> {
     }
 
     /// Mirror of composition. Evaluates `self` and uses output as time for `outer`.
-    pub fn then<U: Clone + 'static>(self, outer: impl Into<Timeline<U>>) -> Timeline<U> {
+    pub fn then<U: Clone + Send + 'static>(self, outer: impl Into<Timeline<U>>) -> Timeline<U> {
         outer.into().compose(self)
     }
 }

@@ -8,9 +8,9 @@ use glam::prelude::*;
 /// Along defines a value "along" a parametric curve. It's sampled over alpha, which
 /// usually varies from zero to one.
 #[derive(Clone)]
-pub struct Along<T: Clone + 'static>(Timeline<T>);
+pub struct Along<T: Clone + Send + 'static>(Timeline<T>);
 
-impl<T: Clone> Along<T> {
+impl<T: Clone + Send> Along<T> {
     pub fn length(self) -> Option<f32> {
         self.0.length()
     }
@@ -37,13 +37,13 @@ impl<T: Clone> Along<T> {
 
 // ----- Conversion -----
 
-impl<T: Clone> Along<T> {
+impl<T: Clone + Send> Along<T> {
     pub fn timeline(self) -> Timeline<T> {
         self.0
     }
 }
 
-impl<T: Clone> Timeline<T> {
+impl<T: Clone + Send> Timeline<T> {
     /// Converts this timeline into an `Along`. This maps t to alpha.
     pub fn along(self) -> Along<T> {
         Along(self)
@@ -53,11 +53,11 @@ impl<T: Clone> Timeline<T> {
 // ----- TimelineAlong -----
 
 #[derive(Clone)]
-pub struct TimelineAlong<T: Clone + 'static> {
+pub struct TimelineAlong<T: Clone + Send + 'static> {
     inner: Timeline<Along<T>>,
 }
 
-impl<T: Clone> TimelineAlong<T> {
+impl<T: Clone + Send> TimelineAlong<T> {
     pub fn new(inner: Timeline<Along<T>>) -> Self {
         Self { inner }
     }
