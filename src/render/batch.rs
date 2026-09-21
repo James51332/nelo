@@ -28,8 +28,8 @@ enum Submission {
 // ----- Batch -----
 
 const MAX_CIRCLES: usize = 100_000;
-const MAX_VERTICES: usize = 100_000;
-const MAX_INDICES: usize = 50_000;
+const MAX_VERTICES: usize = 300_000;
+const MAX_INDICES: usize = 150_000;
 
 /// A batch is a list of high-level render commands.
 pub struct Batch {
