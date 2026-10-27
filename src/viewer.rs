@@ -25,10 +25,28 @@ use winit::{
     window::{Window, WindowId},
 };
 
+use crate::scene::Playback;
+
+// ----- SimpleCatalog -----
+
+pub struct SimpleCatalog {
+    playback: Option<Playback>,
+}
+
+impl Catalog for SimpleCatalog {
+    fn names(&self) -> Vec<String> {
+        vec![String::from("Scene")]
+    }
+
+    fn playback(&mut self, _name: &String) -> Option<Playback> {
+        self.playback.take()
+    }
+}
+
 // ----- Viewer -----
 
 pub enum Viewer {
-    Pending(String, Box<dyn Catalog>),
+    Pending(Box<dyn Catalog>),
     Starting,
     Running {
         window: Arc<Window>,
@@ -41,8 +59,13 @@ pub enum Viewer {
 }
 
 impl Viewer {
-    pub fn new(active: String, catalog: impl Catalog + 'static) -> Self {
-        Self::Pending(active, Box::new(catalog))
+    pub fn playback(playback: impl Into<Playback>) -> Self {
+        let playback = Some(playback.into());
+        Self::Pending(Box::new(SimpleCatalog { playback }))
+    }
+
+    pub fn catalog(catalog: impl Catalog + 'static) -> Self {
+        Self::Pending(Box::new(catalog))
     }
 
     pub fn draw(&mut self) {
@@ -89,7 +112,7 @@ impl Viewer {
     }
 
     pub async fn start(&mut self, event_loop: &ActiveEventLoop) {
-        if let Self::Pending(active, sources) = std::mem::replace(self, Self::Starting) {
+        if let Self::Pending(sources) = std::mem::replace(self, Self::Starting) {
             // First create the window.
             let (width, height) = (1280, 720);
             let attrs = Window::default_attributes()
@@ -156,7 +179,6 @@ impl Viewer {
                 format,
                 ui_format,
                 sources,
-                active,
             );
 
             // Update to running state.

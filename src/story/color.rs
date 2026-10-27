@@ -106,7 +106,7 @@ impl Action for ApplyStroke {
                 Some(stroke) => {
                     // If we have a color blend it.
                     if let Some(color) = self.color.clone() {
-                        let blended = Timeline::keyframes(stroke.color.clone())
+                        let blended = Timeline::keyframes(stroke.color.clone().shift(-time))
                             .ease_at(duration, color, easing)
                             .build()
                             .flatten()

@@ -6,7 +6,7 @@ use crate::scene::Playback;
 pub trait Catalog {
     fn names(&self) -> Vec<String>;
 
-    fn playback(&self, name: &String) -> Option<Playback>;
+    fn playback(&mut self, name: &String) -> Option<Playback>;
 
     fn stale(&self) -> bool {
         false

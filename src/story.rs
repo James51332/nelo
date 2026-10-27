@@ -3,6 +3,7 @@
 pub mod action;
 pub mod color;
 pub mod demo;
+pub mod morph;
 pub mod show;
 pub mod transform;
 

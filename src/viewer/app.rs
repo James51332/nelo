@@ -49,10 +49,10 @@ impl App {
         queue: Queue,
         format: TextureFormat,
         ui_format: TextureFormat,
-        catalog: Box<dyn Catalog>,
-        active: String,
+        mut catalog: Box<dyn Catalog>,
     ) -> Self {
         // We need to generate a playback at least once.
+        let active = catalog.names().first().expect("No named playbacks").clone();
         let playback = catalog.playback(&active).expect("Playback not found");
         let length = playback.length();
 

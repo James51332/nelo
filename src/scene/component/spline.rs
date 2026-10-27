@@ -6,6 +6,7 @@ use glam::Vec2;
 
 // ----- Spline -----
 
+#[derive(Clone)]
 pub struct Spline {
     pub spline_path: Timeline<Along<Vec2>>,
     pub start_alpha: Timeline<f32>,
